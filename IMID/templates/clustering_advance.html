@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<style>
+  #loader{
+  position:fixed;
+  left:0px;
+  top:0px;
+  width:100%;
+  height:100%;
+  z-index:99999;
+  background:url(/static/loading12.gif) 50% 50% no-repeat rgb(15 10 10 /59%);
+  background-size:200px;
+  }
+
+  .link {
+  fill: none;
+  stroke: #000;
+  stroke-opacity: .2;
+  }
+  .link:hover {
+  stroke-opacity: .5;
+  }
+</style>
+
+<div id='loader' style='display:none'></div>
+<h4>Advanced Clustering</h4>
+<div id="tabs_advanced" style='width:1800px;'>
+  <ul>
+    <li><a href="#tabs-1">Leiden</a></li>
+    <li><a href="#tabs-2">HDBSCAN</a></li>
+  </ul>
+  <div id="tabs-1">
+  <p>Input Resolution Range:</p>
+  <p>Min:&nbsp;<input type='text' id='leiden_min' size='8'></input>&nbsp;&nbsp;Max:&nbsp;<input type='text' id='leiden_max' size='8'></input>&nbsp;&nbsp;Levels:&nbsp;
+  <select id='leiden_levels'>
+	<option value='3' selected='selected'>3</option>
+	<option value='4'>4</option>
+	<option value='5'>5</option>
+	<option value='6'>6</option>
+	<option value='7'>7</option>
+	<option value='8'>8</option>
+	<option value='9'>9</option>
+	<option value='10'>10</option>
+  </select>
+  &nbsp;&nbsp;<button id="LeidenBtn" class="btn btn-primary" style="width:auto;" onclick="LeidenClick();">Cluster the Data</button></p>
+  <div id='sangkey1'></div>
+  </div>
+  <div id="tabs-2">
+  <p>Input Size Range:</p>
+  <p>Min:&nbsp;<input type='text' id='HDBSCAN_min' size='8'></input>&nbsp;&nbsp;Max:&nbsp;<input type='text' id='HDBSCAN_max' size='8'></input>&nbsp;&nbsp;Levels:&nbsp;
+  <select id='HDBSCAN_levels'>
+	<option value='3' selected='selected'>3</option>
+	<option value='4'>4</option>
+	<option value='5'>5</option>
+	<option value='6'>6</option>
+	<option value='7'>7</option>
+	<option value='8'>8</option>
+	<option value='9'>9</option>
+	<option value='10'>10</option>
+  </select>
+  &nbsp;&nbsp;<button id="HDBSCANBtn" class="btn btn-primary" style="width:auto;" onclick="HDBSCANClick();">Cluster the Data</button></p>
+  <div id='sangkey2'></div>
+  </div>
+</div>
+
+<script>
+$( function() {
+    tabs=$( "#tabs_advanced" );
+    tabs.tabs();
+});
+
+function plot(id,graph){
+	var data={
+	type:'sankey',
+	orientation:'h',
+	node:{
+		pad:10,
+		thickness:15,
+		line:{
+			color:'black',
+			width:0.5
+		},
+		label:graph.label,
+		color:d3.scaleSequential().domain([0,graph.label.length]).interpolator(d3.interpolateRainbow)
+	     },
+	link:{
+		source:graph.source1,
+		target:graph.target1,
+		value:graph.value1
+	     }
+	};
+	data=[data];
+	var layout={
+		title:'Cluster Levels',
+		font:{size:10}
+	}
+	Plotly.react(id,data,layout); 
+}
+
+function LeidenClick(){
+	url='/cluster/advanced/?cluster=LEIDEN&min='+$('#leiden_min').val()+'&max='+$('#leiden_max').val()+'&level='+$('#leiden_levels').val();
+	$.ajax({
+			url:url,
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				plot('sangkey1',response);
+			},
+			error:function(response){
+				alert(response.responseText);
+				return;
+			}
+	});
+}
+
+function HDBSCANClick(){
+	url='/cluster/advanced/?cluster=HDBSCAN&min='+$('#HDBSCAN_min').val()+'&max='+$('#HDBSCAN_max').val()+'&level='+$('#HDBSCAN_levels').val();
+	$.ajax({
+			url:url,
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				plot('sangkey2',response);
+			},
+			error:function(response){
+				alert(response.responseText);
+				return;
+			}
+	});
+}
+</script>
+
+{% endblock %}

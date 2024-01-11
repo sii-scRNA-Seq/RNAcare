@@ -1,0 +1,293 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<h4>Gene Data Explory Data Analyses</h4>
+<table>
+<tr>
+	<td>
+	<div id="graphDiv1" style="width:600px; height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+	</td>
+	<td>
+	<div id="graphDiv2" style="width:600px; height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+	</td>
+</tr>
+<tr>
+	<td colspan="2" style="text-align:right;">
+	<button id="download1" class="btn btn-primary" style="width:auto;" onclick="window.location='/static/{{ user.get_username }}_corrected.csv';">Download Processed data</button>
+	<br>
+	<div style="width:900px; border-top:1px solid #ccc;"></div>
+	</td>
+</tr>
+<tr>
+	<td>
+	<div id="graphDiv11" style="width:600px; overflow-x:scroll; overflow-y:scroll;"></div>
+	</td>
+	<td>
+	<div id="graphDiv21" style="width:600px; overflow-x:scroll; overflow-y:scroll;"></div>
+	</td>
+</tr>
+<tr>
+	<td colspan='2'>
+	<div style="width:900px; border-top:1px solid #ccc;"></div>
+	</td>
+</tr>
+<tr>
+	<td colspan="2" style="vertical-align:top;">
+		<fieldset>
+			<legend>Choose Options for Clustering</legend>
+			<table>
+			<tr>
+				<td style="height:50px; border-right:1px solid #ccc;">
+					<input type="radio" name='clustering' value='LEIDEN' >&nbsp;LEIDEN</input>
+					<br>
+					<input type="radio" name='clustering' value='HDBSCAN'>&nbsp;HDBSCAN</input>
+				</td>	
+				<td style="width:400px; height:50px; border-right:1px solid #ccc;">
+					<div id='LPara'>
+						<label for='slider1'>Input Param: Resolution = &nbsp; &nbsp;</label>
+						<input type='text' id='sliderValue' size='8'></input>
+						<br><br>
+						<div id='slider1'></div>
+					</div>
+					<div id='HPara'>
+						<label for='slider1'>Input Param: minSize = </label>
+						<br>
+						<input id='hdbP'  value='20' />
+					</div>
+				</td>
+				<td style="height:50px;">
+				<button id="clusterBtn" class="btn btn-primary" style="width:auto;" onclick="clusterBtnClick();">Cluster the Data</button>
+				</td>
+			</tr>
+			<tr>
+				<td colspan='2'>
+				<div id='graphDiv1-cluster' style="width:600px; height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+				</td>
+				<td>
+				<div id="graphDiv1-cluster-gene" style="width:600px; overflow-x:scroll; overflow-y:scroll;"></div>
+				</td>
+			</tr>
+			<tr>
+				<td colspan='3'>
+				<div id='graphDiv1-cluster-top-gene' style="width:1200px; overflow-x:scroll; overflow-y:scroll;"></div>
+				</td>
+			</tr>
+			</table>
+		</fieldset>
+	</td>
+</tr>
+<tr class='downloadData1'>
+	<td style="text-align:right;" colspan='2'>
+		<button id="download1" class="btn btn-primary" style="width:auto;" onclick="window.location='/static/{{ user.get_username }}_adata.h5ad';">Download Processed data</button>
+	</td>
+</tr>
+<tr class='downloadData1'>
+	<td colspan='2'>
+		<div style='background-color:powderblue; text-align:center;'><h5>Select one interesting cluster for Go Enrichment Analysis:&nbsp;&nbsp;</h5></div>
+	</td>
+</tr>
+<tr class='downloadData1'>
+	<td style="text-align:right;">
+		<select id='cluster_num'>
+			<option value='' selected='selected'>----SELECT----</option>
+		</select>
+	</td>
+	<td>
+		<button id="cluster_btn" class="btn btn-primary" style="width:auto;" onclick="goEnrich();">Go Enrichment</button>
+		<img src='/static/loading.gif' id='loading_img' width='60', height='60'/>
+	</td>
+</tr>
+<tr class='downloadData1'>
+	<td colspan="2" style="text-align:right;">
+	<div style="border-top:1px solid #ccc;"></div>
+	</td>
+</tr>
+<tr class='downloadData1'>
+	<td style="text-align:right;">
+	<h5>Lasso Analysis for above clusters </h5>
+	</td>
+	<td>
+	<button id="lasso" class="btn btn-primary" style="width:auto;" onclick="lasso();">Get Report</button>
+	</td>
+</tr>
+</table>
+
+<script>
+function unpack(rows,n){
+	return rows.map(function(row)
+	{return row[n];});}
+	
+function plotlyPlot(idP,dfsP){
+	sequentialScale=d3.scaleSequential().domain([0,Object.keys(dfsP).length]).interpolator(d3.interpolateRainbow);
+	i=0;
+	for(const [key,value] of Object.entries(dfsP)){
+		var trace={
+		x:unpack(value.data, 0), y: unpack(value.data, 1), z: unpack(value.data, 2),
+		mode: 'markers',
+		marker: {
+			size: 2,color:sequentialScale(i),
+			symbol:'circle',
+			opacity: 0.5},
+		type: 'scatter3d',
+		name: key,
+		text: value.obs,
+		};
+		data.push(trace);
+		i++;
+	}
+	var layout = {
+		legend:{
+	  	x:1,
+	  	y:0.5
+	  	}
+	  };
+	Plotly.newPlot(idP, data, layout);
+}
+
+dfs1=JSON.parse('{{dfs1|safe}}');
+data=[];
+plotlyPlot('graphDiv1',dfs1);
+$('.downloadData1').hide();
+$('#loading_img').hide();
+$('.btn').attr('disabled',false);
+
+
+dfs2=JSON.parse('{{dfs2|safe}}');
+data=[];
+plotlyPlot('graphDiv2',dfs2);
+
+$(document).ready(function(e){
+	$('#HPara').hide();
+	$("input[type=radio][name=clustering][value=LEIDEN]").prop("checked", true);
+	$('#slider1').slider({
+		min:0,
+		max:2,
+		step:0.001,
+		value:1,
+		slide:function(event,ui){
+			$('#sliderValue').val(ui.value);
+		}
+	});
+	$('#sliderValue').val($('#slider1').slider('value'));
+	$('#sliderValue').on('change',function(){
+		$('#slider1').slider('value',$(this).val());
+		$('#slider1').slider('refresh');
+	});
+	
+	$.ajax({
+			url: '/dgea/',
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			success:function(response){
+				$('#graphDiv11').html('<img class="img1" src="/static/'+response[0]+'" width="600"/>');
+				$('#graphDiv21').html('<img class="img1" src="/static/'+response[1]+'" width="600"/>');
+				wheelzoom(document.querySelectorAll('img.img1'));
+			},
+			error:function(response){
+				alert('Server error!');
+			}
+		});
+	$("input[type=radio][name=clustering]").on('change',function () {
+            if($(this).val()=='LEIDEN')
+            {
+            	$('#HPara').hide();
+            	$('#LPara').show();
+            }
+            else{
+            	$('#LPara').hide();
+            	$('#HPara').show();
+            }
+        });
+});
+
+function clusterBtnClick(){
+	if($('input[type=radio][name=clustering]:checked').val()=='LEIDEN')
+        	url='/cluster/?cluster=LEIDEN&param='+$('#sliderValue').val();
+        else
+        	url='/cluster/?cluster=HDBSCAN&param='+$('#hdbP').val();
+        data=[];
+        $('.btn').attr('disabled',true);
+        $.ajax({
+			url: url,
+			datType:'html',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			success:function(response){
+				plotlyPlot('graphDiv1-cluster',response.traces);
+				$('#graphDiv1-cluster-gene').html('<img class="img2" src="/static/'+response.fileName+'" width="600"/>');
+				$('#graphDiv1-cluster-top-gene').html('<img class="img3" src="/static/'+response.fileName1+'" width="1200"/>');
+				wheelzoom(document.querySelectorAll('img.img2'));
+				wheelzoom(document.querySelectorAll('img.img3'));
+				$('.downloadData1').show();
+				for (let key in response.traces){
+					$('#cluster_num').append(new Option(key,key));
+				}
+				$('.btn').attr('disabled',false);
+			},
+			error:function(response){
+				alert('Server error!');
+				$('.btn').attr('disabled',false);
+			}
+		});
+	
+}
+
+function goEnrich(){
+	$('#loading_img').show();
+	$('.btn').attr('disabled',true);
+	$.ajax({
+			url:'/goenrich/?cluster_n='+$('#cluster_num').val(),
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			success:function(response){
+				$('#loading_img').hide();
+				window.open('/static/'+response.fileName);
+				$('.btn').attr('disabled',false);
+			},
+			error:function(response){
+				alert('Server error!');
+				$('#loading_img').hide();
+				$('.btn').attr('disabled',false);
+			}
+	});
+}
+
+function lasso(){
+	if($('input[type=radio][name=clustering]:checked').val()=='LEIDEN')
+        	url='/lasso/?cluster=LEIDEN';
+        else
+        	url='/lasso/?cluster=HDBSCAN';
+        $('.btn').attr('disabled',true);
+        $.ajax({
+			url:url,
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			success:function(response){
+				alert(response);
+				$('.btn').attr('disabled',false);
+			},
+			error:function(response){
+				alert('Server error!');
+				$('.btn').attr('disabled',false);
+			}
+	});
+}
+</script>
+
+{% endblock %}
+

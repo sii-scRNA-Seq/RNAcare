@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<div style="width:100%; margin:left;">
+<fieldset name="Multiple Files Upload">
+<div id="msg"></div>
+<p>
+<table>
+<tr>
+	<td style="vertical-align:top;">
+	{% csrf_token %}
+		<div style="height:100px; width:900px; border-right:1px solid #ccc;">
+		<div>Upload Gene Expression files</div>
+		<input type="file" id="multiFiles" name="files[]" multiple="multiple"/>
+		<button id="upload1" class="btn btn-primary">Upload</button>
+		</div>
+	</td>
+	<td style="vertical-align:top;">
+	</td>
+	<td rowspan="2" style="vertical-align:top;">
+	<div name="Options1" style="padding:15px">
+		<h4>Combined Options</h4>
+		<input type="radio" name="Comb" value="Combat" checked="checked">&nbsp;Combat</input>
+		<br>
+  		<input type="radio" name="Comb" value="Harmony">&nbsp;Harmony</input>
+  		<br>
+  		<input type="radio"  name="Comb" value="BBKNN">&nbsp;BBKNN</input>
+  		<br>
+	</div>
+	<br>
+	<div name="Options2" style="padding:15px">
+		<h4>Log2 Transformation</h4>
+		<input type="radio" name="Log" value="Yes">&nbsp;Yes</input>
+		<br>
+  		<input type="radio" name="Log" value="No" checked="checked">&nbsp;No</input>
+		<br>
+	</div>
+	<br>
+	<div name="Options3" style="padding:15px">
+		<h4>Feature Reduction Method</h4>
+		<input type="radio" name="FR" value="TSNE" checked="checked">&nbsp;TSNE</input>
+		<br>
+  		<input type="radio" name="FR" value="UMAP">&nbsp;UMAP</input>
+		<br>
+	</div>
+	<div>
+	<button id="next" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
+	</div>
+  	</td>	
+<tr>
+<td>
+<div id='preview1' style="width:900px; height:900px; overflow-x:scroll; overflow-y:scroll; border-right:1px solid #ccc;"></div>
+</td>
+</tr>
+</table>
+</fieldset>
+</div>
+
+<script>
+var1=0;
+$(document).ready(function(e){
+	$('#upload1').on('click',function(){
+		form_data=new FormData();
+		ins=document.getElementById('multiFiles').files.length;
+		if(ins==0){
+			$('#msg').html('<div class="alert-danger" role="alert">Select at least one file</div>');
+			return;
+		}
+		else{
+		$('#msg').html('');
+		}
+		
+		for(var i=0;i<ins;i++){
+			form_data.append("files[]", document.getElementById('multiFiles').files[i]);
+		}
+		csrf_token=$('input[name="csrfmiddlewaretoken"]').val();
+		form_data.append("csrfmiddlewaretoken",csrf_token);
+		
+		$.ajax({
+			url: '/upload/',
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			data:form_data,
+			type:'post',
+			success:function(response){
+				$('#preview1').html(response);
+				var1=1;
+			},
+			error:function(response){
+				alert('upload error!');
+			}
+		});
+	});
+	
+	$('#next').on('click',function(){
+		/*if(var1!=1)
+		{
+			alert('Please Upload files!');
+			return;
+		}*/
+		window.location='/eda/?correct='+$('input[name="Comb"]:checked').val()+'&log2='+$('input[name="Log"]:checked').val()+'&fr='+$('input[name="FR"]:checked').val();
+	});
+});
+</script>
+
+{% endblock %}
