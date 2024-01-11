@@ -1,0 +1,638 @@
+{% extends 'base.html' %}
+
+{% block body %}
+  <script>
+  $( function() {
+    tabs=$( "#tabs" );
+    tabs.tabs();
+    $('#HPara').hide();
+    $('#tab3div').hide();$('#tab4div').hide();
+    $('#my-select').multiSelect({ keepOrder: true });
+    $('.downloadData1').hide();  
+    $('#upload1').on('click',function(){
+		form_data=new FormData();
+		ins=document.getElementById('multiFiles').files.length;
+		if(ins==0){
+			$('#msg').html('<div class="alert-danger" role="alert">Select at least one file for Gene Expression</div>');
+			return;
+		}
+		else{
+		$('#msg').html('');
+		}
+		
+		for(var i=0;i<ins;i++){
+			form_data.append("files[]", document.getElementById('multiFiles').files[i]);
+		}
+		csrf_token=$('input[name="csrfmiddlewaretoken"]').val();
+		form_data.append("csrfmiddlewaretoken",csrf_token);
+		
+		$.ajax({
+			url: '/upload/geneExpression/',
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			data:form_data,
+			type:'post',
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('#preview1').html(response);
+				$('#preview2').html(' ');
+				
+			},
+			error:function(response){
+				alert('upload error!');
+			}
+		});
+	});
+	
+   $('#upload2').on('click',function(){
+		form_data=new FormData();
+		ins=document.getElementById('singleFile').files.length;
+		if(ins==0){
+			$('#msg').html('<div class="alert-danger" role="alert">Select at least one file for Meta-data</div>');
+			return;
+		}
+		else{
+		$('#msg').html('');
+		}
+		
+		for(var i=0;i<ins;i++){
+			form_data.append("meta", document.getElementById('singleFile').files[0]);
+		}
+		csrf_token=$('input[name="csrfmiddlewaretoken"]').val();
+		form_data.append("csrfmiddlewaretoken",csrf_token);
+		
+		$.ajax({
+			url: '/upload/meta/',
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			data:form_data,
+			type:'post',
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('#preview2').html(response);
+				
+			},
+			error:function(response){
+				alert('upload error!');
+			}
+		});
+	});
+	
+   $('#slider1').slider({
+		min:0,
+		max:2,
+		step:0.001,
+		value:1,
+		slide:function(event,ui){
+			$('#sliderValue').val(ui.value);
+		}
+	});
+	$('#sliderValue').val($('#slider1').slider('value'));
+	$('#sliderValue').on('change',function(){
+		$('#slider1').slider('value',$(this).val());
+		$('#slider1').slider('refresh');
+	});
+	
+
+	
+   $('#next1').on('click',function(){	
+		tabs.tabs('option','active',1);
+	});
+   $('#next2').on('click',function(){
+   	$('.btn').attr('disabled',true);
+		$.ajax({
+			url: '/eda/?correct='+$('input[name="Comb"]:checked').val()+'&log2='+$('input[name="Log"]:checked').val()+'&fr='+$('input[name="FR"]:checked').val()+'&integrate='+$('#my-select').val(),
+			datType:'html',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			
+			success:function(response){
+				$('#tab3div').show();
+				tabs.tabs('option','active',2);
+				dfs1=JSON.parse(response.dfs1);
+				plotlyPlot('graphDiv1',dfs1);
+				$('.btn').attr('disabled',false);
+				dfs2=JSON.parse(response.dfs2);
+				plotlyPlot('graphDiv2',dfs2);			
+				$.ajax({
+					url: '/dgea/',
+					datType:'json',
+					cache:false,
+					contentType:false,
+					processData:false,
+					type:'get',
+					async:true,
+					complete:function(){
+						$('#loader').hide();
+					},
+					success:function(response){
+						$('#graphDiv11').html('<img class="img1" src="/static/temp/'+response[0]+'" width="500"/>');
+						$('#graphDiv21').html('<img class="img1" src="/static/temp/'+response[1]+'" width="500"/>');
+						alert('Calculation Succeed!');
+						wheelzoom(document.querySelectorAll('img.img1'));
+						$('.btn').attr('disabled',false);
+					},
+					error:function(response){
+						alert(response.responseText);
+						$('.btn').attr('disabled',false);
+						$('#graphDiv11').html('');
+						$('#graphDiv21').html('');
+						return;
+					}
+				});
+	
+			},
+			error:function(response){
+				alert('server error!');
+				$('.btn').attr('disabled',false);
+				return;
+			}
+		});
+		$('.btn').attr('disabled',false);
+		
+	});
+   $('#next3').on('click',function(){
+		tabs.tabs('option','active',3);
+		$('#tab4div').hide();
+	});
+   $('#next4').on('click',function(){
+		tabs.tabs('option','active',4);
+	});
+
+   $("input[type=radio][name=clustering]").on('change',function () {
+            if($(this).val()=='LEIDEN')
+            {
+            	$('#HPara').hide();
+            	$('#LPara').show();
+            }
+            else{
+            	$('#LPara').hide();
+            	$('#HPara').show();
+            }
+        }); 
+  });
+  
+  
+function unpack(rows,n){
+	return rows.map(function(row)
+	{return row[n];});}
+	
+function plotlyPlot(idP,dfsP){
+	data=[];
+	sequentialScale=d3.scaleSequential().domain([0,Object.keys(dfsP).length]).interpolator(d3.interpolateRainbow);
+	i=0;
+	for(const [key,value] of Object.entries(dfsP)){
+		var trace={
+		x:unpack(value.data, 0), y: unpack(value.data, 1), z: unpack(value.data, 2),
+		mode: 'markers',
+		marker: {
+			size: 2,color:sequentialScale(i),
+			symbol:'circle',
+			opacity: 0.5},
+		type: 'scatter3d',
+		name: key,
+		text: value.obs,
+		};
+		data.push(trace);
+		i++;
+	}
+	var layout = {
+		legend:{
+	  	x:1,
+	  	y:0.5
+	  	}
+	  };
+	Plotly.newPlot(idP, data, layout);
+}
+
+function plotlyPlot1(idP,dfsP){
+	data=[];
+	sequentialScale=d3.scaleSequential().domain([0,Object.keys(dfsP).length]).interpolator(d3.interpolateRainbow);
+	i=0;
+	for(const [key,value] of Object.entries(dfsP)){
+		var trace={x:value.x,y:value.y,name:value.name,type:value.type,marker:{color:sequentialScale(i)}};
+		data.push(trace);
+		i++;
+	}
+	layout={barmode:'stack'};
+	Plotly.newPlot(idP,data,layout);
+}
+
+function clusterBtnClick(){
+	if($('input[type=radio][name=clustering]:checked').val()=='LEIDEN')
+        	url='/cluster/?cluster=LEIDEN&param='+$('#sliderValue').val();
+        else
+        	url='/cluster/?cluster=HDBSCAN&param='+$('#hdbP').val();
+        data=[];
+        $('.btn').attr('disabled',true);
+        $.ajax({
+			url: url,
+			datType:'html',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('#tab4div').show();
+				plotlyPlot('graphDiv1-cluster',response.traces);
+				plotlyPlot1('bc1',response.bc1);
+				plotlyPlot1('bc2',response.bc2);
+				$('#graphDiv1-cluster-gene').html('<img class="img2" src="/static/temp/'+response.fileName+'" width="500"/>');
+				$('#graphDiv1-cluster-top-gene').html('<img class="img2" src="/static/temp/'+response.fileName1+'" width="1000"/>');
+				alert('Calculation Succeed!');
+				wheelzoom(document.querySelectorAll('img.img2'));
+				$('.downloadData1').show();
+				$('#cluster_num').html("<option value='' selected='selected'>----SELECT----</option>");
+				$('#cluster_num1').html("<option value='' selected='selected'>----SELECT----</option>");
+				for (let key in response.traces){
+					$('#cluster_num').append(new Option(key,key));
+					$('#cluster_num1').append(new Option(key,key));
+				}
+				$('.btn').attr('disabled',false);
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('#graphDiv1-cluster-gene').html('');
+				$('#graphDiv1-cluster-top-gene').html('');
+				$('#cluster_num').html("<option value='' selected='selected'>----SELECT----</option>");
+				$('#cluster_num1').html("<option value='' selected='selected'>----SELECT----</option>");
+				$('.btn').attr('disabled',false);
+				return;
+			}
+		});
+	
+}
+
+function goEnrich(){
+	$('.btn').attr('disabled',true);
+	$.ajax({
+			url:'/goenrich/?cluster_n='+$('#cluster_num').val(),
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('#goEnrichPic').html('<img class="imgGo" src="/static/temp/'+response.fileName+'" width="500"/>');
+				alert('Calculation Succeed!');
+				wheelzoom(document.querySelectorAll('img.imgGo'));
+				$('.btn').attr('disabled',false);
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('#goEnrichPic').html('');
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+}
+
+function golasso(){
+	$('.btn').attr('disabled',true);
+	$.ajax({
+			url:'/lasso/?cluster_n='+$('#cluster_num1').val(),
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('#lassoPic').html('<img class="imgLasso" src="/static/temp/'+response.fileName+'" width="500"/>');
+				alert('Calculation Succeed!');
+				wheelzoom(document.querySelectorAll('img.imgLasso'));
+				$('.btn').attr('disabled',false);
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('#lassoPic').html('');
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+}
+  </script>
+  
+  <style>
+  #loader{
+  position:fixed;
+  left:0px;
+  top:0px;
+  width:100%;
+  height:100%;
+  z-index:99999;
+  background:url(/static/loading12.gif) 50% 50% no-repeat rgb(15 10 10 /59%);
+  background-size:200px;
+  }
+  </style>
+  
+<div id='loader' style='display:none'></div>
+<div id="tabs" style='width:1800px;'>
+  <ul>
+    <li><a href="#tabs-1">Data Collection</a></li>
+    <li><a href="#tabs-2">Data Processing</a></li>
+    <li><a href="#tabs-3">EDA</a></li>
+    <li><a href="#tabs-4">DEGA</a></li>
+    <li><a href="#tabs-5">LASSO FeastureSelect</a></li>
+    <li><a href="#tabs-6">Go Enrichment</a></li>
+  </ul>
+  <div id="tabs-1">
+    <fieldset name="Multiple Files Upload">
+    <div id="msg"></div>
+    <p>Upload Gene Expression files</p>
+    <table>
+    <tr>
+	<td style="vertical-align:top;">
+	{% csrf_token %}
+		<input type="file" id="multiFiles" name="files[]" multiple="multiple"/>
+		<button id="upload1" class="btn btn-primary">Upload</button>
+	</td>
+
+    </tr>
+    <tr>
+  	<td>
+  	<div id='preview1' style="height:900px; width:1200px; overflow-x:scroll; overflow-y:scroll;"></div>	
+  	</td>
+    </tr>
+    </table>
+    
+    <p>Upload Meta-data files</p>
+    <table>
+    <tr>
+	<td style="vertical-align:top;">
+	{% csrf_token %}
+		<input type="file" id="singleFile" name="singleFile"/>
+		<button id="upload2" class="btn btn-primary">Upload</button>
+		<button id="next1" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>	
+	</td>
+
+    </tr>
+    <tr>
+  	<td>
+  	<div id='preview2' style="height:900px; width:1200px; overflow-x:scroll; overflow-y:scroll;"></div>	
+  	</td>
+    </tr>
+    </table>
+   </fieldset>
+  </div>
+  
+  <div id="tabs-2">
+  <table>
+  
+  <tr>
+  	<h5>Choose the built-in compiled cohort(s) you want to integrate with:</h5>
+	<select id="my-select" multiple>
+	<optgroup label='IMID-Bio-UK'>
+    	<option value="SERA">SERA</option>
+    	<option value="PEAC">PEAC</option>
+    	<option value="PSORT">PSORT</option>
+    	<option value="RAMAP">RAMAP</option>
+    	</optgroup>
+	</select>
+  </tr>
+
+  	
+  <tr>
+  	<td>
+   	<div name="Options1" style="left:10px">
+   		<br>
+		<p>Combined Options</p>
+		<input type="radio" name="Comb" value="Combat" checked="checked" /><label>&nbsp;Combat</label>
+		<br>
+  		<input type="radio" name="Comb" value="Harmony" /><label>&nbsp;Harmony</label>
+  		<br>
+  		<br>
+	</div>
+	</td>
+	
+	<td>
+	<div name="Options2" style="left:30px">
+		<br>
+		<p>Log2 Transformation</p>
+		<input type="radio" name="Log" value="Yes" /><label>&nbsp;Yes</label>
+		<br>
+  		<input type="radio" name="Log" value="No" checked="checked"><label>&nbsp;No</label>
+		<br>
+		<br>
+	</div>
+	</td>
+
+	<td>
+	<div name="Options3" style="left:30px">
+		<br>
+		<p>Feature Reduction Method</p>
+		<input type="radio" name="FR" value="TSNE" /><label>&nbsp;TSNE</label>
+		<br>
+  		<input type="radio" name="FR" value="UMAP"  checked="checked" /><label>&nbsp;UMAP</label>
+		<br>
+		<br>
+	</div>
+	</td>
+  </tr>
+  <tr>
+  	<td colspan='2' style="text-align:right;">
+	<button id="next2" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
+  	</td>
+  </tr>
+  </table>
+  </div>
+  
+  
+  <div id="tabs-3">
+  	<p>Gene Data Explory Data Analyses</p>
+  	<div id='tab3div'>
+	<table>
+		<tr>	
+			<td>
+			<p>Data colored by FileNames</p>
+			<div id="graphDiv1" style="width:600px;overflow-x:scroll; overflow-y:scroll;"></div>
+			</td>
+			<td>
+			<p>Data colored by LABEL in meta file​</p>
+			<div id="graphDiv2" style="width:600px;overflow-x:scroll; overflow-y:scroll;"></div>
+			</td>
+		</tr>		
+		<tr>
+			<td colspan='2'>
+			<div style="width:100%; border-top:1px solid #ccc;"></div>
+			</td>
+		</tr>
+		<tr>
+		<td>
+			<p>Dotplot for top 4 genes in each file​</p>
+			<div id="graphDiv11" style="width:600px; overflow-x:scroll; overflow-y:scroll;"></div>
+		</td>
+		<td>
+			<p>Dotplot for top 4 genes in each LABEL​</p>
+			<div id="graphDiv21" style="width:600px;overflow-x:scroll; overflow-y:scroll;"></div>
+		</td>
+		</tr>
+		<tr>
+		<td colspan="2" style="text-align:right;">
+			<button id="download1" class="btn btn-primary" style="width:auto;" onclick="window.location='/static/temp/{{ user.get_username }}_corrected.csv';">Download Processed data</button>
+			<br><br>
+			<button id="next3" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
+			
+		</td>
+		</tr>
+	</table>
+	</div>
+  </div>
+ 
+ 
+   <div id="tabs-4">
+  	<p>Choose Options for Clustering:</p>
+  	
+	<table>
+			<tr>
+				<td style="height:50px; border-right:1px solid #ccc;">
+					<input type="radio" name='clustering' value='LEIDEN' checked /><label>&nbsp;LEIDEN</label>
+					<br>
+					<input type="radio" name='clustering' value='HDBSCAN' /><label>&nbsp;HDBSCAN</label>
+				</td>	
+				<td style="width:400px; height:50px; border-right:1px solid #ccc;">
+					<div id='LPara'>
+						<label for='slider1'>Input Param: Resolution = &nbsp; &nbsp;</label>
+						<input type='text' id='sliderValue' size='8'></input>
+						<br><br>
+						<div id='slider1'></div>
+					</div>
+					<div id='HPara'>
+						<label for='slider1'>Input Param: minSize = </label>
+						<br>
+						<input id='hdbP'  value='20' />
+					</div>
+				</td>
+				<td style="height:50px;">
+				<button id="clusterBtn" class="btn btn-primary" style="width:auto;" onclick="clusterBtnClick();">Cluster the Data</button>
+				<button id='advanced' class="btn btn-primary" style='width:auto;' onclick="window.open('/cluster/advanced/');">Advanced</button>
+				</td>
+			</tr>
+	</table>
+	<div id='tab4div'>
+	<table>
+			<tr>
+				<td><p>Data colored by clusters​</p></td>
+				<td><p>Dotplot for top 4 genes in each cluster</p></td>
+			</tr>
+			<tr>
+				<td>
+				<div id='graphDiv1-cluster' style="width:600px; height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+				</td>
+				<td>
+				<div id="graphDiv1-cluster-gene" style="width:600px; overflow-x:scroll; overflow-y:scroll;"></div>
+				</td>
+			</tr>
+			<tr>
+				<td><p>Contributions from each file</p></td>
+				<td><p>Contributions from each LABEL</p></td>
+			</tr>
+			<tr>
+				<td>
+				<div id='bc1' style="width:600px; height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+				</td>
+				<td>	
+				<div id="bc2" style="width:600px; overflow-x:scroll; overflow-y:scroll;"></div>
+				</td>
+			</tr>
+			<tr>
+				<td colspan='2'>
+				<p>Top 20 genes after running DE for clusters​</p>
+				<div id='graphDiv1-cluster-top-gene' style="width:1000px; overflow-x:scroll; overflow-y:scroll;"></div>
+				</td>
+			</tr>
+			<tr class='downloadData1'>
+				<td style="text-align:right;" colspan='3'>
+				<button id="download2" class="btn btn-primary" style="width:auto;" onclick="window.location='/static/temp/{{ user.get_username }}_adata.h5ad';">Download Processed data</button>
+				<br><br>
+					<button id="next4" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
+				</td>
+			</tr>
+	</table>
+	</div>	
+	</table>
+  </div>
+  
+  <div id='tabs-5'>
+  	<p>Select one interesting cluster for Feature Selection by Lasso:</p>
+  	<table>
+  		<tr>
+			<td style="text-align:right;width:50%;">
+			<select id='cluster_num1'>
+			<option value='' selected='selected'>----SELECT----</option>
+			</select>
+			</td>
+			<td style="text-align:left;width:50%;">
+			<button id="cluster_btn" class="btn btn-primary" onclick="golasso();">Lasso</button>
+			</td>
+		</tr>
+		<tr>
+		<td colspan='2'>
+		<div id='lassoPic' style="width:1200px; overflow-x:scroll; overflow-y:scroll; text-align:center;"></div>
+		</td>
+		</tr>
+  	</table>
+  </div>
+  
+  <div id='tabs-6'>
+  	<p>Select one interesting cluster for Go Enrichment Analysis:</p>
+  	<table>
+  		<tr>
+			<td style="text-align:right;width:50%;">
+			<select id='cluster_num'>
+			<option value='' selected='selected'>----SELECT----</option>
+			</select>
+			</td>
+			<td style="text-align:left;width:50%;">
+			<button id="cluster_btn" class="btn btn-primary" onclick="goEnrich();">Go Enrichment</button>
+			</td>
+		</tr>
+		<tr>
+		<td colspan='2'>
+		<div id='goEnrichPic' style="width:1400px; overflow-x:scroll; overflow-y:scroll; text-align:center;"></div>
+		</td>
+		</tr>
+  	</table>
+  </div>
+
+{% endblock %}

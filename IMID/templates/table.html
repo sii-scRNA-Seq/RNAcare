@@ -1,0 +1,26 @@
+<div class="container"> 
+<h4>Data Preview</h4>
+{% for tableName,data in root.items %}
+<div class='tableName'>{{ tableName }}</div>  
+  <table class="table table-white table-striped table-sm table-fit table-condensed">
+    <thead>
+      <tr>
+      	{% for key in data.names %}
+        <th>{{ key }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+    {% for i in data.d %}
+      <tr>     
+        {% for k,j in i.items %}
+        <td>{{j}}</td>
+        {% endfor %}
+      </tr>
+     {% endfor %}
+    </tbody>
+  </table>
+<br>
+{% endfor %}
+</div>
+
