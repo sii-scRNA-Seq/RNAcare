@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<style>
+  #loader{
+  position:fixed;
+  left:0px;
+  top:0px;
+  width:100%;
+  height:100%;
+  z-index:99999;
+  background:url(/static/loading12.gif) 50% 50% no-repeat rgb(15 10 10 /59%);
+  background-size:200px;
+  }
+</style>
+
+<div id='loader' style='display:none'></div>
+<h4>Advanced Searching</h4>
+<div id="tabs_advanced" style='width:1800px;'>
+  <ul>
+    <li><a href="#tabs-1">Source</a></li>
+    <li><a href="#tabs-2">Info</a></li>
+  </ul>
+  <div id="tabs-1">
+  <p>GEO accession: &nbsp;&nbsp;<input id='access_id' title="Input the name of the public dataset.<p><img src='/static/advSearch.png' width='50%'></p>"></input>&nbsp;&nbsp;<button class="btn btn-primary" id='searchBtn' onclick='searchBtnClick();'>Search</button></p>
+  </div>
+  <div id="tabs-2">
+  <p><h2><div id='name'></div></h2></p>
+  <table id='display'>
+  <tr>
+  	<td><h5>Summary</h5></td>
+  	<td><div id='summary'></div></td>
+  </tr>
+  <tr>
+  	<td><h5>Overall design</h5></td>
+  	<td><div id='overall'></div></td>
+  	
+  </tr>
+  <tr>
+  	<td><h5>Download <img class='question' src='/static/questionMark.png' title="Download the txt file for program upload." style="max-width:3.5%;"></img></h5></td>
+  	<td><div id='download'></div></td>
+  </tr>
+  <tr>
+  	<td><input type="file" id="singleFile" name="singleFile" title="Choose from local"/></td>
+  	<td><div><button class='btn btn-primary' id='import_btn' onclick='importClick();'>Import_TXT</button></div></td>
+  </tr>
+  </table>
+  </div>
+  <div id='tabs-3'>
+  	<div id='preview'></div>
+  </div>
+</div>
+
+<script>
+$( function() {
+    $(document).tooltip();
+    tabs=$( "#tabs_advanced" );
+    $('#import_btn').hide();
+    tabs.tabs();
+});
+function searchBtnClick(){
+	$('.btn').attr('disabled',true);
+	$('#name').html('');
+	$('#summary').html('');
+	$('#overall').html('');
+	$('#download').html('');	
+	$.ajax({
+			url:'/advancedSearch/?name='+$('#access_id').val(),
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				tabs.tabs('option','active',1);
+				$('#name').html(response.name);
+				$('#summary').html(response.summary);
+				$('#overall').html(response.overAllDesign);
+				$('#download').html(response.data);	
+				if(response.txt==1){$('#import_btn').show();}
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+}
+function importClick(){
+form_data=new FormData();
+		ins=document.getElementById('singleFile').files.length;
+		if(ins==0){
+			alert('Select one file for import');
+			return;
+		}
+		
+		for(var i=0;i<ins;i++){
+			form_data.append("importedtxt", document.getElementById('singleFile').files[0]);
+		}
+		csrf_token=$('input[name="csrfmiddlewaretoken"]').val();
+		form_data.append("csrfmiddlewaretoken",csrf_token);
+		
+		$.ajax({
+			url: '/upload/importedtxt/',
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			data:form_data,
+			type:'post',
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				tabs.tabs('option','active',2);
+				$('#preview').html(response);
+				
+			},
+			error:function(response){
+				alert('upload error!');
+			}
+		});
+}
+</script>
+
+{% endblock %}
