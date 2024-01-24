@@ -17,9 +17,9 @@ from subprocess import Popen
 import collections
 import scanpy.external as sce
 
-sys.path.append('/home/mt229a/Downloads/')#gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
+#gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
 
-import matplotlib
+import matplotlib,re
 matplotlib.use('agg')
 import plotly.graph_objects as go
 # Create your views here.
@@ -30,6 +30,7 @@ from goatools.base import download_ncbi_associations
 from goatools.obo_parser import GODag
 from goatools.anno.genetogo_reader import Gene2GoReader
 from goatools.goea.go_enrichment_ns import GOEnrichmentStudyNS
+import requests
 
 BASE_UPLOAD='IMID/geneData/upload/'
 BASE_STATIC='IMID/static/temp/'
@@ -418,10 +419,54 @@ def fromPdtoSangkey(df):
 	result['value1']=value
 	result['label']=list(nodes.keys())
 	return result
-	
-		
-		
 
+from bs4 import BeautifulSoup
+@login_required()
+def advancedSearch(request):
+	username=request.user.username
+	name=request.GET.get('name',None)
+	res={}
+	if name is None:
+		return render(request,'advancedSearch.html',)
+	name=name.replace(' ','')
+	res['name']=name
+	url='https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc='+name
+	page=requests.get(url)
+	p=page.content.decode('utf-8').replace('\n','')
+	if 'GEO accession display tool' in p:
+		return HttpResponse('Could not find the cohort!',status=404)
+	m=re.search('(?<=\<tr valign="top"\>\<td nowrap\>Summary\</td\>\<td style="text-align: justify"\>)([\w\s,-.!"\(\):%]+)',p)
+	if m is not None:
+		res['summary']=m.group(1)
+	m=re.search('(?<=\<tr valign="top"\>\<td nowrap\>Overall design\</td\>\<td style="text-align: justify"\>)([\w\s,-.!"\(\):%]+)',p)
+	if m is not None:
+		res['overAllDesign']=m.group(1)
+	m=re.search('(\<table cellpadding="2" cellspacing="2" width="600"\>\<tr bgcolor="#eeeeee" valign="top"\>\<td align="middle" bgcolor="#CCCCCC"\>\<strong\>Supplementary file\</strong\>\</td\>)(.+)(\</tr\>\<tr\>\<td class="message"\>[\w\s]+\</td\>\</tr\>\</table\>)',p)
+	if m is not None:
+		soup=BeautifulSoup(m.group(0),'html.parser')
+		ftp_tags=soup.find_all('a',string='(ftp)')
+		for ftp in ftp_tags:
+			ftp.decompose()
+		custom_tags=soup.find_all('a',string='(custom)')
+		for cus in custom_tags:
+			cus.decompose()
+		td_tags=soup.find_all('td',class_='message')
+		for td in td_tags:
+			td.decompose()
+		td_tags=soup.find_all('td')
+		for td in td_tags:
+			if 'javascript:' in str(td):
+				td.decompose()
+		res['data']=str(soup).replace('/geo/download/','https://www.ncbi.nlm.nih.gov/geo/download/')
+	if 'TXT' in p:
+		res['txt']=1
+	else:
+		res['txt']=0
+	return JsonResponse(res)
+		
+	
+	
+	
 obo_fname=download_go_basic_obo()
 fin_gene2go=download_ncbi_associations()
 obodag=GODag("go-basic.obo")	

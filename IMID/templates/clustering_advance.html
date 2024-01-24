@@ -31,7 +31,7 @@
     <li><a href="#tabs-2">HDBSCAN</a></li>
   </ul>
   <div id="tabs-1">
-  <p>Input Resolution Range:</p>
+  <p>Input Resolution Range: <img class='question' src='/static/questionMark.png' title="In this section, user can choose a range. The program will averagely divide the range into N intervals by levels. The whole process will be recorded and visualised.<p><img src='/static/clusterTree.png' width='450px' height='auto' /></p>"/></p>
   <p>Min:&nbsp;<input type='text' id='leiden_min' size='8'></input>&nbsp;&nbsp;Max:&nbsp;<input type='text' id='leiden_max' size='8'></input>&nbsp;&nbsp;Levels:&nbsp;
   <select id='leiden_levels'>
 	<option value='3' selected='selected'>3</option>
@@ -47,7 +47,7 @@
   <div id='sangkey1'></div>
   </div>
   <div id="tabs-2">
-  <p>Input Size Range:</p>
+  <p>Input Size Range: <img class='question' src='/static/questionMark.png' title="In this section, user can choose a range. The program will averagely divide the range into N intervals by levels. The whole process will be recorded and visualised.<p><img src='/static/clusterTree.png' width='450px' height='auto' /></p>"/></p>
   <p>Min:&nbsp;<input type='text' id='HDBSCAN_min' size='8'></input>&nbsp;&nbsp;Max:&nbsp;<input type='text' id='HDBSCAN_max' size='8'></input>&nbsp;&nbsp;Levels:&nbsp;
   <select id='HDBSCAN_levels'>
 	<option value='3' selected='selected'>3</option>
@@ -66,6 +66,7 @@
 
 <script>
 $( function() {
+    $(document).tooltip();
     tabs=$( "#tabs_advanced" );
     tabs.tabs();
 });
