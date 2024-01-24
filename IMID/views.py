@@ -17,7 +17,7 @@ from subprocess import Popen
 import collections
 import scanpy.external as sce
 
-sys.path.append('/home/mt229a/Downloads/')#gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
+#sys.path.append('/home/mt229a/Downloads/')#gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
 
 import matplotlib
 matplotlib.use('agg')
