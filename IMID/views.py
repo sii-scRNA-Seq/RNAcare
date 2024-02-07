@@ -13,9 +13,14 @@ from matplotlib import pyplot as plt
 import hdbscan
 import random
 import string
-from subprocess import Popen
+#from subprocess import Popen
 import collections
 import scanpy.external as sce
+
+from sklearn.linear_model import LassoCV,Lasso
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+
 
 #gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
 
@@ -35,6 +40,7 @@ import requests
 BASE_UPLOAD='IMID/geneData/upload/'
 BASE_STATIC='IMID/static/temp/'
 #lasso.R for data visualization
+#sys.path.append('/home/mt229a/Downloads/')#gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
 
 
 @login_required()
@@ -43,7 +49,7 @@ def index(request):
 
 @login_required()
 def tab(request):
-	return render(request,'tab.html',)
+	return render(request,'tab1.html',)
 
 @login_required()	
 def uploadExpression(request):
@@ -123,7 +129,8 @@ def eda(request):
 	flag=0
 	
 	temp0=pd.read_csv(BASE_UPLOAD+username+'_meta.csv')
-	if len(integrate)!=0:
+	temp0=temp0.dropna(axis=1)
+	if len(integrate)!=0 and integrate[0]!='null':#jquery plugin compatible
 		temp0=pd.concat([temp0,pd.read_csv(BASE_UPLOAD+'share_meta.csv')],axis=0,join='inner')
 	for file in files:
 		if 'meta' in file:
@@ -167,7 +174,6 @@ def eda(request):
 	#temp0=pd.concat(temp0,axis=0).reset_index(drop=True) #combine all clinic data
 	if flag==0:
 		return HttpResponse("Can't find meta file",status=400)
-	
 	temp=dfs1.set_index('ID_REF').join(temp0.set_index('ID_REF'),how='inner')
 	temp['obs']=temp.index.tolist()
 	#temp['FileName']=batch#inner join may not match so valued beforehand
@@ -183,7 +189,7 @@ def eda(request):
 		X3D1=tsne.fit_transform(dfs1)
 	else:
 		
-		umap1=umap.UMAP(n_components=3,random_state=42)
+		umap1=umap.UMAP(n_components=3,random_state=42,n_neighbors=30)
 		X3D1=umap1.fit_transform(dfs1)
 	
 	with open(BASE_STATIC+username+'_fr.json','w')as f:
@@ -209,7 +215,8 @@ def zip_for_vis(X3D1,batch,obs):
 @login_required()
 def dgea(request):
 	username=request.user.username
-	clusters=request.GET.get('clusters','false')
+	clusters=request.GET.get('clusters','default')
+	n_genes=request.GET.get('topN',4)
 	df=pd.read_csv(BASE_STATIC+username+'_corrected.csv')
 	t=df.loc[:,~(df.columns.isin(['obs','FileName', 'LABEL']))]#'obs','FileName', 'LABEL'
 	adata = sc.AnnData(np.zeros(t.values.shape),dtype=np.float64)
@@ -221,38 +228,78 @@ def dgea(request):
 	sc.tl.pca(adata, svd_solver='arpack')
 	adata.write(BASE_STATIC+username+'_adata.h5ad')
 	random_str=get_random_string(8)
-	if clusters=='false':	
+	if clusters=='default':	
 		with plt.rc_context():
 			if len(set(adata.obs['batch1']))>1:
 				sc.tl.rank_genes_groups(adata, groupby='batch1', method='t-test')
 				sc.tl.dendrogram(adata, groupby='batch1')
-				sc.pl.rank_genes_groups_dotplot(adata, n_genes=4, show=False)
+				sc.pl.rank_genes_groups_dotplot(adata, n_genes=int(n_genes), show=False,color_map='bwr')
 				plt.savefig(BASE_STATIC+username+'_batch1_'+random_str+'.png',bbox_inches='tight')
 			else:
 				pass
 			if len(set(adata.obs['batch2']))>1:
 				sc.tl.rank_genes_groups(adata, groupby='batch2', method='t-test')
 				sc.tl.dendrogram(adata, groupby='batch2')
-				sc.pl.rank_genes_groups_dotplot(adata, n_genes=4, show=False)
+				sc.pl.rank_genes_groups_dotplot(adata, n_genes=int(n_genes), show=False,color_map='bwr')
 				plt.savefig(BASE_STATIC+username+'_batch2_'+random_str+'.png',bbox_inches='tight')
 			else:
 				pass
 		return JsonResponse([username+'_batch1_'+random_str+'.png',username+'_batch2_'+random_str+'.png'],safe=False)
-	if clusters=='true':
+	if clusters=='fileName':
 		#show top gene for specific group
-		pass
+		if len(set(adata.obs['batch1']))>1:
+			sc.tl.rank_genes_groups(adata, groupby='batch1', method='t-test')
+			result = adata.uns['rank_genes_groups']
+			groups = result['names'].dtype.names
+			result_df = pd.DataFrame()
+			for group in groups:
+				top_genes = pd.DataFrame(result['names'][group], columns=[f'TopGene_{group}'])
+				result_df = pd.concat([result_df, top_genes], axis=1).loc[:int(n_genes),]
+			response=HttpResponse(content_type='text/csv')
+			response['Content-Disposition']='attachment; filename=topGenes.csv'
+			result_df.to_csv(path_or_buf=response)
+			return response
+				
+		else:
+			pass
+	elif clusters=='label':
+		if len(set(adata.obs['batch2']))>1:
+			sc.tl.rank_genes_groups(adata, groupby='batch2', method='t-test')
+			result = adata.uns['rank_genes_groups']
+			groups = result['names'].dtype.names
+			result_df = pd.DataFrame()
+			print(groups)
+			for group in groups:
+    				top_genes = pd.DataFrame(result['names'][group], columns=[f'TopGene_{group}'])
+    				result_df = pd.concat([result_df, top_genes], axis=1).loc[:int(n_genes),]			
+			response=HttpResponse(content_type='text/csv')
+			response['Content-Disposition']='attachment; filename=topGenes.csv'
+			result_df.to_csv(path_or_buf=response)
+			return response
+	
+		else:
+			pass
 
 @login_required()
 def clustering(request):
 	username=request.user.username
 	cluster=request.GET.get('cluster','LEIDEN')
 	param=request.GET.get('param',None)
-	
-	adata=sc.read(BASE_STATIC+username+'_adata.h5ad')
+	useFR=request.GET.get('useFR','false')
+	if param is None:
+		return HttpResponse('Param is illegal!',status=404)
 	random_str=get_random_string(8)
 	df=pd.read_csv(BASE_STATIC+username+'_corrected.csv')
 	with open(BASE_STATIC+username+'_fr.json','r')as f:
 		X3D1=json.loads(f.read())
+	adata=sc.read(BASE_STATIC+username+'_adata.h5ad')
+	adata_ori=adata.copy()
+	if useFR=='true':
+		adata1=sc.AnnData(np.zeros(np.array(X3D1).shape),dtype=np.float64)
+		adata1.X=np.array(X3D1)
+		adata1.obs=adata.obs.copy()
+		adata1.obs_names=adata.obs_names.copy()
+		adata=adata1
 	if cluster=='LEIDEN':
 		if param is None:
 			param=1
@@ -266,15 +313,20 @@ def clustering(request):
 		df.to_csv(BASE_STATIC+username+'_corrected_clusters.csv',index=False)
 		
 		traces=zip_for_vis(X3D1,list(adata.obs['leiden']),adata.obs_names.tolist())
-		adata.write(BASE_STATIC+username+'_adata.h5ad')
+		
+		
+		adata_ori.obs=adata.obs.copy()
+		adata_ori.obs_names=adata.obs_names.copy()
+		adata_ori.write(BASE_STATIC+username+'_adata.h5ad')
+		
 		with plt.rc_context():
-			sc.tl.rank_genes_groups(adata, groupby='leiden', method='t-test')
-			sc.tl.dendrogram(adata, groupby='leiden')
-			sc.pl.rank_genes_groups_dotplot(adata, n_genes=4, show=False)
+			sc.tl.rank_genes_groups(adata_ori, groupby='leiden', method='t-test')
+			sc.tl.dendrogram(adata_ori, groupby='leiden')
+			sc.pl.rank_genes_groups_dotplot(adata_ori, n_genes=4, show=False,color_map='bwr')
 			plt.savefig(BASE_STATIC+username+'_cluster_'+random_str+'_1.png',bbox_inches='tight')
-			sc.pl.rank_genes_groups(adata,n_genes=20,sharey=False)
+			sc.pl.rank_genes_groups(adata_ori,n_genes=20,sharey=False)
 			plt.savefig(BASE_STATIC+username+'_cluster_'+random_str+'_2.png',bbox_inches='tight')
-			markers=sc.get.rank_genes_groups_df(adata,None)
+			markers=sc.get.rank_genes_groups_df(adata_ori,None)
 			markers.to_csv(BASE_STATIC+username+'_markers.csv',index=False)
 		b=adata.obs.sort_values(['batch1','leiden']).groupby(['batch1','leiden']).count().reset_index()
 		#print(b)
@@ -310,21 +362,25 @@ def clustering(request):
 		labels=[str(i+1) for i in labels]
 		adata.obs['hdbscan']=labels
 		adata.obs['hdbscan']=adata.obs['hdbscan'].astype('category')
-		adata.write(BASE_STATIC+username+'_adata.h5ad')
+		
 		
 		df['cluster']=[i for i in adata.obs['hdbscan']]
 		df.to_csv(BASE_STATIC+username+'_corrected_clusters.csv',index=False)
 		
 		traces=zip_for_vis(X3D1,labels,adata.obs_names.tolist())
 		
+		adata_ori.obs=adata.obs.copy()
+		adata_ori.obs_names=adata.obs_names.copy()
+		adata_ori.write(BASE_STATIC+username+'_adata.h5ad')
+		
 		with plt.rc_context():
-			sc.tl.rank_genes_groups(adata, groupby='hdbscan', method='t-test')
-			sc.tl.dendrogram(adata, groupby='hdbscan')
-			sc.pl.rank_genes_groups_dotplot(adata, n_genes=4, show=False)
+			sc.tl.rank_genes_groups(adata_ori, groupby='hdbscan', method='t-test')
+			sc.tl.dendrogram(adata_ori, groupby='hdbscan')
+			sc.pl.rank_genes_groups_dotplot(adata_ori, n_genes=4, show=False,color_map='bwr')
 			plt.savefig(BASE_STATIC+username+'_cluster_'+random_str+'_1.png',bbox_inches='tight')
-			sc.pl.rank_genes_groups(adata,n_genes=20,sharey=False)
+			sc.pl.rank_genes_groups(adata_ori,n_genes=20,sharey=False)
 			plt.savefig(BASE_STATIC+username+'_cluster_'+random_str+'_2.png',bbox_inches='tight')
-			markers=sc.get.rank_genes_groups_df(adata,None)
+			markers=sc.get.rank_genes_groups_df(adata_ori,None)
 			markers.to_csv(BASE_STATIC+username+'_markers.csv',index=False)
 				
 		b=adata.obs.sort_values(['batch1','hdbscan']).groupby(['batch1','hdbscan']).count().reset_index()
@@ -334,6 +390,44 @@ def clustering(request):
 		
 		b=adata.obs.sort_values(['batch2','hdbscan']).groupby(['batch2','hdbscan']).count().reset_index()
 		b=b[['batch2','hdbscan','batch1']]
+		b.columns=['batch','cluster','count']
+		barChart2=[{'x':sorted(list(set(b['cluster'].tolist()))),'y':b[b['batch']==i]['count'].tolist(),'name':i,'type':'bar'} for i in set(b['batch'].tolist())]
+			
+		return JsonResponse({'traces':traces,'fileName':username+'_cluster_'+random_str+'_1.png','fileName1':username+'_cluster_'+random_str+'_2.png','bc1':barChart1,'bc2':barChart2})
+	elif cluster=='Kmeans':
+		if int(param)==1:
+			return HttpResponse('Only 1 Cluster!',status=404)
+		km=KMeans(n_clusters=int(param),random_state=42,n_init='auto').fit(adata.X)
+		labels=[str(i) for i in km.labels_]
+		adata.obs['kmeans']=labels
+		adata.obs['kmeans']=adata.obs['kmeans'].astype('category')
+		
+		df['cluster']=[i for i in adata.obs['kmeans']]
+		df.to_csv(BASE_STATIC+username+'_corrected_clusters.csv',index=False)
+		
+		traces=zip_for_vis(X3D1,labels,adata.obs_names.tolist())
+		
+		adata_ori.obs=adata.obs.copy()
+		adata_ori.obs_names=adata.obs_names.copy()
+		adata_ori.write(BASE_STATIC+username+'_adata.h5ad')
+		
+		with plt.rc_context():
+			sc.tl.rank_genes_groups(adata_ori, groupby='kmeans', method='t-test')
+			sc.tl.dendrogram(adata_ori, groupby='kmeans')
+			sc.pl.rank_genes_groups_dotplot(adata_ori, n_genes=4, show=False,color_map='bwr')
+			plt.savefig(BASE_STATIC+username+'_cluster_'+random_str+'_1.png',bbox_inches='tight')
+			sc.pl.rank_genes_groups(adata_ori,n_genes=20,sharey=False)
+			plt.savefig(BASE_STATIC+username+'_cluster_'+random_str+'_2.png',bbox_inches='tight')
+			markers=sc.get.rank_genes_groups_df(adata_ori,None)
+			markers.to_csv(BASE_STATIC+username+'_markers.csv',index=False)
+				
+		b=adata.obs.sort_values(['batch1','kmeans']).groupby(['batch1','kmeans']).count().reset_index()
+		b=b[['batch1','kmeans','batch2']]
+		b.columns=['batch','cluster','count']
+		barChart1=[{'x':sorted(list(set(b['cluster'].tolist()))),'y':b[b['batch']==i]['count'].tolist(),'name':i,'type':'bar'} for i in set(b['batch'].tolist())]
+		
+		b=adata.obs.sort_values(['batch2','kmeans']).groupby(['batch2','kmeans']).count().reset_index()
+		b=b[['batch2','kmeans','batch1']]
 		b.columns=['batch','cluster','count']
 		barChart2=[{'x':sorted(list(set(b['cluster'].tolist()))),'y':b[b['batch']==i]['count'].tolist(),'name':i,'type':'bar'} for i in set(b['batch'].tolist())]
 			
@@ -553,33 +647,55 @@ def goenrich(request):
 	#return render(request,'goenrich.html',{'fileName':username+'_goenrich_'+random_str+'.png'})
 	return JsonResponse({'fileName':username+'_goenrich_'+random_str+'.png'})
 
+
 @login_required()
 def lasso(request):
 	username=request.user.username
 	random_str=get_random_string(8)
-	cluster=int(request.GET.get('cluster_n',0))+1
-	stdout_file=BASE_STATIC+username+'_'+random_str+'_stdout.txt'
-	stderr_file=BASE_STATIC+username+'_'+random_str+'_stderr.txt'
-	code=400
+	cluster=int(request.GET.get('cluster_n',0))#+1 for R
+	#stdout_file=BASE_STATIC+username+'_'+random_str+'_stdout.txt'
+	#stderr_file=BASE_STATIC+username+'_'+random_str+'_stderr.txt'
+	#code=400
 	#print('Rscript lasso.R '+username+' '+str(cluster))
-	try:
-		with open(stdout_file,'w')as out, open(stderr_file,'w')as err:
-			Popen(['Rscript lasso.R '+username+' '+str(cluster)+' '+random_str],stdout=out,stderr=err,shell=True).communicate()#calling Rscript
-		with open(stdout_file,'r')as out, open(stderr_file,'r')as err:
-			stdout=out.read()
-			stderr=err.read()
-		code=200
-	except:
-		retValueOut=str(stderr)
-		code=400
-	finally:
-		if code==200:
-			if os.path.exists(stdout_file):
-				os.remove(stdout_file)
-			if os.path.exists(stderr_file):
-				os.remove(stderr_file)
-		else:
-			return HttpResponse('Error happened on the Server',status=code)
+	#try:
+	#	with open(stdout_file,'w')as out, open(stderr_file,'w')as err:
+	#		Popen(['Rscript --max-ppsize=5000000 lasso.R '+username+' '+str(cluster)+' '+random_str],stdout=out,stderr=err,shell=True).communicate()#calling Rscript
+	#	with open(stdout_file,'r')as out, open(stderr_file,'r')as err:
+	#		stdout=out.read()
+	#		stderr=err.read()
+	#	code=200
+	#except:
+	#	retValueOut=str(stderr)
+	#	code=400
+	#finally:
+	#	if code==200:
+	#		if os.path.exists(stdout_file):
+	#			os.remove(stdout_file)
+	#		if os.path.exists(stderr_file):
+	#			os.remove(stderr_file)
+	#	else:
+	#		return HttpResponse('Error happened on the Server',status=code)
+	
+	df=pd.read_csv(BASE_STATIC+username+'_corrected_clusters.csv')
+	df.drop(['FileName','LABEL','obs'],axis=1,inplace=True)
+	x=df.drop(['cluster'],axis=1,inplace=False)
+	scaler=StandardScaler().fit(x)
+	x=scaler.transform(x)
+	index=(df['cluster']==cluster)
+	index1=(df['cluster']!=cluster)
+	df.loc[index,'cluster']=1
+	df.loc[index1,'cluster']=0
+	y=pd.Categorical(df.cluster)
+	model=LassoCV(cv=5,max_iter=10000,random_state=42)
+	model.fit(x,y)
+	
+	lasso_tuned=Lasso().set_params(alpha=model.alpha_)
+	lasso_tuned.fit(x,y)
+	coef=pd.Series(lasso_tuned.coef_,df.drop(['cluster'],axis=1,inplace=False).columns).sort_values(key=abs,ascending=False)
+	
+	coef[coef!=0][:200].plot.bar(x='Features',y='Coef')
+	print(coef[coef!=0][:1])#in order to save a picture
+	plt.savefig(BASE_STATIC+username+'_'+random_str+'_lasso.png',bbox_inches='tight')
 	return JsonResponse({'fileName':username+'_'+random_str+'_lasso.png'})
 	
 	
