@@ -1,3 +1,5 @@
 go-basic.obo
 gene2go
-IMID/static/temp/
+IMID/static/temp/*
+__pycache__
+IMID/geneData/upload/*
