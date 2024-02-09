@@ -22,7 +22,8 @@ import scanpy.external as sce
 from sklearn.linear_model import LassoCV, Lasso
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
-
+from combat.pycombat import pycombat
+from harmony import harmonize
 
 # gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
 
@@ -1011,9 +1012,6 @@ def handle_uploaded_file1(f, username, filename=""):
                 dest.write(chunk)
 
 
-from combat.pycombat import pycombat
-
-
 def combat(dfs):
     df_exp = pd.concat(dfs, join="inner", axis=1)
     batch = []
@@ -1023,9 +1021,6 @@ def combat(dfs):
     df_corrected = pycombat(df_exp, batch)
     Xc = df_corrected.T
     return Xc.reset_index(drop=True)
-
-
-from harmony import harmonize
 
 
 # pip install harmony-pytorch
