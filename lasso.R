@@ -1,19 +1,22 @@
 setwd("/home/mt229a/Documents/djangoproject/IMID/static/temp/");
+options(expressions=5e5);
 #args='mt229a'#
 args<-commandArgs(trailingOnly = TRUE);
-filename=paste(args[1],'corrected','clusters.csv',sep='_');#args[1]
+filename=paste(args[1],'corrected','clusters.csv',sep='_');#args[1] filename=paste('mt229a','corrected','clusters.csv',sep='_');
 #print(filename);
 df<-read.csv(filename);
 n<-ncol(df);
-df1<-df[,-c(n-3,n-1,n-2)];
+df1<-df[,-which(names(df) %in% c('FileName','LABEL','obs'))];
 set.seed(1234);
 fold<-sample(rep(seq(5),length=nrow(df1)));
 
 library('glmnet')
 library('plotmo')
+#library('glmnetUtils')
 x<-model.matrix(cluster~.,data=df1)
 y<-factor(df1$cluster)
 lasso.cv<-cv.glmnet(x,y,alpha=1,foldid=fold,family='multinomial',type.measure='class')
+
 
 lasso.lam<-lasso.cv$lambda.min
 

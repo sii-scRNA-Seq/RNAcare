@@ -3,9 +3,12 @@
 {% block body %}
   <script>
   $( function() {
+    $(document).tooltip();
+    $('#FR_processed').prop('checked',false);
     tabs=$( "#tabs" );
     tabs.tabs();
     $('#HPara').hide();
+    $('#KPara').hide();
     $('#tab3div').hide();$('#tab4div').hide();
     $('#my-select').multiSelect({ keepOrder: true });
     $('.downloadData1').hide();  
@@ -62,9 +65,7 @@
 		$('#msg').html('');
 		}
 		
-		for(var i=0;i<ins;i++){
-			form_data.append("meta", document.getElementById('singleFile').files[0]);
-		}
+		form_data.append("meta", document.getElementById('singleFile').files[0]);
 		csrf_token=$('input[name="csrfmiddlewaretoken"]').val();
 		form_data.append("csrfmiddlewaretoken",csrf_token);
 		
@@ -150,7 +151,6 @@
 						$('#graphDiv21').html('<img class="img1" src="/static/temp/'+response[1]+'" width="500"/>');
 						alert('Calculation Succeed!');
 						wheelzoom(document.querySelectorAll('img.img1'));
-						$('.btn').attr('disabled',false);
 					},
 					error:function(response){
 						alert(response.responseText);
@@ -183,11 +183,18 @@
             if($(this).val()=='LEIDEN')
             {
             	$('#HPara').hide();
+            	$('#KPara').hide();
             	$('#LPara').show();
+            }
+            else if($(this).val()=='HDBSCAN'){
+            	$('#LPara').hide();
+            	$('#KPara').hide();
+            	$('#HPara').show();
             }
             else{
             	$('#LPara').hide();
-            	$('#HPara').show();
+            	$('#HPara').hide();
+            	$('#KPara').show();
             }
         }); 
   });
@@ -241,8 +248,14 @@ function plotlyPlot1(idP,dfsP){
 function clusterBtnClick(){
 	if($('input[type=radio][name=clustering]:checked').val()=='LEIDEN')
         	url='/cluster/?cluster=LEIDEN&param='+$('#sliderValue').val();
-        else
+        else if($('input[type=radio][name=clustering]:checked').val()=='HDBSCAN')
         	url='/cluster/?cluster=HDBSCAN&param='+$('#hdbP').val();
+        else
+        	url='/cluster/?cluster=Kmeans&param='+$('#kP').val();
+        if($('#FR_processed').attr('checked'))
+        	url=url+'&useFR=true';
+        else
+        	url=url+'&useFR=false';
         data=[];
         $('.btn').attr('disabled',true);
         $.ajax({
@@ -351,6 +364,52 @@ function golasso(){
 			}
 	});
 }
+
+function getTopGenes(t){
+	url='';
+	if(t==1){
+		url='/dgea?clusters=fileName&topN='+$('#topForFiles').val();
+	}
+	else{
+		url='/dgea?clusters=label&topN='+$('#topForLabels').val();
+	}
+	$.ajax({
+			url:url,
+			datType:'text',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				const blob = new Blob([response], { type: 'text/csv' });
+   				 // Create a link element to trigger the download
+				const link = document.createElement('a');
+				link.href = window.URL.createObjectURL(blob);
+				link.download = 'export.csv';
+
+				// Append the link to the document and trigger a click event
+				document.body.appendChild(link);
+				link.click();
+
+				// Remove the link from the document
+				document.body.removeChild(link);
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+}
+
   </script>
   
   <style>
@@ -364,6 +423,10 @@ function golasso(){
   background:url(/static/loading12.gif) 50% 50% no-repeat rgb(15 10 10 /59%);
   background-size:200px;
   }
+  .rotated{
+  transform:rotate(90deg);
+  }
+
   </style>
   
 <div id='loader' style='display:none'></div>
@@ -379,29 +442,29 @@ function golasso(){
   <div id="tabs-1">
     <fieldset name="Multiple Files Upload">
     <div id="msg"></div>
-    <p>Upload Gene Expression files</p>
+    <p>Upload Gene Expression files&nbsp;<img class='question' src='/static/questionMark.png' title="In this section, users upload their files(multiple). File names will be used for later visualisation. ID_REF is a compulsory field for each file.<p><img src='/static/fileUpload.png' width='500' height='auto'/></p>"/>&nbsp;&nbsp;&nbsp;<button id="advancedSearch" class="btn btn-primary" onclick="window.open('/advancedSearch/');" title="This is used for processing any online data. User can search for any public dataset and integrate them into the research.">Advanced Search</button></p>
     <table>
     <tr>
 	<td style="vertical-align:top;">
 	{% csrf_token %}
-		<input type="file" id="multiFiles" name="files[]" multiple="multiple"/>
+		<input type="file" id="multiFiles" name="files[]" multiple="multiple" title="Choose from local"/>
 		<button id="upload1" class="btn btn-primary">Upload</button>
 	</td>
 
     </tr>
     <tr>
   	<td>
-  	<div id='preview1' style="height:900px; width:1200px; overflow-x:scroll; overflow-y:scroll;"></div>	
+  	<div id='preview1' style="height:400px; width:1200px; overflow-x:scroll; overflow-y:scroll;"></div>	
   	</td>
     </tr>
     </table>
     
-    <p>Upload Meta-data files</p>
+    <p>Upload Meta-data file&nbsp;<img class='question' src='/static/questionMark.png' title="In this section, users upload their meta-data file(single). ID_REF and LABEL are compulsory. ID_REF is matched with the previous ones in Expression files. LABEL will be used for later visualisation. User can upload clinic data as well.<p><img src='/static/metaUpload.png' width='auto' height='auto' /></p>"/></p>
     <table>
     <tr>
 	<td style="vertical-align:top;">
 	{% csrf_token %}
-		<input type="file" id="singleFile" name="singleFile"/>
+		<input type="file" id="singleFile" name="singleFile" title="Choose from local"/>
 		<button id="upload2" class="btn btn-primary">Upload</button>
 		<button id="next1" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>	
 	</td>
@@ -409,7 +472,7 @@ function golasso(){
     </tr>
     <tr>
   	<td>
-  	<div id='preview2' style="height:900px; width:1200px; overflow-x:scroll; overflow-y:scroll;"></div>	
+  	<div id='preview2' style="height:400px; width:1200px; overflow-x:scroll; overflow-y:scroll;"></div>	
   	</td>
     </tr>
     </table>
@@ -485,11 +548,11 @@ function golasso(){
 		<tr>	
 			<td>
 			<p>Data colored by FileNames</p>
-			<div id="graphDiv1" style="width:600px;overflow-x:scroll; overflow-y:scroll;"></div>
+			<div id="graphDiv1" style="width:600px;height:500px;overflow-x:scroll; overflow-y:scroll;"></div>
 			</td>
 			<td>
 			<p>Data colored by LABEL in meta file​</p>
-			<div id="graphDiv2" style="width:600px;overflow-x:scroll; overflow-y:scroll;"></div>
+			<div id="graphDiv2" style="width:600px;height:500px;overflow-x:scroll; overflow-y:scroll;"></div>
 			</td>
 		</tr>		
 		<tr>
@@ -499,13 +562,40 @@ function golasso(){
 		</tr>
 		<tr>
 		<td>
-			<p>Dotplot for top 4 genes in each file​</p>
-			<div id="graphDiv11" style="width:600px; overflow-x:scroll; overflow-y:scroll;"></div>
+			<p>Dotplot of top 4 genes for each file​</p>
+			<div id="graphDiv11" class='rotated' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 		</td>
 		<td>
-			<p>Dotplot for top 4 genes in each LABEL​</p>
-			<div id="graphDiv21" style="width:600px;overflow-x:scroll; overflow-y:scroll;"></div>
+			<p>Dotplot of top 4 genes for each LABEL​</p>
+			<div id="graphDiv21" class='rotated' style="width:600px;height:500px;overflow-x:scroll; overflow-y:scroll;"></div>
 		</td>
+		</tr>
+		<tr>
+		<td>
+			<p>Customised Top Number for Download​:</p>
+			</td>
+			<td>
+			<p>Customised Top Number for Download​:</p>
+			</td>        
+		</tr>
+		<tr>
+			<td style="text-align:center;">
+				
+				<select id='topForFiles'>
+					<option value='50' selected='selected'>50</option>
+					<option value='100'>100</option>
+					<option value='500'>500</option>
+  				</select>
+  				<button id='topForFilesDownloadBtn' class='btn btn-primary' onclick='getTopGenes(1);'>Download Top Genes</button>
+			</td>		
+			<td style="text-align:center;">
+				<select id='topForLabels'>
+					<option value='50' selected='selected'>50</option>
+					<option value='100'>100</option>
+					<option value='500'>500</option>
+  				</select>
+  				<button id='topForLabelsDownloadBtn' class='btn btn-primary' onclick='getTopGenes(2);'>Download Top Genes</button>
+			</td>
 		</tr>
 		<tr>
 		<td colspan="2" style="text-align:right;">
@@ -521,7 +611,7 @@ function golasso(){
  
  
    <div id="tabs-4">
-  	<p>Choose Options for Clustering:</p>
+  	<p>Choose Options for Clustering:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type='checkbox' id='FR_processed'>&nbsp;Classification based on Feature Reduction</input></p>
   	
 	<table>
 			<tr>
@@ -529,6 +619,8 @@ function golasso(){
 					<input type="radio" name='clustering' value='LEIDEN' checked /><label>&nbsp;LEIDEN</label>
 					<br>
 					<input type="radio" name='clustering' value='HDBSCAN' /><label>&nbsp;HDBSCAN</label>
+					<br>
+					<input type="radio" name='clustering' value='KMeans' /></label>&nbsp;KMeans</label>
 				</td>	
 				<td style="width:400px; height:50px; border-right:1px solid #ccc;">
 					<div id='LPara'>
@@ -542,6 +634,11 @@ function golasso(){
 						<br>
 						<input id='hdbP'  value='20' />
 					</div>
+					<div id='KPara'>
+						<label for='slider1'>Input Param: K = </label>
+						<br>
+						<input id='kP'  value='5' />
+					</div>
 				</td>
 				<td style="height:50px;">
 				<button id="clusterBtn" class="btn btn-primary" style="width:auto;" onclick="clusterBtnClick();">Cluster the Data</button>
@@ -553,14 +650,14 @@ function golasso(){
 	<table>
 			<tr>
 				<td><p>Data colored by clusters​</p></td>
-				<td><p>Dotplot for top 4 genes in each cluster</p></td>
+				<td><p>Dotplot of top 4 genes for each cluster</p></td>
 			</tr>
 			<tr>
 				<td>
 				<div id='graphDiv1-cluster' style="width:600px; height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 				</td>
 				<td>
-				<div id="graphDiv1-cluster-gene" style="width:600px; overflow-x:scroll; overflow-y:scroll;"></div>
+				<div id="graphDiv1-cluster-gene" class='rotated' style="width:600px; overflow-x:scroll; overflow-y:scroll;"></div>
 				</td>
 			</tr>
 			<tr>
@@ -572,7 +669,7 @@ function golasso(){
 				<div id='bc1' style="width:600px; height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 				</td>
 				<td>	
-				<div id="bc2" style="width:600px; overflow-x:scroll; overflow-y:scroll;"></div>
+				<div id="bc2" style="width:600px; height:500px;overflow-x:scroll; overflow-y:scroll;"></div>
 				</td>
 			</tr>
 			<tr>
