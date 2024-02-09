@@ -3,7 +3,7 @@
 {% block body %}
   <script>
   $( function() {
-    $(document).tooltip();
+    $(document).tooltip();$('.accordion').asAccordion({namespace: 'accordion'});
     $('#FR_processed').prop('checked',false);
     tabs=$( "#tabs" );
     tabs.tabs();
@@ -151,6 +151,7 @@
 						$('#graphDiv21').html('<img class="img1" src="/static/temp/'+response[1]+'" width="500"/>');
 						alert('Calculation Succeed!');
 						wheelzoom(document.querySelectorAll('img.img1'));
+						//$('.accordion').asAccordion({namespace: 'accordion'});
 					},
 					error:function(response){
 						alert(response.responseText);
@@ -442,7 +443,7 @@ function getTopGenes(t){
   <div id="tabs-1">
     <fieldset name="Multiple Files Upload">
     <div id="msg"></div>
-    <p>Upload Gene Expression files&nbsp;<img class='question' src='/static/questionMark.png' title="In this section, users upload their files(multiple). File names will be used for later visualisation. ID_REF is a compulsory field for each file.<p><img src='/static/fileUpload.png' width='500' height='auto'/></p>"/>&nbsp;&nbsp;&nbsp;<button id="advancedSearch" class="btn btn-primary" onclick="window.open('/advancedSearch/');" title="This is used for processing any online data. User can search for any public dataset and integrate them into the research.">Advanced Search</button></p>
+    <p>Upload Gene Expression files&nbsp;<img id='tooltip1'class='question' src='/static/questionMark.png' title="In this section, users upload their files(multiple). File names will be used for later visualisation. ID_REF is a compulsory field for each file.<p><img src='/static/fileUpload.png' width='500' height='auto'/></p>"/>&nbsp;&nbsp;&nbsp;<button id="advancedSearch" class="btn btn-primary" onclick="window.open('/advancedSearch/');" title="This is used for processing any online data. User can search for any public dataset and integrate them into the research.">Advanced Search</button></p>
     <table>
     <tr>
 	<td style="vertical-align:top;">
@@ -543,70 +544,53 @@ function getTopGenes(t){
   
   <div id="tabs-3">
   	<p>Gene Data Explory Data Analyses</p>
-  	<div id='tab3div'>
-	<table>
-		<tr>	
-			<td>
-			<p>Data colored by FileNames</p>
-			<div id="graphDiv1" style="width:600px;height:500px;overflow-x:scroll; overflow-y:scroll;"></div>
-			</td>
-			<td>
-			<p>Data colored by LABEL in meta file​</p>
-			<div id="graphDiv2" style="width:600px;height:500px;overflow-x:scroll; overflow-y:scroll;"></div>
-			</td>
-		</tr>		
-		<tr>
-			<td colspan='2'>
-			<div style="width:100%; border-top:1px solid #ccc;"></div>
-			</td>
-		</tr>
-		<tr>
-		<td>
-			<p>Dotplot of top 4 genes for each file​</p>
-			<div id="graphDiv11" class='rotated' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
-		</td>
-		<td>
-			<p>Dotplot of top 4 genes for each LABEL​</p>
-			<div id="graphDiv21" class='rotated' style="width:600px;height:500px;overflow-x:scroll; overflow-y:scroll;"></div>
-		</td>
-		</tr>
-		<tr>
-		<td>
+  	<div id='tab3div'>	
+          <ul data-direction="horizontal" data-multiple="true" data-initial-index="[0]" data-event="click" class="accordion accordion--box accordion--horizontal">
+            <li class="accordion__panel">
+              <span class="accordion__heading">Data processed by Labels<i class="-icon -icon--left"></i></span>
+              <div class="accordion__expander">
+              		<div id="graphDiv2" style="width:800px;height:800px;overflow-x:scroll; overflow-y:scroll;"></div>
+  			<div style="width:100%; border-top:1px solid #ccc;"></div>
+  			<p>Dotplot of top 4 genes for each LABEL​</p>
+  			<br><br><br>
+  			<div id="graphDiv21"  class='rotated' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 			<p>Customised Top Number for Download​:</p>
-			</td>
-			<td>
-			<p>Customised Top Number for Download​:</p>
-			</td>        
-		</tr>
-		<tr>
-			<td style="text-align:center;">
-				
-				<select id='topForFiles'>
+			<select id='topForLabels'>
 					<option value='50' selected='selected'>50</option>
 					<option value='100'>100</option>
 					<option value='500'>500</option>
-  				</select>
-  				<button id='topForFilesDownloadBtn' class='btn btn-primary' onclick='getTopGenes(1);'>Download Top Genes</button>
-			</td>		
-			<td style="text-align:center;">
-				<select id='topForLabels'>
+  			</select>
+  			<button id='topForLabelsDownloadBtn' class='btn btn-primary' onclick='getTopGenes(2);'>Download Top Genes</button>
+              </div>
+            </li>
+            <li class="accordion__panel">
+              <span class="accordion__heading">Data processed by FileNames<i class="-icon -icon--left"></i></span>
+              <div class="accordion__expander">
+              		<div id="graphDiv1" style="width:800px;height:800px;overflow-x:scroll; overflow-y:scroll;"></div>
+  			<div style="width:100%; border-top:1px solid #ccc;"></div>
+  			<p>Dotplot of top 4 genes for each file​</p>
+  			<br><br><br>
+  			<div id="graphDiv11" class='rotated' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+
+			<p>Customised Top Number for Download​:</p>
+			<select id='topForFiles'>
 					<option value='50' selected='selected'>50</option>
 					<option value='100'>100</option>
 					<option value='500'>500</option>
-  				</select>
-  				<button id='topForLabelsDownloadBtn' class='btn btn-primary' onclick='getTopGenes(2);'>Download Top Genes</button>
-			</td>
-		</tr>
-		<tr>
-		<td colspan="2" style="text-align:right;">
-			<button id="download1" class="btn btn-primary" style="width:auto;" onclick="window.location='/static/temp/{{ user.get_username }}_corrected.csv';">Download Processed data</button>
-			<br><br>
-			<button id="next3" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
+  			</select>
+  			<button id='topForFilesDownloadBtn' class='btn btn-primary' onclick='getTopGenes(1);'>Download Top Genes</button>
+            </div>
+            </li>
+          </ul>
+  	</div>
+  	<br>
+	<div style="text-align:right;">
+		<button id="download1" class="btn btn-primary" style="width:auto;" onclick="window.location='/static/temp/{{ user.get_username }}_corrected.csv';">Download Processed data</button>
+		<br><br>
+		<button id="next3" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
 			
-		</td>
-		</tr>
-	</table>
 	</div>
+
   </div>
  
  

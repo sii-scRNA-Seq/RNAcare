@@ -11,4 +11,5 @@ urlpatterns=[
 	path(r'goenrich/',views.goenrich,name='goenrich'),
 	path(r'lasso/',views.lasso,name='lasso'),
 	path(r'tab/',views.tab,name='tab'),
+	path(r'advancedSearch/',views.advancedSearch, name='advancedSearch'),
 ]

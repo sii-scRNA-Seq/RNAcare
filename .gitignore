@@ -1,3 +1,13 @@
 go-basic.obo
 gene2go
 IMID/static/temp/
+!IMID/static/temp/.gitkeep
+__pycache__
+IMID/geneData/upload/
+!IMID/geneData/upload/.gitkeep
+djangoproject/__pycache_
+IMID/__pycache__
+IMID/migrations/__pycache__
+.RData
+.Rhistory
+
