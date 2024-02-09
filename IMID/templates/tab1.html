@@ -545,11 +545,11 @@ function getTopGenes(t){
   <div id="tabs-3">
   	<p>Gene Data Explory Data Analyses</p>
   	<div id='tab3div'>	
-          <ul data-direction="horizontal" data-multiple="true" data-initial-index="[0]" data-event="click" class="accordion accordion--box accordion--horizontal">
+          <ul data-direction="horizontal" data-multiple="true" data-initial-index="[0]" data-event="click" class="accordion accordion--box accordion--horizontal1">
             <li class="accordion__panel">
               <span class="accordion__heading">Data processed by Labels<i class="-icon -icon--left"></i></span>
               <div class="accordion__expander">
-              		<div id="graphDiv2" style="width:800px;height:800px;overflow-x:scroll; overflow-y:scroll;"></div>
+              		<div id="graphDiv2" style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
   			<div style="width:100%; border-top:1px solid #ccc;"></div>
   			<p>Dotplot of top 4 genes for each LABEL​</p>
   			<br><br><br>
@@ -566,7 +566,7 @@ function getTopGenes(t){
             <li class="accordion__panel">
               <span class="accordion__heading">Data processed by FileNames<i class="-icon -icon--left"></i></span>
               <div class="accordion__expander">
-              		<div id="graphDiv1" style="width:800px;height:800px;overflow-x:scroll; overflow-y:scroll;"></div>
+              		<div id="graphDiv1" style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
   			<div style="width:100%; border-top:1px solid #ccc;"></div>
   			<p>Dotplot of top 4 genes for each file​</p>
   			<br><br><br>
@@ -631,19 +631,22 @@ function getTopGenes(t){
 			</tr>
 	</table>
 	<div id='tab4div'>
+	<ul data-direction="horizontal" data-multiple="true" data-initial-index="[0]" data-event="click" class="accordion accordion--box accordion--horizontal2">
+            <li class="accordion__panel">
+              <span class="accordion__heading">Data colored by clusters<i class="-icon -icon--left"></i></span>
+              <div class="accordion__expander">
+              		<div id='graphDiv1-cluster' style="width:850px; height:850px; overflow-x:scroll; overflow-y:scroll;"></div>
+              </div>
+            </li>
+            <li class="accordion__panel">
+              <span class="accordion__heading">Dotplot of top 4 genes for each cluster<i class="-icon -icon--left"></i></span>
+              <div class="accordion__expander">
+              		<br><br><br><br><br><br><br><br><br><br><br><br>
+              		<div id="graphDiv1-cluster-gene" class='rotated' style="width:850px; overflow-x:scroll; overflow-y:scroll;"></div>
+              </div>
+            </li>
+        </ul>
 	<table>
-			<tr>
-				<td><p>Data colored by clusters​</p></td>
-				<td><p>Dotplot of top 4 genes for each cluster</p></td>
-			</tr>
-			<tr>
-				<td>
-				<div id='graphDiv1-cluster' style="width:600px; height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
-				</td>
-				<td>
-				<div id="graphDiv1-cluster-gene" class='rotated' style="width:600px; overflow-x:scroll; overflow-y:scroll;"></div>
-				</td>
-			</tr>
 			<tr>
 				<td><p>Contributions from each file</p></td>
 				<td><p>Contributions from each LABEL</p></td>
