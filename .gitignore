@@ -3,3 +3,9 @@ gene2go
 IMID/static/temp/*
 __pycache__
 IMID/geneData/upload/*
+djangoproject/__pycache_
+IMID/__pycache__
+IMID/migrations/__pycache__
+.RData
+.Rhistory
+
