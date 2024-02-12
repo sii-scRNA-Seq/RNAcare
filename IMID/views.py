@@ -831,59 +831,26 @@ def goenrich(request):
     df1 = df.groupby("class").head(10).reset_index(drop=True)
 
     fig = go.Figure()
-    fig.add_trace(
-        go.Bar(
-            y=df1[df1["class"] == "molecular_function"].term[::-1],
-            x=df1[df1["class"] == "molecular_function"].per[::-1],
-            name="molecular_function",
-            customdata=[
-                "P_corr=" + str(round(i, 5))
-                for i in df1[df1["class"] == "molecular_function"].p_corr[::-1]
-            ],
-            hovertemplate="Ratio: %{x:.5f}<br> %{customdata}",
-            orientation="h",
-            marker={
-                "color": df1[df1["class"] == "molecular_function"].p_corr[::-1],
-                "colorscale": "oranges_r",
-            },
-        )
-    )
 
-    fig.add_trace(
-        go.Bar(
-            y=df1[df1["class"] == "cellular_component"].term[::-1],
-            x=df1[df1["class"] == "cellular_component"].per[::-1],
-            name="cellular_component",
-            customdata=[
-                "P_corr=" + str(round(i, 5))
-                for i in df1[df1["class"] == "cellular_component"].p_corr[::-1]
-            ],
-            hovertemplate="Ratio: %{x:.5f}<br> %{customdata}",
-            orientation="h",
-            marker=dict(
-                color=df1[df1["class"] == "cellular_component"].p_corr[::-1],
-                colorscale="purp_r",
-            ),
+    def fig_add_trace_ontology(fig, df, ontology):
+        fig.add_trace(
+            go.Bar(
+                y=df[df["class"] == ontology.name].term[::-1],
+                x=df[df["class"] == ontology.name].per[::-1],
+                name=ontology.name,
+                customdata=[
+                    "P_corr=" + str(round(i, 5)) for i in df[df["class"] == ontology.name].p_corr[::-1]
+                ],
+                hovertemplate="Ratio: %{x:.5f}<br> %{customdata}",
+                orientation="h",
+                marker={
+                    "color": df[df["class"] == ontology.name].p_corr[::-1],
+                    "colorscale": ontology.color,
+                }
+            )
         )
-    )
-
-    fig.add_trace(
-        go.Bar(
-            y=df1[df1["class"] == "biological_process"].term[::-1],
-            x=df1[df1["class"] == "biological_process"].per[::-1],
-            name="biological_process",
-            customdata=[
-                "P_corr=" + str(round(i, 5))
-                for i in df1[df1["class"] == "biological_process"].p_corr[::-1]
-            ],
-            hovertemplate="Ratio: %{x:.5f}<br> %{customdata}",
-            orientation="h",
-            marker=dict(
-                color=df1[df1["class"] == "biological_process"].p_corr[::-1],
-                colorscale="blues_r",
-            ),
-        )
-    )
+    for o in ONTOLOGY.values():
+        fig_add_trace_ontology(fig, df1, o)
 
     fig.update_layout(
         barmode="stack",
