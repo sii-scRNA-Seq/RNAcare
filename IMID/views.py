@@ -33,15 +33,12 @@ import re
 matplotlib.use("agg")
 import plotly.graph_objects as go
 
-# Create your views here.
 
-from genes_ncbi_proteincoding import GENEID2NT
-from goatools.base import download_go_basic_obo
-from goatools.base import download_ncbi_associations
-from goatools.obo_parser import GODag
-from goatools.anno.genetogo_reader import Gene2GoReader
-from goatools.goea.go_enrichment_ns import GOEnrichmentStudyNS
 import requests
+
+from .constants import ONTOLOGY
+from .models import Gene, GOTerm
+from .utils import build_GOEnrichmentStudyNS
 
 BASE_UPLOAD = "IMID/geneData/upload/"
 BASE_STATIC = "IMID/static/temp/"
@@ -776,36 +773,6 @@ def advancedSearch(request):
     return JsonResponse(res)
 
 
-obo_fname = download_go_basic_obo()
-fin_gene2go = download_ncbi_associations()
-obodag = GODag("go-basic.obo")
-mapper = {}
-for key in GENEID2NT:
-    mapper[GENEID2NT[key].Symbol] = GENEID2NT[key].GeneID
-inv_map = {v: k for k, v in mapper.items()}
-objanno = Gene2GoReader(fin_gene2go, taxids=[9606])
-ns2assoc = objanno.get_ns2assc()  # bp,cc,mf
-
-goeaobj = GOEnrichmentStudyNS(
-    GENEID2NT.keys(),
-    ns2assoc,
-    obodag,
-    propagate_counts=False,
-    alpha=0.05,
-    methods=["fdr_bh"],
-)
-GO_items = []
-temp = goeaobj.ns2objgoea["BP"].assoc  # BIOLOGICAL_PROCESS
-for item in temp:
-    GO_items += temp[item]
-temp = goeaobj.ns2objgoea["CC"].assoc  # MOLECULAR_FUNCTION
-for item in temp:
-    GO_items += temp[item]
-temp = goeaobj.ns2objgoea["MF"].assoc  # CELLULAR COMPONENT
-for item in temp:
-    GO_items += temp[item]
-
-
 @login_required()
 def goenrich(request):
     username = request.user.username
@@ -827,7 +794,6 @@ def goenrich(request):
     if len(markers.index) == 0:
         return HttpResponse("No marker genes", status=400)
     df = go_it(markers.names.values)
-    df["per"] = df.n_genes / df.n_go
     df1 = df.groupby("class").head(10).reset_index(drop=True)
 
     fig = go.Figure()
@@ -921,45 +887,31 @@ def lasso(request):
 
 
 def go_it(test_genes):
-    global mapper, goeaobj, inv_map, GO_items
-    mapped_genes = []
-    for gene in test_genes:
-        if gene in mapper:
-            mapped_genes.append(mapper[gene])
-    goea_results_all = goeaobj.run_study(mapped_genes)
-    goea_result_sig = [r for r in goea_results_all if r.p_fdr_bh < 0.05]
-    GO = pd.DataFrame(
-        list(
-            map(
-                lambda x: [
-                    x.GO,
-                    x.goterm.name,
-                    x.goterm.namespace,
-                    x.p_uncorrected,
-                    x.p_fdr_bh,
-                    x.ratio_in_study[0],
-                    x.ratio_in_study[1],
-                    GO_items.count(x.GO),
-                    list(map(lambda y: inv_map[y], x.study_items)),
-                ],
-                goea_result_sig,
-            )
+    goeaobj = build_GOEnrichmentStudyNS()
+    goea_results_all = goeaobj.run_study([g.id for g in Gene.objects.filter(name__in=test_genes)])
+    goea_result_sig = [r for r in goea_results_all if r.p_fdr_bh < 0.05 and r.ratio_in_study[0] > 1]
+    go_df = pd.DataFrame(
+        data=map(
+            lambda x: [
+                x.goterm.name,
+                x.goterm.namespace,
+                x.p_fdr_bh,
+                x.ratio_in_study[0],
+                GOTerm.objects.get(name=x.GO).gene.count()
+            ],
+            goea_result_sig,
         ),
         columns=[
-            "GO",
             "term",
             "class",
-            "p",
             "p_corr",
             "n_genes",
-            "n_study",
             "n_go",
-            "study_genes",
         ],
+        index=map(lambda x: x.GO, goea_result_sig)
     )
-
-    GO = GO[GO.n_genes > 1]
-    return GO
+    go_df["per"] = go_df.n_genes / go_df.n_go
+    return go_df
 
 
 def get_random_string(length):
