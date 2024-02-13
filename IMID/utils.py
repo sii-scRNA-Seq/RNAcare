@@ -1,4 +1,4 @@
-from functools import cache
+from functools import lru_cache
 
 from goatools.anno.genetogo_reader import Gene2GoReader
 from goatools.base import download_go_basic_obo
@@ -9,7 +9,7 @@ from goatools.obo_parser import GODag
 from genes_ncbi_proteincoding import GENEID2NT
 
 
-@cache
+@lru_cache(maxsize=None)
 def build_GOEnrichmentStudyNS():
     obo_fname = download_go_basic_obo()
     godag = GODag(obo_fname)
