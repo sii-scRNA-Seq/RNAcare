@@ -191,6 +191,8 @@ def eda(request):
             dfs1 = harmony(dfs, batch, obs)
         elif corrected == "BBKNN":
             dfs1 = bbknn(dfs)
+    elif len(dfs)==0:
+        return HttpResponse("No matched data for meta and omics", status=400)
     else:
         dfs1 = dfs[0]
     dfs1["ID_REF"] = obs
@@ -877,9 +879,9 @@ def lasso(request):
     coef = pd.Series(
         lasso_tuned.coef_, df.drop(["cluster"], axis=1, inplace=False).columns
     ).sort_values(key=abs, ascending=False)
-
-    coef[coef != 0][:200].plot.bar(x="Features", y="Coef")
-    print(coef[coef != 0][:1])  # in order to save a picture
+    
+    matplotlib.pyplot.clf()  # in order to save a picture
+    coef[coef != 0][:200].plot.bar(x="Features", y="Coef")  
     plt.savefig(
         BASE_STATIC + username + "_" + random_str + "_lasso.png", bbox_inches="tight"
     )
