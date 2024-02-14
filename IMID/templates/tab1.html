@@ -443,7 +443,7 @@ function getTopGenes(t){
   <div id="tabs-1">
     <fieldset name="Multiple Files Upload">
     <div id="msg"></div>
-    <p>Upload Gene Expression files&nbsp;<img id='tooltip1'class='question' src='/static/questionMark.png' title="In this section, users upload their files(multiple). File names will be used for later visualisation. ID_REF is a compulsory field for each file.<p><img src='/static/fileUpload.png' width='500' height='auto'/></p>"/>&nbsp;&nbsp;&nbsp;<button id="advancedSearch" class="btn btn-primary" onclick="window.open('/advancedSearch/');" title="This is used for processing any online data. User can search for any public dataset and integrate them into the research.">Advanced Search</button></p>
+    <p>Upload Gene Expression files&nbsp;<img id='tooltip1'class='question' title="In this section, users upload their files(multiple). File names will be used for later visualisation. ID_REF is a compulsory field for each file.<p><img src='/static/fileUpload.png' width='500' height='auto'/></p>"/>&nbsp;&nbsp;&nbsp;<button id="advancedSearch" class="btn btn-primary" onclick="window.open('/advancedSearch/');" title="This is used for processing any online data. User can search for any public dataset and integrate them into the research.">Advanced Search</button></p>
     <table>
     <tr>
 	<td style="vertical-align:top;">
@@ -460,7 +460,7 @@ function getTopGenes(t){
     </tr>
     </table>
     
-    <p>Upload Meta-data file&nbsp;<img class='question' src='/static/questionMark.png' title="In this section, users upload their meta-data file(single). ID_REF and LABEL are compulsory. ID_REF is matched with the previous ones in Expression files. LABEL will be used for later visualisation. User can upload clinic data as well.<p><img src='/static/metaUpload.png' width='auto' height='auto' /></p>"/></p>
+    <p>Upload Meta-data file&nbsp;<img class='question' title="In this section, users upload their meta-data file(single). ID_REF and LABEL are compulsory. ID_REF is matched with the previous ones in Expression files. LABEL will be used for later visualisation. User can upload clinic data as well.<p><img src='/static/metaUpload.png' width='auto' height='auto' /></p>"/></p>
     <table>
     <tr>
 	<td style="vertical-align:top;">
@@ -487,10 +487,10 @@ function getTopGenes(t){
   	<h5>Choose the built-in compiled cohort(s) you want to integrate with:</h5>
 	<select id="my-select" multiple>
 	<optgroup label='IMID-Bio-UK'>
-    	<option value="SERA">SERA</option>
-    	<option value="PEAC">PEAC</option>
-    	<option value="PSORT">PSORT</option>
-    	<option value="RAMAP">RAMAP</option>
+    	<option value="SERA" title="The Scotish Early Rheumatoid Arthritis;">SERA</option>
+    	<option value="PEAC" title="The Pathobiology of Early Arthritis Cohort;">PEAC</option>
+    	<option value="PSORT" title="Psoriasis Stratification to Optimise Relevant Therapy;">PSORT</option>
+    	<option value="RAMAP" title="Rheumatoid Arthritis Map;">RAMAP</option>
     	</optgroup>
 	</select>
   </tr>
@@ -498,19 +498,19 @@ function getTopGenes(t){
   	
   <tr>
   	<td>
-   	<div name="Options1" style="left:10px">
+   	<div name="Options1" style="left:30px; width:250px;">
    		<br>
 		<p>Combined Options</p>
-		<input type="radio" name="Comb" value="Combat" checked="checked" /><label>&nbsp;Combat</label>
+		<input type="radio" name="Comb" value="Combat" checked="checked" /><label>&nbsp;Combat&nbsp;</label><img class='question' style="max-width:4%;" title="ComBat, originally implemented in the R library sva. This tool leverages a parametric and non-parametric empirical Bayes approach for correcting the batch effect in microarray datasets that works for small sample sizes or in the presence of outliers."/>
 		<br>
-  		<input type="radio" name="Comb" value="Harmony" /><label>&nbsp;Harmony</label>
+  		<input type="radio" name="Comb" value="Harmony" /><label>&nbsp;Harmony&nbsp;</label><img class='question' style="max-width:4%;" title="<p>Harmony is a general-purpose package with an efficient algorithm for integrating multiple data sets. It is especially useful for large single-cell datasets such as single-cell RNA-seq.</p><p>Harmony is:</p><p><b>Fast:</b> Analyze thousands of cells on your laptop.</p><p><b>Sensitive:</b> Different cell types may be present or absent in each batch.</p><p><b>Accurate:</b> Integrate cells from multiple donors, tissues – even different technologies.</p>"/>
   		<br>
   		<br>
 	</div>
 	</td>
 	
 	<td>
-	<div name="Options2" style="left:30px">
+	<div name="Options2" style="left:30px; width:250px;">
 		<br>
 		<p>Log2 Transformation</p>
 		<input type="radio" name="Log" value="Yes" /><label>&nbsp;Yes</label>
@@ -522,12 +522,12 @@ function getTopGenes(t){
 	</td>
 
 	<td>
-	<div name="Options3" style="left:30px">
+	<div name="Options3" style="left:30px; width:250px;">
 		<br>
 		<p>Feature Reduction Method</p>
-		<input type="radio" name="FR" value="TSNE" /><label>&nbsp;TSNE</label>
+		<input type="radio" name="FR" value="TSNE" /><label>&nbsp;TSNE&nbsp;</label><img class='question' style="max-width:4%;" title="<p>t-SNE (t-distributed Stochastic Neighbor Embedding) is an unsupervised non-linear dimensionality reduction technique for data exploration and visualizing high-dimensional data. Non-linear dimensionality reduction means that the algorithm allows us to separate data that cannot be separated by a straight line. </p>"/>
 		<br>
-  		<input type="radio" name="FR" value="UMAP"  checked="checked" /><label>&nbsp;UMAP</label>
+  		<input type="radio" name="FR" value="UMAP"  checked="checked" /><label>&nbsp;UMAP&nbsp;</label><img class='question' style="max-width:4%;" title="<p>Uniform Manifold Approximation and Projection (UMAP) is a dimension reduction technique that can be used for visualisation similarly to t-SNE, but also for general non-linear dimension reduction.</p>"/>
 		<br>
 		<br>
 	</div>
@@ -595,16 +595,16 @@ function getTopGenes(t){
  
  
    <div id="tabs-4">
-  	<p>Choose Options for Clustering:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type='checkbox' id='FR_processed'>&nbsp;Classification based on Feature Reduction</input></p>
+  	<p>Choose Options for Clustering:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type='checkbox' id='FR_processed' title="Classify based on the TSNE/UMAP processed data">&nbsp;Classification based on Feature Reduction</input></p>
   	
 	<table>
 			<tr>
-				<td style="height:50px; border-right:1px solid #ccc;">
-					<input type="radio" name='clustering' value='LEIDEN' checked /><label>&nbsp;LEIDEN</label>
+				<td style="height:50px; width:200px; border-right:1px solid #ccc;">
+					<input type="radio" name='clustering' value='LEIDEN' checked /><label>&nbsp;LEIDEN&nbsp;</label><img class='question' style="max-width:6.5%;" title="<p>The Leiden algorithm is an algorithm for detecting communities in large networks. The algorithm separates nodes into disjoint communities so as to maximize a modularity score for each community. Modularity quantifies the quality of an assignment of nodes to communities, that is how densely connected nodes in a community are, compared to how connected they would be in a random network.<p></p>The Leiden algorithm is a hierarchical clustering algorithm, that recursively merges communities into single nodes by greedily optimizing the modularity and the process repeats in the condensed graph. It modifies the Louvain algorithm to address some of its shortcomings, namely the case where some of the communities found by Louvain are not well-connected. This is achieved by periodically randomly breaking down communities into smaller well-connected ones.</p>"/>
 					<br>
-					<input type="radio" name='clustering' value='HDBSCAN' /><label>&nbsp;HDBSCAN</label>
+					<input type="radio" name='clustering' value='HDBSCAN' /><label>&nbsp;HDBSCAN&nbsp;</label><img class='question' style="max-width:6.5%;" title="<p>HDBSCAN is a clustering algorithm developed by Campello, Moulavi, and Sander. It extends DBSCAN by converting it into a hierarchical clustering algorithm, and then using a technique to extract a flat clustering based in the stability of clusters. The goal of this notebook is to give you an overview of how the algorithm works and the motivations behind it. In contrast to the HDBSCAN paper I’m going to describe it without reference to DBSCAN. Instead I’m going to explain how I like to think about the algorithm, which aligns more closely with Robust Single Linkage with flat cluster extraction on top of it.</p>"/>
 					<br>
-					<input type="radio" name='clustering' value='KMeans' /></label>&nbsp;KMeans</label>
+					<input type="radio" name='clustering' value='KMeans' /></label>&nbsp;KMeans&nbsp;</label><img class='question' style="max-width:6.5%;" title="<p>k-means clustering is a method of vector quantization, originally from signal processing, that aims to partition n observations into k clusters in which each observation belongs to the cluster with the nearest mean (cluster centers or cluster centroid), serving as a prototype of the cluster. This results in a partitioning of the data space into Voronoi cells. k-means clustering minimizes within-cluster variances (squared Euclidean distances), but not regular Euclidean distances, which would be the more difficult Weber problem: the mean optimizes squared errors, whereas only the geometric median minimizes Euclidean distances. For instance, better Euclidean solutions can be found using k-medians and k-medoids.</p>"/>
 				</td>	
 				<td style="width:400px; height:50px; border-right:1px solid #ccc;">
 					<div id='LPara'>
@@ -678,7 +678,7 @@ function getTopGenes(t){
   </div>
   
   <div id='tabs-5'>
-  	<p>Select one interesting cluster for Feature Selection by Lasso:</p>
+  	<p>Select one interesting cluster for Feature Selection by Lasso:&nbsp;<img class='question' style="max-width:0.8%;" title="<p>LASSO regression, also known as L1 regularization, is a popular technique used in statistical modeling and machine learning to estimate the relationships between variables and make predictions. LASSO stands for Least Absolute Shrinkage and Selection Operator.</p><p>The primary goal of LASSO regression is to find a balance between model simplicity and accuracy. It achieves this by adding a penalty term to the traditional linear regression model, which encourages sparse solutions where some coefficients are forced to be exactly zero. This feature makes LASSO particularly useful for feature selection, as it can automatically identify and discard irrelevant or redundant variables.</p>"/></p>
   	<table>
   		<tr>
 			<td style="text-align:right;width:50%;">
@@ -699,7 +699,7 @@ function getTopGenes(t){
   </div>
   
   <div id='tabs-6'>
-  	<p>Select one interesting cluster for Go Enrichment Analysis:</p>
+  	<p>Select one interesting cluster for Go Enrichment Analysis:&nbsp;<img class='question' style="max-width:0.8%;" title="<p>GO (Gene Ontology) enrichment analysis is a computational method used in bioinformatics to identify overrepresented gene ontology terms associated with a set of genes. Gene Ontology provides a standardized vocabulary for annotating the molecular functions, biological processes, and cellular components of genes and gene products.</p>"/></p>
   	<table>
   		<tr>
 			<td style="text-align:right;width:50%;">
