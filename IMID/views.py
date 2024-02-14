@@ -881,7 +881,7 @@ def lasso(request):
     ).sort_values(key=abs, ascending=False)
     
     matplotlib.pyplot.clf()  # in order to save a picture
-    coef[coef != 0][:200].plot.bar(x="Features", y="Coef")  
+    coef[coef != 0][:50].plot.bar(x="Features", y="Coef")  
     plt.savefig(
         BASE_STATIC + username + "_" + random_str + "_lasso.png", bbox_inches="tight"
     )
