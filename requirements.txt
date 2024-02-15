@@ -11,4 +11,5 @@ scanpy==1.9.3
 scikit-learn
 matplotlib
 umap-learn==0.5.3
+bs4
 
