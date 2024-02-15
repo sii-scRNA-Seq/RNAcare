@@ -26,7 +26,7 @@ import plotly.graph_objects as go
 import requests
 from bs4 import BeautifulSoup
 from .constants import ONTOLOGY, BASE_UPLOAD, BASE_STATIC
-from .utils import zip_for_vis, fromPdtoSangkey, go_it, get_random_string, handle_uploaded_file1, combat, harmony, bbknn
+from .utils import zip_for_vis, fromPdtoSangkey, go_it, get_random_string, handle_uploaded_file1, combat, harmony, bbknn1
 
 
 
