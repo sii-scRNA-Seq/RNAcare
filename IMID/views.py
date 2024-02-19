@@ -117,16 +117,26 @@ def eda(request):
 
     directory = os.listdir(BASE_UPLOAD)
     files = [i for i in directory if username == i.split("_")[0]]
+    files_meta=set()
 
     in_ta = {
         "SERA": "share_SERA_BLOOD.csv",
         "PEAC": "share_PEAC_recon.csv",
         "PSORT": "share_PSORT.csv",
         "RAMAP": "share_RAMAP_WHL.csv",
+        "ORBIT":"share_ORBIT.csv"
+    }
+    in_ta1={
+        'SERA':'share_IMID_meta.csv',
+        'PEAC':'share_IMID_meta.csv',
+        'PSORT':'share_IMID_meta.csv',
+        'RAMAP':'share_IMID_meta.csv',
+        'ORBIT':'share_ORBIT_meta.csv'
     }
     for i in integrate:
         if i in in_ta:
             files.append(in_ta[i])
+            files_meta.add(in_ta1[i])
     dfs = []
     batch = []
     obs = []
@@ -137,9 +147,10 @@ def eda(request):
     temp0 = pd.read_csv(BASE_UPLOAD + username + "_meta.csv")
     temp0 = temp0.dropna(axis=1)
     if len(integrate) != 0 and integrate[0] != "null":  # jquery plugin compatible
-        temp0 = pd.concat(
-            [temp0, pd.read_csv(BASE_UPLOAD + "share_meta.csv")], axis=0, join="inner"
-        )
+        for i in files_meta:
+            temp0 = pd.concat(
+                [temp0, pd.read_csv(BASE_UPLOAD + i)], axis=0, join="inner"
+                )
     for file in files:
         if "meta" in file:
             flag = 1
