@@ -810,13 +810,13 @@ def lasso(request):
     df.loc[index, "cluster"] = 1
     df.loc[index1, "cluster"] = 0
     y = pd.Categorical(df.cluster)
-    model = LassoCV(cv=5, max_iter=10000, random_state=42)
+    model = LassoCV(cv=5, random_state=42,n_jobs=-1)
     model.fit(x, y)
 
-    lasso_tuned = Lasso().set_params(alpha=model.alpha_)
-    lasso_tuned.fit(x, y)
+    #lasso_tuned = Lasso().set_params(alpha=model.alpha_)
+    #lasso_tuned.fit(x, y)
     coef = pd.Series(
-        lasso_tuned.coef_, df.drop(["cluster"], axis=1, inplace=False).columns
+        model.coef_, df.drop(["cluster"], axis=1, inplace=False).columns
     ).sort_values(key=abs, ascending=False)
     
     matplotlib.pyplot.clf()  # in order to save a picture
