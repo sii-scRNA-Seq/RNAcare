@@ -771,7 +771,7 @@ def goenrich(request):
     # return render(request,'goenrich.html',{'fileName':username+'_goenrich_'+random_str+'.png'})
     return JsonResponse({"fileName": username + "_goenrich_" + random_str + ".png"})
 
-
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 @login_required()
 def lasso(request):
     username = request.user.username
@@ -803,14 +803,16 @@ def lasso(request):
     df = pd.read_csv(BASE_STATIC + username + "_corrected_clusters.csv")
     df.drop(["FileName", "LABEL", "obs"], axis=1, inplace=True)
     x = df.drop(["cluster"], axis=1, inplace=False)
+
     scaler = StandardScaler().fit(x)
     x = scaler.transform(x)
+
     index = df["cluster"] == cluster
     index1 = df["cluster"] != cluster
     df.loc[index, "cluster"] = 1
     df.loc[index1, "cluster"] = 0
     y = pd.Categorical(df.cluster)
-    model = LassoCV(cv=5, random_state=42,n_jobs=-1)
+    model = LassoCV(cv=5, precompute=True, random_state=42,n_jobs=-1,max_iter=10000,tol=0.01)
     model.fit(x, y)
 
     #lasso_tuned = Lasso().set_params(alpha=model.alpha_)
