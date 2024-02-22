@@ -227,7 +227,8 @@ function plotlyPlot(idP,dfsP){
 	var layout = {
 		legend:{
 	  	x:1,
-	  	y:0.5
+	  	y:0.5,
+		itemsizing: 'constant'
 	  	}
 	  };
 	Plotly.newPlot(idP, data, layout);
