@@ -486,7 +486,7 @@ function getTopGenes(t){
   <tr>
   	<h5>Choose the built-in compiled cohort(s) you want to integrate with:</h5>
 	<select id="my-select" multiple>
-	<optgroup label='IMID-Bio-UK'>
+	<optgroup label='Shared-Cohorts'>
     	<option value="SERA" title="The Scotish Early Rheumatoid Arthritis;">SERA</option>
     	<option value="PEAC" title="The Pathobiology of Early Arthritis Cohort;">PEAC</option>
     	<option value="PSORT" title="Psoriasis Stratification to Optimise Relevant Therapy;">PSORT</option>
@@ -609,18 +609,18 @@ function getTopGenes(t){
 				</td>	
 				<td style="width:400px; height:50px; border-right:1px solid #ccc;">
 					<div id='LPara'>
-						<label for='slider1'>Input Param: Resolution = &nbsp; &nbsp;</label>
-						<input type='text' id='sliderValue' size='8'></input>
+						<label for='slider1'>Input Param: Resolution  <img class='question' style="max-width:3%;" title="A parameter value controlling the coarseness of the clustering. Higher values lead to more clusters."/> = </label>
+						<input type='text' id='sliderValue' size='6'></input>
 						<br><br>
 						<div id='slider1'></div>
 					</div>
 					<div id='HPara'>
-						<label for='slider1'>Input Param: minSize = </label>
+						<label for='slider1'>Input Param: minSize  <img class='question' style="max-width:3%;" title="The minimum number of samples in a group for that group to be considered a cluster; groupings smaller than this size will be left as noise."/> = &nbsp; &nbsp; </label>
 						<br>
 						<input id='hdbP'  value='20' />
 					</div>
 					<div id='KPara'>
-						<label for='slider1'>Input Param: K = </label>
+						<label for='slider1'>Input Param: K  <img class='question' style="max-width:3%;" title="The number of clusters to form as well as the number of centroids to generate."/> =  &nbsp; &nbsp;</label>
 						<br>
 						<input id='kP'  value='5' />
 					</div>
