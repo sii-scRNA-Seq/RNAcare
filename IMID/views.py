@@ -26,8 +26,16 @@ import plotly.graph_objects as go
 import requests
 from bs4 import BeautifulSoup
 from .constants import ONTOLOGY, BASE_UPLOAD, BASE_STATIC
-from .utils import zip_for_vis, fromPdtoSangkey, go_it, get_random_string, handle_uploaded_file1, combat, harmony, bbknn
-
+from .utils import (
+    zip_for_vis,
+    fromPdtoSangkey,
+    go_it,
+    get_random_string,
+    handle_uploaded_file1,
+    combat,
+    harmony,
+    bbknn,
+)
 
 
 # lasso.R for data visualization
@@ -79,6 +87,7 @@ def uploadExpression(request):
         context["_".join(f.split("_")[1:])]["names"] = ["index"] + df.columns.to_list()
     return render(request, "table.html", {"root": context})
 
+
 @login_required()
 def uploadMeta(request):
     if request.method != "POST":
@@ -117,21 +126,21 @@ def eda(request):
 
     directory = os.listdir(BASE_UPLOAD)
     files = [i for i in directory if username == i.split("_")[0]]
-    files_meta=set()
+    files_meta = set()
 
     in_ta = {
         "SERA": "share_SERA_BLOOD.csv",
         "PEAC": "share_PEAC_recon.csv",
         "PSORT": "share_PSORT.csv",
         "RAMAP": "share_RAMAP_WHL.csv",
-        "ORBIT":"share_ORBIT.csv"
+        "ORBIT": "share_ORBIT.csv",
     }
-    in_ta1={
-        'SERA':'share_IMID_meta.csv',
-        'PEAC':'share_IMID_meta.csv',
-        'PSORT':'share_IMID_meta.csv',
-        'RAMAP':'share_IMID_meta.csv',
-        'ORBIT':'share_ORBIT_meta.csv'
+    in_ta1 = {
+        "SERA": "share_IMID_meta.csv",
+        "PEAC": "share_IMID_meta.csv",
+        "PSORT": "share_IMID_meta.csv",
+        "RAMAP": "share_IMID_meta.csv",
+        "ORBIT": "share_ORBIT_meta.csv",
     }
     for i in integrate:
         if i in in_ta:
@@ -150,7 +159,7 @@ def eda(request):
         for i in files_meta:
             temp0 = pd.concat(
                 [temp0, pd.read_csv(BASE_UPLOAD + i)], axis=0, join="inner"
-                )
+            )
     for file in files:
         if "meta" in file:
             flag = 1
@@ -190,7 +199,7 @@ def eda(request):
             dfs1 = harmony(dfs, batch, obs)
         elif corrected == "BBKNN":
             dfs1 = bbknn(dfs)
-    elif len(dfs)==0:
+    elif len(dfs) == 0:
         return HttpResponse("No matched data for meta and omics", status=400)
     else:
         dfs1 = dfs[0]
@@ -233,15 +242,17 @@ def eda(request):
     return JsonResponse(context)
 
 
-
 @login_required()
 def dgea(request):
     username = request.user.username
     clusters = request.GET.get("clusters", "default")
     n_genes = request.GET.get("topN", 4)
-    df = pd.read_csv(BASE_STATIC + username + "_corrected.csv")
+    if clusters not in ("LEIDEN", "HDBSCAN", "Kmeans"):
+        df = pd.read_csv(BASE_STATIC + username + "_corrected.csv")
+    else:
+        df = pd.read_csv(BASE_STATIC + username + "_corrected_clusters.csv")
     t = df.loc[
-        :, ~(df.columns.isin(["obs", "FileName", "LABEL"]))
+        :, ~(df.columns.isin(["obs", "FileName", "LABEL", "cluster"]))
     ]  #'obs','FileName', 'LABEL'
     adata = sc.AnnData(np.zeros(t.values.shape), dtype=np.float64)
     adata.X = t.values
@@ -314,7 +325,6 @@ def dgea(request):
             result = adata.uns["rank_genes_groups"]
             groups = result["names"].dtype.names
             result_df = pd.DataFrame()
-            print(groups)
             for group in groups:
                 top_genes = pd.DataFrame(
                     result["names"][group], columns=[f"TopGene_{group}"]
@@ -327,6 +337,26 @@ def dgea(request):
             result_df.to_csv(path_or_buf=response)
             return response
 
+        else:
+            pass
+    elif clusters in ("LEIDEN", "HDBSCAN", "Kmeans"):
+        adata.obs["cluster"] = [str(i) for i in df["cluster"]]
+        if len(set(adata.obs["cluster"])) > 1:
+            sc.tl.rank_genes_groups(adata, groupby="cluster", method="t-test")
+            result = adata.uns["rank_genes_groups"]
+            groups = result["names"].dtype.names
+            result_df = pd.DataFrame()
+            for group in groups:
+                top_genes = pd.DataFrame(
+                    result["names"][group], columns=[f"TopGene_{group}"]
+                )
+                result_df = pd.concat([result_df, top_genes], axis=1).loc[
+                    : int(n_genes),
+                ]
+            response = HttpResponse(content_type="text/csv")
+            response["Content-Disposition"] = "attachment; filename=topGenes.csv"
+            result_df.to_csv(path_or_buf=response)
+            return response
         else:
             pass
 
@@ -451,7 +481,10 @@ def clustering(request):
         if len(set(labels)) == 1:
             # throw error for just 1 cluster
             return HttpResponse("Only 1 Cluster after clustering", status=400)
-        labels = [str(i + 1) for i in labels]
+        if min(labels) >= 0:
+            labels = [str(i) for i in labels]
+        else:
+            labels = [str(i + 1) for i in labels]  # for outlier, will be assigned as -1
         adata.obs["hdbscan"] = labels
         adata.obs["hdbscan"] = adata.obs["hdbscan"].astype("category")
 
@@ -654,8 +687,6 @@ def clusteringAdvanced(request):
         return JsonResponse(result)
 
 
-
-
 @login_required()
 def advancedSearch(request):
     username = request.user.username
@@ -746,16 +777,18 @@ def goenrich(request):
                 x=df[df["class"] == ontology.name].per[::-1],
                 name=ontology.name,
                 customdata=[
-                    "P_corr=" + str(round(i, 5)) for i in df[df["class"] == ontology.name].p_corr[::-1]
+                    "P_corr=" + str(round(i, 5))
+                    for i in df[df["class"] == ontology.name].p_corr[::-1]
                 ],
                 hovertemplate="Ratio: %{x:.5f}<br> %{customdata}",
                 orientation="h",
                 marker={
                     "color": df[df["class"] == ontology.name].p_corr[::-1],
                     "colorscale": ontology.color,
-                }
+                },
             )
         )
+
     for o in ONTOLOGY.values():
         fig_add_trace_ontology(fig, df1, o)
 
@@ -771,7 +804,10 @@ def goenrich(request):
     # return render(request,'goenrich.html',{'fileName':username+'_goenrich_'+random_str+'.png'})
     return JsonResponse({"fileName": username + "_goenrich_" + random_str + ".png"})
 
+
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+
 @login_required()
 def lasso(request):
     username = request.user.username
@@ -812,21 +848,18 @@ def lasso(request):
     df.loc[index, "cluster"] = 1
     df.loc[index1, "cluster"] = 0
     y = pd.Categorical(df.cluster)
-    model = LassoCV(cv=5, random_state=42,n_jobs=-1,max_iter=10000,tol=0.01)
+    model = LassoCV(cv=5, random_state=42, n_jobs=-1, max_iter=10000, tol=0.01)
     model.fit(x, y)
 
-    #lasso_tuned = Lasso().set_params(alpha=model.alpha_)
-    #lasso_tuned.fit(x, y)
+    # lasso_tuned = Lasso().set_params(alpha=model.alpha_)
+    # lasso_tuned.fit(x, y)
     coef = pd.Series(
         model.coef_, df.drop(["cluster"], axis=1, inplace=False).columns
     ).sort_values(key=abs, ascending=False)
-    
+
     matplotlib.pyplot.clf()  # in order to save a picture
-    coef[coef != 0][:50].plot.bar(x="Features", y="Coef")  
+    coef[coef != 0][:50].plot.bar(x="Features", y="Coef")
     plt.savefig(
         BASE_STATIC + username + "_" + random_str + "_lasso.png", bbox_inches="tight"
     )
     return JsonResponse({"fileName": username + "_" + random_str + "_lasso.png"})
-
-
-

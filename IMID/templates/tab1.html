@@ -371,8 +371,11 @@ function getTopGenes(t){
 	if(t==1){
 		url='/dgea?clusters=fileName&topN='+$('#topForFiles').val();
 	}
-	else{
+	else if(t==2){
 		url='/dgea?clusters=label&topN='+$('#topForLabels').val();
+	}
+	else{
+		url='/dgea?clusters='+$('input[type=radio][name=clustering]:checked').val()+'&topN='+$('#topForLabels').val();//LEIDEN,HDBSCAN,Kmeans
 	}
 	$.ajax({
 			url:url,
@@ -555,7 +558,7 @@ function getTopGenes(t){
   			<p>Dotplot of top 4 genes for each LABEL​</p>
   			<br><br><br>
   			<div id="graphDiv21"  class='rotated' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
-			<p>Customised Top Number for Download​:</p>
+			<p>Customised Top Number of Genes for Download​:</p>
 			<select id='topForLabels'>
 					<option value='50' selected='selected'>50</option>
 					<option value='100'>100</option>
@@ -644,6 +647,13 @@ function getTopGenes(t){
               <div class="accordion__expander">
               		<br><br><br><br><br><br><br><br><br><br><br><br>
               		<div id="graphDiv1-cluster-gene" class='rotated' style="width:850px; overflow-x:scroll; overflow-y:scroll;"></div>
+					<p>Customised Top Number of Genes for Download​:</p>
+						<select id='topForLabels'>
+							<option value='50' selected='selected'>50</option>
+							<option value='100'>100</option>
+							<option value='500'>500</option>
+						</select>
+					<button id='topForLabelsDownloadBtn' class='btn btn-primary' onclick='getTopGenes(3);'>Download Top Genes</button>
               </div>
             </li>
         </ul>
