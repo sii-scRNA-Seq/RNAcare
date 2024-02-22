@@ -812,7 +812,7 @@ def lasso(request):
     df.loc[index, "cluster"] = 1
     df.loc[index1, "cluster"] = 0
     y = pd.Categorical(df.cluster)
-    model = LassoCV(cv=5, precompute=True, random_state=42,n_jobs=-1,max_iter=10000,tol=0.01)
+    model = LassoCV(cv=5, random_state=42,n_jobs=-1,max_iter=10000,tol=0.01)
     model.fit(x, y)
 
     #lasso_tuned = Lasso().set_params(alpha=model.alpha_)
