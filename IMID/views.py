@@ -35,6 +35,8 @@ from .utils import (
     combat,
     harmony,
     bbknn,
+    clusteringPostProcess,
+    getTopGeneCSV,
 )
 
 
@@ -300,65 +302,12 @@ def dgea(request):
         )
     if clusters == "fileName":
         # show top gene for specific group
-        if len(set(adata.obs["batch1"])) > 1:
-            sc.tl.rank_genes_groups(adata, groupby="batch1", method="t-test")
-            result = adata.uns["rank_genes_groups"]
-            groups = result["names"].dtype.names
-            result_df = pd.DataFrame()
-            for group in groups:
-                top_genes = pd.DataFrame(
-                    result["names"][group], columns=[f"TopGene_{group}"]
-                )
-                result_df = pd.concat([result_df, top_genes], axis=1).loc[
-                    : int(n_genes),
-                ]
-            response = HttpResponse(content_type="text/csv")
-            response["Content-Disposition"] = "attachment; filename=topGenes.csv"
-            result_df.to_csv(path_or_buf=response)
-            return response
-
-        else:
-            pass
+        return getTopGeneCSV(adata, "batch1", n_genes)
     elif clusters == "label":
-        if len(set(adata.obs["batch2"])) > 1:
-            sc.tl.rank_genes_groups(adata, groupby="batch2", method="t-test")
-            result = adata.uns["rank_genes_groups"]
-            groups = result["names"].dtype.names
-            result_df = pd.DataFrame()
-            for group in groups:
-                top_genes = pd.DataFrame(
-                    result["names"][group], columns=[f"TopGene_{group}"]
-                )
-                result_df = pd.concat([result_df, top_genes], axis=1).loc[
-                    : int(n_genes),
-                ]
-            response = HttpResponse(content_type="text/csv")
-            response["Content-Disposition"] = "attachment; filename=topGenes.csv"
-            result_df.to_csv(path_or_buf=response)
-            return response
-
-        else:
-            pass
+        return getTopGeneCSV(adata, "batch2", n_genes)
     elif clusters in ("LEIDEN", "HDBSCAN", "Kmeans"):
         adata.obs["cluster"] = [str(i) for i in df["cluster"]]
-        if len(set(adata.obs["cluster"])) > 1:
-            sc.tl.rank_genes_groups(adata, groupby="cluster", method="t-test")
-            result = adata.uns["rank_genes_groups"]
-            groups = result["names"].dtype.names
-            result_df = pd.DataFrame()
-            for group in groups:
-                top_genes = pd.DataFrame(
-                    result["names"][group], columns=[f"TopGene_{group}"]
-                )
-                result_df = pd.concat([result_df, top_genes], axis=1).loc[
-                    : int(n_genes),
-                ]
-            response = HttpResponse(content_type="text/csv")
-            response["Content-Disposition"] = "attachment; filename=topGenes.csv"
-            result_df.to_csv(path_or_buf=response)
-            return response
-        else:
-            pass
+        return getTopGeneCSV(adata, "cluster", n_genes)
 
 
 @login_required()
@@ -386,180 +335,27 @@ def clustering(request):
             param = 1
         sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
         sc.tl.leiden(adata, resolution=float(param))
-        if len(set(adata.obs["leiden"])) == 1:
-            # throw error for just 1 cluster
-            return HttpResponse("Only 1 Cluster after clustering", status=400)
-
-        df["cluster"] = [i for i in adata.obs["leiden"]]
-        df.to_csv(BASE_STATIC + username + "_corrected_clusters.csv", index=False)
-
-        traces = zip_for_vis(X3D1, list(adata.obs["leiden"]), adata.obs_names.tolist())
-
-        adata_ori.obs = adata.obs.copy()
-        adata_ori.obs_names = adata.obs_names.copy()
-        adata_ori.write(BASE_STATIC + username + "_adata.h5ad")
-
-        with plt.rc_context():
-            sc.tl.rank_genes_groups(adata_ori, groupby="leiden", method="t-test")
-            sc.tl.dendrogram(adata_ori, groupby="leiden")
-            sc.pl.rank_genes_groups_dotplot(
-                adata_ori, n_genes=4, show=False, color_map="bwr"
-            )
-            plt.savefig(
-                BASE_STATIC + username + "_cluster_" + random_str + "_1.png",
-                bbox_inches="tight",
-            )
-            sc.pl.rank_genes_groups(adata_ori, n_genes=20, sharey=False)
-            plt.savefig(
-                BASE_STATIC + username + "_cluster_" + random_str + "_2.png",
-                bbox_inches="tight",
-            )
-            markers = sc.get.rank_genes_groups_df(adata_ori, None)
-            markers.to_csv(BASE_STATIC + username + "_markers.csv", index=False)
-        b = (
-            adata.obs.sort_values(["batch1", "leiden"])
-            .groupby(["batch1", "leiden"])
-            .count()
-            .reset_index()
+        Resp = clusteringPostProcess(
+            X3D1, df, adata, adata_ori, "leiden", BASE_STATIC, username, random_str
         )
-        # print(b)
-        b = b[["batch1", "leiden", "batch2"]]
-        b.columns = ["batch", "cluster", "count"]
-        barChart1 = [
-            {
-                "x": sorted(list(set(b["cluster"].tolist()))),
-                "y": b[b["batch"] == i]["count"].tolist(),
-                "name": i,
-                "type": "bar",
-            }
-            for i in set(b["batch"].tolist())
-        ]
-        # print(barChart1)
-
-        b = (
-            adata.obs.sort_values(["batch2", "leiden"])
-            .groupby(["batch2", "leiden"])
-            .count()
-            .reset_index()
-        )
-        b = b[["batch2", "leiden", "batch1"]]
-        b.columns = ["batch", "cluster", "count"]
-        barChart2 = [
-            {
-                "x": sorted(list(set(b["cluster"].tolist()))),
-                "y": b[b["batch"] == i]["count"].tolist(),
-                "name": i,
-                "type": "bar",
-            }
-            for i in set(b["batch"].tolist())
-        ]
-
-        return JsonResponse(
-            {
-                "traces": traces,
-                "fileName": username + "_cluster_" + random_str + "_1.png",
-                "fileName1": username + "_cluster_" + random_str + "_2.png",
-                "bc1": barChart1,
-                "bc2": barChart2,
-            }
-        )
+        return Resp
     elif cluster == "HDBSCAN":
         if param is None:
             param = 20
         if int(param) <= 5:
             param = 5
         labels = hdbscan.HDBSCAN(min_cluster_size=int(param)).fit_predict(adata.X)
-        # freq=collections.Counter(labels)
-        # m=[freq[key] for key in freq]
-        # m.sort()
-        # if m[0]<=5:
-        # 	for i in range(len(m)):
-        # 		if sum(m[:(i+1)])<=5:
-        # 			continue
-        # 		labels=hdbscan.HDBSCAN(min_cluster_size=(m[i]+1)).fit_predict(adata.X)
-        # 		break
-        if len(set(labels)) == 1:
-            # throw error for just 1 cluster
-            return HttpResponse("Only 1 Cluster after clustering", status=400)
         if min(labels) >= 0:
             labels = [str(i) for i in labels]
         else:
             labels = [str(i + 1) for i in labels]  # for outlier, will be assigned as -1
+
         adata.obs["hdbscan"] = labels
         adata.obs["hdbscan"] = adata.obs["hdbscan"].astype("category")
-
-        df["cluster"] = [i for i in adata.obs["hdbscan"]]
-        df.to_csv(BASE_STATIC + username + "_corrected_clusters.csv", index=False)
-
-        traces = zip_for_vis(X3D1, labels, adata.obs_names.tolist())
-
-        adata_ori.obs = adata.obs.copy()
-        adata_ori.obs_names = adata.obs_names.copy()
-        adata_ori.write(BASE_STATIC + username + "_adata.h5ad")
-
-        with plt.rc_context():
-            sc.tl.rank_genes_groups(adata_ori, groupby="hdbscan", method="t-test")
-            sc.tl.dendrogram(adata_ori, groupby="hdbscan")
-            sc.pl.rank_genes_groups_dotplot(
-                adata_ori, n_genes=4, show=False, color_map="bwr"
-            )
-            plt.savefig(
-                BASE_STATIC + username + "_cluster_" + random_str + "_1.png",
-                bbox_inches="tight",
-            )
-            sc.pl.rank_genes_groups(adata_ori, n_genes=20, sharey=False)
-            plt.savefig(
-                BASE_STATIC + username + "_cluster_" + random_str + "_2.png",
-                bbox_inches="tight",
-            )
-            markers = sc.get.rank_genes_groups_df(adata_ori, None)
-            markers.to_csv(BASE_STATIC + username + "_markers.csv", index=False)
-
-        b = (
-            adata.obs.sort_values(["batch1", "hdbscan"])
-            .groupby(["batch1", "hdbscan"])
-            .count()
-            .reset_index()
+        Resp = clusteringPostProcess(
+            X3D1, df, adata, adata_ori, "hdbscan", BASE_STATIC, username, random_str
         )
-        b = b[["batch1", "hdbscan", "batch2"]]
-        b.columns = ["batch", "cluster", "count"]
-        barChart1 = [
-            {
-                "x": sorted(list(set(b["cluster"].tolist()))),
-                "y": b[b["batch"] == i]["count"].tolist(),
-                "name": i,
-                "type": "bar",
-            }
-            for i in set(b["batch"].tolist())
-        ]
-
-        b = (
-            adata.obs.sort_values(["batch2", "hdbscan"])
-            .groupby(["batch2", "hdbscan"])
-            .count()
-            .reset_index()
-        )
-        b = b[["batch2", "hdbscan", "batch1"]]
-        b.columns = ["batch", "cluster", "count"]
-        barChart2 = [
-            {
-                "x": sorted(list(set(b["cluster"].tolist()))),
-                "y": b[b["batch"] == i]["count"].tolist(),
-                "name": i,
-                "type": "bar",
-            }
-            for i in set(b["batch"].tolist())
-        ]
-
-        return JsonResponse(
-            {
-                "traces": traces,
-                "fileName": username + "_cluster_" + random_str + "_1.png",
-                "fileName1": username + "_cluster_" + random_str + "_2.png",
-                "bc1": barChart1,
-                "bc2": barChart2,
-            }
-        )
+        return Resp
     elif cluster == "Kmeans":
         if int(param) == 1:
             return HttpResponse("Only 1 Cluster!", status=404)
@@ -567,79 +363,10 @@ def clustering(request):
         labels = [str(i) for i in km.labels_]
         adata.obs["kmeans"] = labels
         adata.obs["kmeans"] = adata.obs["kmeans"].astype("category")
-
-        df["cluster"] = [i for i in adata.obs["kmeans"]]
-        df.to_csv(BASE_STATIC + username + "_corrected_clusters.csv", index=False)
-
-        traces = zip_for_vis(X3D1, labels, adata.obs_names.tolist())
-
-        adata_ori.obs = adata.obs.copy()
-        adata_ori.obs_names = adata.obs_names.copy()
-        adata_ori.write(BASE_STATIC + username + "_adata.h5ad")
-
-        with plt.rc_context():
-            sc.tl.rank_genes_groups(adata_ori, groupby="kmeans", method="t-test")
-            sc.tl.dendrogram(adata_ori, groupby="kmeans")
-            sc.pl.rank_genes_groups_dotplot(
-                adata_ori, n_genes=4, show=False, color_map="bwr"
-            )
-            plt.savefig(
-                BASE_STATIC + username + "_cluster_" + random_str + "_1.png",
-                bbox_inches="tight",
-            )
-            sc.pl.rank_genes_groups(adata_ori, n_genes=20, sharey=False)
-            plt.savefig(
-                BASE_STATIC + username + "_cluster_" + random_str + "_2.png",
-                bbox_inches="tight",
-            )
-            markers = sc.get.rank_genes_groups_df(adata_ori, None)
-            markers.to_csv(BASE_STATIC + username + "_markers.csv", index=False)
-
-        b = (
-            adata.obs.sort_values(["batch1", "kmeans"])
-            .groupby(["batch1", "kmeans"])
-            .count()
-            .reset_index()
+        Resp = clusteringPostProcess(
+            X3D1, df, adata, adata_ori, "kmeans", BASE_STATIC, username, random_str
         )
-        b = b[["batch1", "kmeans", "batch2"]]
-        b.columns = ["batch", "cluster", "count"]
-        barChart1 = [
-            {
-                "x": sorted(list(set(b["cluster"].tolist()))),
-                "y": b[b["batch"] == i]["count"].tolist(),
-                "name": i,
-                "type": "bar",
-            }
-            for i in set(b["batch"].tolist())
-        ]
-
-        b = (
-            adata.obs.sort_values(["batch2", "kmeans"])
-            .groupby(["batch2", "kmeans"])
-            .count()
-            .reset_index()
-        )
-        b = b[["batch2", "kmeans", "batch1"]]
-        b.columns = ["batch", "cluster", "count"]
-        barChart2 = [
-            {
-                "x": sorted(list(set(b["cluster"].tolist()))),
-                "y": b[b["batch"] == i]["count"].tolist(),
-                "name": i,
-                "type": "bar",
-            }
-            for i in set(b["batch"].tolist())
-        ]
-
-        return JsonResponse(
-            {
-                "traces": traces,
-                "fileName": username + "_cluster_" + random_str + "_1.png",
-                "fileName1": username + "_cluster_" + random_str + "_2.png",
-                "bc1": barChart1,
-                "bc2": barChart2,
-            }
-        )
+        return Resp
 
 
 @login_required()
@@ -724,7 +451,7 @@ def advancedSearch(request):
         soup = BeautifulSoup(m.group(0), "html.parser")
         ftp_tags = soup.find_all("a", string="(ftp)")
         for ftp in ftp_tags:
-            ftp.decompose()
+            ftp.decompose()  # remove all ftp nodes
         custom_tags = soup.find_all("a", string="(custom)")
         for cus in custom_tags:
             cus.decompose()
@@ -803,9 +530,6 @@ def goenrich(request):
     fig.write_image(BASE_STATIC + username + "_goenrich_" + random_str + ".png")
     # return render(request,'goenrich.html',{'fileName':username+'_goenrich_'+random_str+'.png'})
     return JsonResponse({"fileName": username + "_goenrich_" + random_str + ".png"})
-
-
-from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 
 @login_required()

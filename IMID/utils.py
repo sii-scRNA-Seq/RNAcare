@@ -18,6 +18,9 @@ import numpy as np
 import scanpy as sc
 import collections
 from combat.pycombat import pycombat
+from matplotlib import pyplot as plt
+from django.http import HttpResponse, JsonResponse
+
 
 @lru_cache(maxsize=None)
 def build_GOEnrichmentStudyNS():
@@ -26,7 +29,14 @@ def build_GOEnrichmentStudyNS():
     gene2go_fname = download_ncbi_associations()
     gene2go_reader = Gene2GoReader(gene2go_fname, taxids=[9606])
     ns2assoc = gene2go_reader.get_ns2assc()  # bp,cc,mf
-    return GOEnrichmentStudyNS(GENEID2NT.keys(), ns2assoc, godag, propagate_counts=False, alpha=.05, methods=['fdr_bh'])
+    return GOEnrichmentStudyNS(
+        GENEID2NT.keys(),
+        ns2assoc,
+        godag,
+        propagate_counts=False,
+        alpha=0.05,
+        methods=["fdr_bh"],
+    )
 
 
 def zip_for_vis(X3D1, batch, obs):
@@ -91,8 +101,12 @@ def fromPdtoSangkey(df):
 
 def go_it(test_genes):
     goeaobj = build_GOEnrichmentStudyNS()
-    goea_results_all = goeaobj.run_study([g.id for g in Gene.objects.filter(name__in=test_genes)])
-    goea_result_sig = [r for r in goea_results_all if r.p_fdr_bh < 0.05 and r.ratio_in_study[0] > 1]
+    goea_results_all = goeaobj.run_study(
+        [g.id for g in Gene.objects.filter(name__in=test_genes)]
+    )
+    goea_result_sig = [
+        r for r in goea_results_all if r.p_fdr_bh < 0.05 and r.ratio_in_study[0] > 1
+    ]
     go_df = pd.DataFrame(
         data=map(
             lambda x: [
@@ -100,7 +114,7 @@ def go_it(test_genes):
                 x.goterm.namespace,
                 x.p_fdr_bh,
                 x.ratio_in_study[0],
-                GOTerm.objects.get(name=x.GO).gene.count()
+                GOTerm.objects.get(name=x.GO).gene.count(),
             ],
             goea_result_sig,
         ),
@@ -111,7 +125,7 @@ def go_it(test_genes):
             "n_genes",
             "n_go",
         ],
-        index=map(lambda x: x.GO, goea_result_sig)
+        index=map(lambda x: x.GO, goea_result_sig),
     )
     go_df["per"] = go_df.n_genes / go_df.n_go
     return go_df
@@ -165,3 +179,104 @@ def harmony(dfs, batch, obs):
 
 def bbknn(dfs):
     return dfs
+
+
+def clusteringPostProcess(
+    X3D1, df, adata, adata_ori, method, BASE_STATIC, username, random_str
+):
+    if method != "kmeans" and len(set(adata.obs[method])) == 1:
+        # throw error for just 1 cluster
+        return HttpResponse("Only 1 Cluster after clustering", status=400)
+
+    df["cluster"] = [i for i in adata.obs[method]]
+    df.to_csv(BASE_STATIC + username + "_corrected_clusters.csv", index=False)
+
+    traces = zip_for_vis(X3D1, list(adata.obs[method]), adata.obs_names.tolist())
+
+    adata_ori.obs = adata.obs.copy()
+    adata_ori.obs_names = adata.obs_names.copy()
+    adata_ori.write(BASE_STATIC + username + "_adata.h5ad")
+
+    with plt.rc_context():
+        sc.tl.rank_genes_groups(adata_ori, groupby=method, method="t-test")
+        sc.tl.dendrogram(adata_ori, groupby=method)
+        sc.pl.rank_genes_groups_dotplot(
+            adata_ori, n_genes=4, show=False, color_map="bwr"
+        )
+        plt.savefig(
+            BASE_STATIC + username + "_cluster_" + random_str + "_1.png",
+            bbox_inches="tight",
+        )
+        sc.pl.rank_genes_groups(adata_ori, n_genes=20, sharey=False)
+        plt.savefig(
+            BASE_STATIC + username + "_cluster_" + random_str + "_2.png",
+            bbox_inches="tight",
+        )
+        markers = sc.get.rank_genes_groups_df(adata_ori, None)
+        markers.to_csv(BASE_STATIC + username + "_markers.csv", index=False)
+        b = (
+            adata.obs.sort_values(["batch1", method])
+            .groupby(["batch1", method])
+            .count()
+            .reset_index()
+        )
+
+        b = b[["batch1", method, "batch2"]]
+        b.columns = ["batch", method, "count"]
+        barChart1 = [
+            {
+                "x": sorted(list(set(b[method].tolist()))),
+                "y": b[b["batch"] == i]["count"].tolist(),
+                "name": i,
+                "type": "bar",
+            }
+            for i in set(b["batch"].tolist())
+        ]
+
+        b = (
+            adata.obs.sort_values(["batch2", method])
+            .groupby(["batch2", method])
+            .count()
+            .reset_index()
+        )
+        b = b[["batch2", method, "batch1"]]
+        b.columns = ["batch", "cluster", "count"]
+        barChart2 = [
+            {
+                "x": sorted(list(set(b["cluster"].tolist()))),
+                "y": b[b["batch"] == i]["count"].tolist(),
+                "name": i,
+                "type": "bar",
+            }
+            for i in set(b["batch"].tolist())
+        ]
+
+        return JsonResponse(
+            {
+                "traces": traces,
+                "fileName": username + "_cluster_" + random_str + "_1.png",
+                "fileName1": username + "_cluster_" + random_str + "_2.png",
+                "bc1": barChart1,
+                "bc2": barChart2,
+            }
+        )
+
+
+def getTopGeneCSV(adata, groupby, n_genes):
+    if len(set(adata.obs[groupby])) > 1:
+        sc.tl.rank_genes_groups(adata, groupby=groupby, method="t-test")
+        result = adata.uns["rank_genes_groups"]
+        groups = result["names"].dtype.names
+        result_df = pd.DataFrame()
+        for group in groups:
+            top_genes = pd.DataFrame(
+                result["names"][group], columns=[f"TopGene_{group}"]
+            )
+            result_df = pd.concat([result_df, top_genes], axis=1).loc[: int(n_genes),]
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = "attachment; filename=topGenes.csv"
+        result_df.to_csv(path_or_buf=response)
+        return response
+
+    else:
+        return HttpResponse("Only one cluster", status=500)
