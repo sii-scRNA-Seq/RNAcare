@@ -147,8 +147,8 @@
 						$('#loader').hide();
 					},
 					success:function(response){
-						$('#graphDiv11').html('<img class="img1" src="/static/temp/'+response[0]+'" width="500"/>');
-						$('#graphDiv21').html('<img class="img1" src="/static/temp/'+response[1]+'" width="500"/>');
+						$('#graphDiv11').html('<img class="img1" src="/static/temp/'+response[0]+'" width="800" height="auto"/>');
+						$('#graphDiv21').html('<img class="img1" src="/static/temp/'+response[1]+'" width="800" height="auto"/>');
 						alert('Calculation Succeed!');
 						wheelzoom(document.querySelectorAll('img.img1'));
 						//$('.accordion').asAccordion({namespace: 'accordion'});
@@ -279,8 +279,8 @@ function clusterBtnClick(){
 				plotlyPlot('graphDiv1-cluster',response.traces);
 				plotlyPlot1('bc1',response.bc1);
 				plotlyPlot1('bc2',response.bc2);
-				$('#graphDiv1-cluster-gene').html('<img class="img2" src="/static/temp/'+response.fileName+'" width="500"/>');
-				$('#graphDiv1-cluster-top-gene').html('<img class="img2" src="/static/temp/'+response.fileName1+'" width="1000"/>');
+				$('#graphDiv1-cluster-gene').html('<img class="img2" src="/static/temp/'+response.fileName+'" width="500" height="auto"/>');
+				$('#graphDiv1-cluster-top-gene').html('<img class="img2" src="/static/temp/'+response.fileName1+'" width="1000" height="auto"/>');
 				alert('Calculation Succeed!');
 				wheelzoom(document.querySelectorAll('img.img2'));
 				$('.downloadData1').show();
@@ -322,7 +322,7 @@ function goEnrich(){
 			$('#loader').hide();
 			},
 			success:function(response){
-				$('#goEnrichPic').html('<img class="imgGo" src="/static/temp/'+response.fileName+'" width="500"/>');
+				$('#goEnrichPic').html('<img class="imgGo" src="/static/temp/'+response.fileName+'" width="500" height="auto"/>');
 				alert('Calculation Succeed!');
 				wheelzoom(document.querySelectorAll('img.imgGo'));
 				$('.btn').attr('disabled',false);
@@ -353,7 +353,7 @@ function golasso(){
 			$('#loader').hide();
 			},
 			success:function(response){
-				$('#lassoPic').html('<img class="imgLasso" src="/static/temp/'+response.fileName+'" width="500"/>');
+				$('#lassoPic').html('<img class="imgLasso" src="/static/temp/'+response.fileName+'" width="1000" height="auto"/>');
 				alert('Calculation Succeed!');
 				wheelzoom(document.querySelectorAll('img.imgLasso'));
 				$('.btn').attr('disabled',false);
@@ -557,8 +557,9 @@ function getTopGenes(t){
               		<div id="graphDiv2" style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
   			<div style="width:100%; border-top:1px solid #ccc;"></div>
   			<p>Dotplot of top 4 genes for each LABEL​</p>
-  			<br><br><br>
-  			<div id="graphDiv21"  class='rotated' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+  			<br><br><br><br><br><br><br><br><br>
+  			<div id="graphDiv21"  class='rotated' style="width:800px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+			<br><br><br><br><br><br><br><br><br>
 			<p>Customised Top Number of Genes for Download​:</p>
 			<select id='topForLabels'>
 					<option value='50' selected='selected'>50</option>
@@ -576,7 +577,7 @@ function getTopGenes(t){
   			<p>Dotplot of top 4 genes for each file​</p>
   			<br><br><br>
   			<div id="graphDiv11" class='rotated' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
-
+			<br><br><br>
 			<p>Customised Top Number for Download​:</p>
 			<select id='topForFiles'>
 					<option value='50' selected='selected'>50</option>
@@ -646,8 +647,9 @@ function getTopGenes(t){
             <li class="accordion__panel">
               <span class="accordion__heading">Dotplot of top 4 genes for each cluster<i class="-icon -icon--left"></i></span>
               <div class="accordion__expander">
-              		<br><br><br><br><br><br><br><br><br><br><br><br>
-              		<div id="graphDiv1-cluster-gene" class='rotated' style="width:850px; overflow-x:scroll; overflow-y:scroll;"></div>
+              		<br><br><br>
+              		<div id="graphDiv1-cluster-gene" class='rotated' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+					<br><br><br>
 					<p>Customised Top Number of Genes for Download​:</p>
 						<select id='topForLabels'>
 							<option value='50' selected='selected'>50</option>
@@ -704,7 +706,7 @@ function getTopGenes(t){
 		</tr>
 		<tr>
 		<td colspan='2'>
-		<div id='lassoPic' style="width:1200px; overflow-x:scroll; overflow-y:scroll; text-align:center;"></div>
+		<div id='lassoPic' style="width:1200px; height:800px; overflow-x:scroll; overflow-y:scroll; text-align:center;"></div>
 		</td>
 		</tr>
   	</table>
