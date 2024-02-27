@@ -147,10 +147,8 @@
 						$('#loader').hide();
 					},
 					success:function(response){
-						$('#graphDiv11A').attr('href','/static/temp/'+response[0]);
-						$('#graphDiv21A').attr('href','/static/temp/'+response[1]);
-						$('#graphDiv11').html('<img class="img1" src="/static/temp/'+response[0]+'" width="auto" height="400px"/>');
-						$('#graphDiv21').html('<img class="img1" src="/static/temp/'+response[1]+'" width="auto" height="400px"/>');
+						$('#graphDiv11').html('<img class="img1" src="/static/temp/'+response[0]+'" width="800" height="auto"/>');
+						$('#graphDiv21').html('<img class="img1" src="/static/temp/'+response[1]+'" width="800" height="auto"/>');
 						alert('Calculation Succeed!');
 						wheelzoom(document.querySelectorAll('img.img1'));
 						//$('.accordion').asAccordion({namespace: 'accordion'});
@@ -160,8 +158,6 @@
 						$('.btn').attr('disabled',false);
 						$('#graphDiv11').html('');
 						$('#graphDiv21').html('');
-						$('#graphDiv11A').attr('href','...');
-						$('#graphDiv21A').attr('href','...');
 						return;
 					}
 				});
@@ -283,9 +279,7 @@ function clusterBtnClick(){
 				plotlyPlot('graphDiv1-cluster',response.traces);
 				plotlyPlot1('bc1',response.bc1);
 				plotlyPlot1('bc2',response.bc2);
-				$('#graphDiv1-cluster-gene-A').attr('href','/static/temp/'+response.fileName);
-				$('#graphDiv1-cluster-gene').html('<img class="img2" src="/static/temp/'+response.fileName+'" width="auto" height="400"/>');
-				$('#graphDiv1-cluster-top-gene-A').attr('href','/static/temp/'+response.fileName1);
+				$('#graphDiv1-cluster-gene').html('<img class="img2" src="/static/temp/'+response.fileName+'" width="500" height="auto"/>');
 				$('#graphDiv1-cluster-top-gene').html('<img class="img2" src="/static/temp/'+response.fileName1+'" width="1000" height="auto"/>');
 				alert('Calculation Succeed!');
 				wheelzoom(document.querySelectorAll('img.img2'));
@@ -302,8 +296,6 @@ function clusterBtnClick(){
 				alert(response.responseText);
 				$('#graphDiv1-cluster-gene').html('');
 				$('#graphDiv1-cluster-top-gene').html('');
-				$('#graphDiv1-cluster-gene-A').attr('href','...');
-				$('#graphDiv1-cluster-top-gene-A').attr('href','...');
 				$('#cluster_num').html("<option value='' selected='selected'>----SELECT----</option>");
 				$('#cluster_num1').html("<option value='' selected='selected'>----SELECT----</option>");
 				$('.btn').attr('disabled',false);
@@ -330,7 +322,7 @@ function goEnrich(){
 			$('#loader').hide();
 			},
 			success:function(response){
-				$('#goEnrichPic').html('<img class="imgGo" src="/static/temp/'+response.fileName+'" width="500" height="auto"/><br><a href="/static/temp/'+response.fileName+'" target="_blank">Download Image</a>');
+				$('#goEnrichPic').html('<img class="imgGo" src="/static/temp/'+response.fileName+'" width="500" height="auto"/>');
 				alert('Calculation Succeed!');
 				wheelzoom(document.querySelectorAll('img.imgGo'));
 				$('.btn').attr('disabled',false);
@@ -347,7 +339,7 @@ function goEnrich(){
 function golasso(){
 	$('.btn').attr('disabled',true);
 	$.ajax({
-			url:'/lasso/?cluster_n='+$('#cluster_num1').val(),
+			url:'/test/?cluster_n='+$('#cluster_num1').val(),
 			datType:'json',
 			cache:false,
 			contentType:false,
@@ -361,7 +353,7 @@ function golasso(){
 			$('#loader').hide();
 			},
 			success:function(response){
-				$('#lassoPic').html('<img class="imgLasso" src="/static/temp/'+response.fileName+'" width="1000" height="auto"/><br><a href="/static/temp/'+response.fileName+'" target="_blank">Download Image</a>');
+				$('#lassoPic').html('<img class="imgLasso" src="data:image/png;base64,'+response+'" width="1000" height="auto"/>');
 				alert('Calculation Succeed!');
 				wheelzoom(document.querySelectorAll('img.imgLasso'));
 				$('.btn').attr('disabled',false);
@@ -554,7 +546,7 @@ function getTopGenes(t){
   </table>
   </div>
   
-
+  
   <div id="tabs-3">
   	<p>Gene Data Explory Data Analyses</p>
   	<div id='tab3div'>	
@@ -562,11 +554,11 @@ function getTopGenes(t){
             <li class="accordion__panel">
               <span class="accordion__heading">Data processed by Labels<i class="-icon -icon--left"></i></span>
               <div class="accordion__expander">
-              		<div id="graphDiv2" style="width:850px;height:1000px;overflow-x:scroll; overflow-y:scroll;"></div>
+              		<div id="graphDiv2" style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
   			<div style="width:100%; border-top:1px solid #ccc;"></div>
   			<p>Dotplot of top 4 genes for each LABEL​</p>
-			<a id='graphDiv21A' href="..." target="_blank" style="display: block;">Download Image</a><br><br><br><br><br><br><br><br><br>
-  			<div id="graphDiv21" class="rotated" style="width:800px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+  			<br><br><br><br><br><br><br><br><br>
+  			<div id="graphDiv21"  class='rotated' style="width:800px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 			<br><br><br><br><br><br><br><br><br>
 			<p>Customised Top Number of Genes for Download​:</p>
 			<select id='topForLabels'>
@@ -583,9 +575,9 @@ function getTopGenes(t){
               		<div id="graphDiv1" style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
   			<div style="width:100%; border-top:1px solid #ccc;"></div>
   			<p>Dotplot of top 4 genes for each file​</p>
-			<a id='graphDiv11A' href="..." target="_blank" style="display: block;">Download Image</a><br><br><br><br><br><br><br><br><br>
-  			<div id="graphDiv11" class="rotated" style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
-			<br><br><br><br><br><br><br><br><br>
+  			<br><br><br>
+  			<div id="graphDiv11" class='rotated' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+			<br><br><br>
 			<p>Customised Top Number for Download​:</p>
 			<select id='topForFiles'>
 					<option value='50' selected='selected'>50</option>
@@ -656,7 +648,6 @@ function getTopGenes(t){
               <span class="accordion__heading">Dotplot of top 4 genes for each cluster<i class="-icon -icon--left"></i></span>
               <div class="accordion__expander">
               		<br><br><br>
-					<a id="graphDiv1-cluster-gene-A" href="..."  target="_blank" style="display: block;">Download Image</a><br><br>
               		<div id="graphDiv1-cluster-gene" class='rotated' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 					<br><br><br>
 					<p>Customised Top Number of Genes for Download​:</p>
@@ -685,7 +676,6 @@ function getTopGenes(t){
 			<tr>
 				<td colspan='2'>
 				<p>Top 20 genes after running DE for clusters​</p>
-				<a id="graphDiv1-cluster-top-gene-A" href="..."  target="_blank" style="display: block;">Download Image</a><br><br>
 				<div id='graphDiv1-cluster-top-gene' style="width:1000px; overflow-x:scroll; overflow-y:scroll;"></div>
 				</td>
 			</tr>
