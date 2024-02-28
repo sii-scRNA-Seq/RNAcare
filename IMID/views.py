@@ -155,13 +155,18 @@ def eda(request):
     color2 = []
     flag = 0
 
-    temp0 = pd.read_csv(BASE_UPLOAD + username + "_meta.csv")
-    temp0 = temp0.dropna(axis=1)
+    if os.path.isfile(BASE_UPLOAD + username + "_meta.csv"):
+        temp0 = pd.read_csv(BASE_UPLOAD + username + "_meta.csv")
+        temp0 = temp0.dropna(axis=1)
+    else:
+        temp0 = pd.DataFrame()
     if len(integrate) != 0 and integrate[0] != "null":  # jquery plugin compatible
         for i in files_meta:
             temp0 = pd.concat(
                 [temp0, pd.read_csv(BASE_UPLOAD + i)], axis=0, join="inner"
             )
+    if temp0.shape == (0, 0):
+        return HttpResponse("No data uploaded", status=400)
     for file in files:
         if "meta" in file:
             flag = 1
