@@ -162,9 +162,14 @@ def eda(request):
         temp0 = pd.DataFrame()
     if len(integrate) != 0 and integrate[0] != "null":  # jquery plugin compatible
         for i in files_meta:
-            temp0 = pd.concat(
-                [temp0, pd.read_csv(BASE_UPLOAD + i)], axis=0, join="inner"
-            )
+            if temp0.shape==(0,0):
+                temp0 = pd.concat(
+                    [temp0, pd.read_csv(BASE_UPLOAD + i).dropna(axis=1, inplace=False)], axis=0, join="outer"
+                    )
+            else:
+                temp0 = pd.concat(
+                    [temp0, pd.read_csv(BASE_UPLOAD + i)].dropna(axis=1, inplace=False), axis=0, join="inner"
+                    )
     if temp0.shape == (0, 0):
         return HttpResponse("No data uploaded", status=400)
     for file in files:
@@ -194,7 +199,6 @@ def eda(request):
             )
             # obs.extend(temp.ID_REF.tolist())
             obs.extend(temp.index.tolist())
-
     if log2 == "Yes":
         dfs = [np.log2(i + 1) for i in dfs]
 
@@ -210,16 +214,16 @@ def eda(request):
         return HttpResponse("No matched data for meta and omics", status=400)
     else:
         dfs1 = dfs[0]
+
     dfs1["ID_REF"] = obs
     dfs1["FileName"] = batch
     # temp0=pd.concat(temp0,axis=0).reset_index(drop=True) #combine all clinic data
-    if flag == 0:
+    if flag == 0 and len(files_meta)==0:
         return HttpResponse("Can't find meta file", status=400)
     temp = dfs1.set_index("ID_REF").join(temp0.set_index("ID_REF"), how="inner")
     temp["obs"] = temp.index.tolist()
     # temp['FileName']=batch#inner join may not match so valued beforehand
     temp.to_csv(BASE_STATIC + username + "_corrected.csv", index=False)
-
     color2 = [i + "(" + j + ")" for i, j in zip(temp.LABEL, temp.FileName)]
 
     dfs1.drop(["ID_REF"], axis=1, inplace=True)
@@ -235,7 +239,6 @@ def eda(request):
 
     with open(BASE_STATIC + username + "_fr.json", "w") as f:
         f.write(json.dumps(X3D1.tolist()))
-
     traces = zip_for_vis(X3D1.tolist(), temp.FileName, temp.obs)
     traces1 = zip_for_vis(X3D1.tolist(), color2, temp.obs)
     context = {
