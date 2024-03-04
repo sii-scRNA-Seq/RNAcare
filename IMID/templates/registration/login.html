@@ -1,4 +1,4 @@
-<!-- templates/home.html -->
+<!-- templates/login.html -->
 {% extends 'base.html' %}
 
 {% block title %}Log In{% endblock %}
@@ -9,6 +9,8 @@
   {% csrf_token %}
   {{ form.as_p }}
   <button type="submit" class="btn btn-primary">Log In</button>
+  <input  type="button" class="btn btn-primary" style="width:100px;" onclick="location.href='/accounts/signup/'" value="Sign Up" />
 </form>
+
 {% endblock %}
 

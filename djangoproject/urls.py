@@ -26,6 +26,7 @@ urlpatterns = [
         auth_views.LoginView.as_view(redirect_authenticated_user=True),
         name="login",
     ),
-    path("accounts/", include("django.contrib.auth.urls")),
+    path("accounts/", include("accounts.urls")),
+    path("accounts/",include("django.contrib.auth.urls")),
     path("", include("IMID.urls")),
 ]
