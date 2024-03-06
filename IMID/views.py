@@ -10,6 +10,7 @@ import scanpy as sc
 import numpy as np
 from matplotlib import pyplot as plt
 import hdbscan
+from threadpoolctl import threadpool_limits
 
 from sklearn.linear_model import LassoCV, Lasso
 from sklearn.preprocessing import StandardScaler
@@ -273,8 +274,9 @@ def dgea(request):
     adata.obs["batch2"] = [
         i + "(" + j + ")" for i, j in zip(df.LABEL.tolist(), df.FileName.tolist())
     ]
-    sc.settings.n_jobs = 2
-    sc.tl.pca(adata, svd_solver="arpack")
+    
+    with threadpool_limits(limits=2, user_api="blas"):
+        sc.tl.pca(adata, svd_solver="arpack")
     adata.write(BASE_STATIC + username + "_adata.h5ad")
     random_str = get_random_string(8)
     if clusters == "default":
