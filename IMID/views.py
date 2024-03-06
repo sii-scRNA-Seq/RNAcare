@@ -168,7 +168,7 @@ def eda(request):
                     )
             else:
                 temp0 = pd.concat(
-                    [temp0, pd.read_csv(BASE_UPLOAD + i)].dropna(axis=1, inplace=False), axis=0, join="inner"
+                    [temp0, pd.read_csv(BASE_UPLOAD + i).dropna(axis=1, inplace=False)], axis=0, join="inner"
                     )
     if temp0.shape == (0, 0):
         return HttpResponse("No data uploaded", status=400)
@@ -226,16 +226,17 @@ def eda(request):
     temp.to_csv(BASE_STATIC + username + "_corrected.csv", index=False)
     color2 = [i + "(" + j + ")" for i, j in zip(temp.LABEL, temp.FileName)]
 
-    dfs1.drop(["ID_REF"], axis=1, inplace=True)
-    dfs1.drop(["FileName"], axis=1, inplace=True)
+    #dfs1.drop(["ID_REF"], axis=1, inplace=True)
+    #dfs1.drop(["FileName"], axis=1, inplace=True)
+    df_temp=temp.drop(['LABEL','obs','FileName'],axis=1,inplace=False)
 
     if fr == "TSNE":
-        tsne = TSNE(n_components=3, random_state=42)
-        X3D1 = tsne.fit_transform(dfs1)
+        tsne = TSNE(n_components=3, random_state=42,n_jobs=2)
+        X3D1 = tsne.fit_transform(df_temp)
     else:
 
-        umap1 = umap.UMAP(n_components=3, random_state=42, n_neighbors=30)
-        X3D1 = umap1.fit_transform(dfs1)
+        umap1 = umap.UMAP(n_components=3, random_state=42, n_neighbors=30,n_jobs=2)
+        X3D1 = umap1.fit_transform(df_temp)
 
     with open(BASE_STATIC + username + "_fr.json", "w") as f:
         f.write(json.dumps(X3D1.tolist()))
@@ -272,6 +273,7 @@ def dgea(request):
     adata.obs["batch2"] = [
         i + "(" + j + ")" for i, j in zip(df.LABEL.tolist(), df.FileName.tolist())
     ]
+    sc.settings.n_jobs = 2
     sc.tl.pca(adata, svd_solver="arpack")
     adata.write(BASE_STATIC + username + "_adata.h5ad")
     random_str = get_random_string(8)
@@ -325,7 +327,7 @@ def clustering(request):
     param = request.GET.get("param", None)
     useFR = request.GET.get("useFR", "false")
     if param is None:
-        return HttpResponse("Param is illegal!", status=404)
+        return HttpResponse("Param is illegal!", status=400)
     random_str = get_random_string(8)
     df = pd.read_csv(BASE_STATIC + username + "_corrected.csv")
     with open(BASE_STATIC + username + "_fr.json", "r") as f:
@@ -580,7 +582,7 @@ def lasso(request):
     df.loc[index, "cluster"] = 1
     df.loc[index1, "cluster"] = 0
     y = pd.Categorical(df.cluster)
-    model = LassoCV(cv=5, random_state=42, n_jobs=-1, max_iter=10000, tol=0.01)
+    model = LassoCV(cv=5, random_state=42, n_jobs=2, max_iter=10000, tol=0.01)
     model.fit(x, y)
 
     # lasso_tuned = Lasso().set_params(alpha=model.alpha_)
