@@ -20,6 +20,7 @@ import collections
 from combat.pycombat import pycombat
 from matplotlib import pyplot as plt
 from django.http import HttpResponse, JsonResponse
+from collections import Counter
 
 
 @lru_cache(maxsize=None)
@@ -189,6 +190,10 @@ def clusteringPostProcess(
         return HttpResponse("Only 1 Cluster after clustering", status=400)
 
     df["cluster"] = [i for i in adata.obs[method]]
+    count_dict=Counter(df.cluster)
+    for member,count in count_dict.items():
+        if count<10:
+            return HttpResponse("The number of data in the cluster "+str(member)+" is less than 10, which will not be able for further analysis.", status=405)
     df.to_csv(BASE_STATIC + username + "_corrected_clusters.csv", index=False)
 
     traces = zip_for_vis(X3D1, list(adata.obs[method]), adata.obs_names.tolist())
@@ -196,6 +201,9 @@ def clusteringPostProcess(
     adata_ori.obs = adata.obs.copy()
     adata_ori.obs_names = adata.obs_names.copy()
     adata_ori.write(BASE_STATIC + username + "_adata.h5ad")
+
+    barChart1=[]
+    barChart2=[]
 
     with plt.rc_context():
         sc.tl.rank_genes_groups(adata_ori, groupby=method, method="t-test")
