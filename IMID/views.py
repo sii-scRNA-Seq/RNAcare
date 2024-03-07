@@ -78,6 +78,8 @@ def uploadExpression(request):
 
     for f in fileNames:
         df = pd.read_csv(f).head()
+        if 'ID_REF' not in df.columns:
+            return HttpResponse("No ID_REF column in the expression file", status=400)
         if len(df.columns) > 7:  # only show 7 columns
             df = pd.concat([df.iloc[:, 0:4], df.iloc[:, -3:]], axis=1)
 
@@ -102,6 +104,10 @@ def uploadMeta(request):
     context = {}
     context["metaFile"] = {}
     df = pd.read_csv(f).head()
+    if 'ID_REF' not in df.columns:
+        return HttpResponse("No ID_REF column in the expression file", status=400)
+    if 'LABEL' not in df.columns:
+        return HttpResponse("No LABEL column in the expression file", status=400)
     if len(df.columns) > 7:  # only show 7 columns
         df = pd.concat([df.iloc[:, 0:4], df.iloc[:, -3:]], axis=1)
 
@@ -274,7 +280,7 @@ def dgea(request):
     adata.obs["batch2"] = [
         i + "(" + j + ")" for i, j in zip(df.LABEL.tolist(), df.FileName.tolist())
     ]
-    
+
     with threadpool_limits(limits=2, user_api="blas"):
         sc.tl.pca(adata, svd_solver="arpack")
     adata.write(BASE_STATIC + username + "_adata.h5ad")
@@ -327,7 +333,6 @@ def clustering(request):
     username = request.user.username
     cluster = request.GET.get("cluster", "LEIDEN")
     param = request.GET.get("param", None)
-    useFR = request.GET.get("useFR", "false")
     if param is None:
         return HttpResponse("Param is illegal!", status=400)
     random_str = get_random_string(8)
@@ -335,27 +340,28 @@ def clustering(request):
     with open(BASE_STATIC + username + "_fr.json", "r") as f:
         X3D1 = json.loads(f.read())
     adata = sc.read(BASE_STATIC + username + "_adata.h5ad")
-    adata_ori = adata.copy()
-    if useFR == "true":
-        adata1 = sc.AnnData(np.zeros(np.array(X3D1).shape), dtype=np.float64)
-        adata1.X = np.array(X3D1)
-        adata1.obs = adata.obs.copy()
-        adata1.obs_names = adata.obs_names.copy()
-        adata = adata1
     if cluster == "LEIDEN":
         if param is None:
             param = 1
+        try:
+            param=float(param)
+        except:
+            return HttpResponse("Resolution should be a float", status=400)
         sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
-        sc.tl.leiden(adata, resolution=float(param))
+        sc.tl.leiden(adata, resolution=param)
         Resp = clusteringPostProcess(
-            X3D1, df, adata, adata_ori, "leiden", BASE_STATIC, username, random_str
+            X3D1, df, adata, "leiden", BASE_STATIC, username, random_str
         )
         return Resp
     elif cluster == "HDBSCAN":
         if param is None:
             param = 20
-        if int(param) <= 5:
-            param = 5
+        try:
+            param=int(param)
+        except:
+            return HttpResponse("K should be positive integer.", status=400)
+        if param <= 5:
+            param = HttpResponse("minSize should be at least 5.", status=400)  
         labels = hdbscan.HDBSCAN(min_cluster_size=int(param)).fit_predict(adata.X)
         if min(labels) >= 0:
             labels = [str(i) for i in labels]
@@ -365,18 +371,23 @@ def clustering(request):
         adata.obs["hdbscan"] = labels
         adata.obs["hdbscan"] = adata.obs["hdbscan"].astype("category")
         Resp = clusteringPostProcess(
-            X3D1, df, adata, adata_ori, "hdbscan", BASE_STATIC, username, random_str
+            X3D1, df, adata, "hdbscan", BASE_STATIC, username, random_str
         )
         return Resp
     elif cluster == "Kmeans":
-        if int(param) == 1:
-            return HttpResponse("Only 1 Cluster!", status=404)
+        try:
+            param=int(param)
+        except:
+            return HttpResponse("K should be positive integer.", status=400)
+        
+        if param <= 1:
+            return HttpResponse("K should be larger than 1.", status=400)
         km = KMeans(n_clusters=int(param), random_state=42, n_init="auto").fit(adata.X)
         labels = [str(i) for i in km.labels_]
         adata.obs["kmeans"] = labels
-        adata.obs["kmeans"] = adata.obs["kmeans"].astype("category")
+        adata.obs["kmeans"] = adata.obs["kmeansID_REF"].astype("category")
         Resp = clusteringPostProcess(
-            X3D1, df, adata, adata_ori, "kmeans", BASE_STATIC, username, random_str
+            X3D1, df, adata,  "kmeans", BASE_STATIC, username, random_str
         )
         return Resp
 
