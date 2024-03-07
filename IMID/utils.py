@@ -183,7 +183,7 @@ def bbknn(dfs):
 
 
 def clusteringPostProcess(
-    X3D1, df, adata, adata_ori, method, BASE_STATIC, username, random_str
+    X3D1, df, adata,  method, BASE_STATIC, username, random_str
 ):
     if method != "kmeans" and len(set(adata.obs[method])) == 1:
         # throw error for just 1 cluster
@@ -198,29 +198,28 @@ def clusteringPostProcess(
 
     traces = zip_for_vis(X3D1, list(adata.obs[method]), adata.obs_names.tolist())
 
-    adata_ori.obs = adata.obs.copy()
-    adata_ori.obs_names = adata.obs_names.copy()
-    adata_ori.write(BASE_STATIC + username + "_adata.h5ad")
+
+    adata.write(BASE_STATIC + username + "_adata.h5ad")
 
     barChart1=[]
     barChart2=[]
 
     with plt.rc_context():
-        sc.tl.rank_genes_groups(adata_ori, groupby=method, method="t-test")
-        sc.tl.dendrogram(adata_ori, groupby=method)
+        sc.tl.rank_genes_groups(adata, groupby=method, method="t-test")
+        sc.tl.dendrogram(adata, groupby=method)
         sc.pl.rank_genes_groups_dotplot(
-            adata_ori, n_genes=4, show=False, color_map="bwr"
+            adata, n_genes=4, show=False, color_map="bwr"
         )
         plt.savefig(
             BASE_STATIC + username + "_cluster_" + random_str + "_1.png",
             bbox_inches="tight",
         )
-        sc.pl.rank_genes_groups(adata_ori, n_genes=20, sharey=False)
+        sc.pl.rank_genes_groups(adata, n_genes=20, sharey=False)
         plt.savefig(
             BASE_STATIC + username + "_cluster_" + random_str + "_2.png",
             bbox_inches="tight",
         )
-        markers = sc.get.rank_genes_groups_df(adata_ori, None)
+        markers = sc.get.rank_genes_groups_df(adata, None)
         markers.to_csv(BASE_STATIC + username + "_markers.csv", index=False)
         b = (
             adata.obs.sort_values(["batch1", method])

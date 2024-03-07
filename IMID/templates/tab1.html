@@ -258,10 +258,6 @@ function clusterBtnClick(){
         	url='/cluster/?cluster=HDBSCAN&param='+$('#hdbP').val();
         else
         	url='/cluster/?cluster=Kmeans&param='+$('#kP').val();
-        if($('#FR_processed').attr('checked'))
-        	url=url+'&useFR=true';
-        else
-        	url=url+'&useFR=false';
         data=[];
         $('.btn').attr('disabled',true);
         $.ajax({
@@ -609,7 +605,7 @@ function getTopGenes(t){
  
  
    <div id="tabs-4">
-  	<p>Choose Options for Clustering:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type='checkbox' id='FR_processed' title="Classify based on the TSNE/UMAP processed data">&nbsp;Classification based on Feature Reduction</input></p>
+  	<p>Choose Options for Clustering:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
   	
 	<table>
 			<tr>
