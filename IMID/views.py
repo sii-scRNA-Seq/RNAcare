@@ -515,7 +515,9 @@ def goenrich(request):
     ]
     if len(markers.index) == 0:
         return HttpResponse("No marker genes", status=400)
-    df = go_it(markers.names.values)
+    
+    with threadpool_limits(limits=2, user_api="blas"):
+        df = go_it(markers.names.values)
     df1 = df.groupby("class").head(10).reset_index(drop=True)
 
     fig = go.Figure()
