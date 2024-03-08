@@ -77,7 +77,7 @@ def uploadExpression(request):
         context[f.name] = {}
 
     for f in fileNames:
-        df = pd.read_csv(f).head()
+        df = pd.read_csv(f, nrows=5, header=0)
         if 'ID_REF' not in df.columns:
             return HttpResponse("No ID_REF column in the expression file", status=400)
         if len(df.columns) > 7:  # only show 7 columns
@@ -103,7 +103,7 @@ def uploadMeta(request):
     f = BASE_UPLOAD + username + "_meta.csv"
     context = {}
     context["metaFile"] = {}
-    df = pd.read_csv(f).head()
+    df = pd.read_csv(f, nrows=5, header=0)
     if 'ID_REF' not in df.columns:
         return HttpResponse("No ID_REF column in the expression file", status=400)
     if 'LABEL' not in df.columns:
@@ -238,17 +238,17 @@ def eda(request):
     df_temp=temp.drop(['LABEL','obs','FileName'],axis=1,inplace=False)
 
     if fr == "TSNE":
-        tsne = TSNE(n_components=3, random_state=42,n_jobs=2)
-        X3D1 = tsne.fit_transform(df_temp)
+        tsne = TSNE(n_components=2, random_state=42,n_jobs=2)
+        X2D = tsne.fit_transform(df_temp)
     else:
 
-        umap1 = umap.UMAP(n_components=3, random_state=42, n_neighbors=30,n_jobs=2)
-        X3D1 = umap1.fit_transform(df_temp)
+        umap1 = umap.UMAP(n_components=2, random_state=42, n_neighbors=30,n_jobs=2)
+        X2D = umap1.fit_transform(df_temp)
 
     with open(BASE_STATIC + username + "_fr.json", "w") as f:
-        f.write(json.dumps(X3D1.tolist()))
-    traces = zip_for_vis(X3D1.tolist(), temp.FileName, temp.obs)
-    traces1 = zip_for_vis(X3D1.tolist(), color2, temp.obs)
+        f.write(json.dumps(X2D.tolist()))
+    traces = zip_for_vis(X2D.tolist(), temp.FileName, temp.obs)
+    traces1 = zip_for_vis(X2D.tolist(), color2, temp.obs)
     context = {
         "dfs1": json.dumps(traces),
         "dfs2": json.dumps(traces1),
@@ -338,7 +338,7 @@ def clustering(request):
     random_str = get_random_string(8)
     df = pd.read_csv(BASE_STATIC + username + "_corrected.csv")
     with open(BASE_STATIC + username + "_fr.json", "r") as f:
-        X3D1 = json.loads(f.read())
+        X2D = json.loads(f.read())
     adata = sc.read(BASE_STATIC + username + "_adata.h5ad")
     if cluster == "LEIDEN":
         if param is None:
@@ -350,7 +350,7 @@ def clustering(request):
         sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
         sc.tl.leiden(adata, resolution=param)
         Resp = clusteringPostProcess(
-            X3D1, df, adata, "leiden", BASE_STATIC, username, random_str
+            X2D, df, adata, "leiden", BASE_STATIC, username, random_str
         )
         return Resp
     elif cluster == "HDBSCAN":
@@ -371,7 +371,7 @@ def clustering(request):
         adata.obs["hdbscan"] = labels
         adata.obs["hdbscan"] = adata.obs["hdbscan"].astype("category")
         Resp = clusteringPostProcess(
-            X3D1, df, adata, "hdbscan", BASE_STATIC, username, random_str
+            X2D, df, adata, "hdbscan", BASE_STATIC, username, random_str
         )
         return Resp
     elif cluster == "Kmeans":
@@ -387,7 +387,7 @@ def clustering(request):
         adata.obs["kmeans"] = labels
         adata.obs["kmeans"] = adata.obs["kmeansID_REF"].astype("category")
         Resp = clusteringPostProcess(
-            X3D1, df, adata,  "kmeans", BASE_STATIC, username, random_str
+            X2D, df, adata,  "kmeans", BASE_STATIC, username, random_str
         )
         return Resp
 
