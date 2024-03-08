@@ -385,7 +385,7 @@ def clustering(request):
         km = KMeans(n_clusters=int(param), random_state=42, n_init="auto").fit(adata.X)
         labels = [str(i) for i in km.labels_]
         adata.obs["kmeans"] = labels
-        adata.obs["kmeans"] = adata.obs["kmeansID_REF"].astype("category")
+        adata.obs["kmeans"] = adata.obs["kmeans"].astype("category")
         Resp = clusteringPostProcess(
             X2D, df, adata,  "kmeans", BASE_STATIC, username, random_str
         )
