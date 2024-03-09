@@ -25,6 +25,7 @@
 
 <div id='loader' style='display:none'></div>
 <h4>Advanced Clustering</h4>
+<div id='cID' style='display:none'>{{ cID }}</div>
 <div id="tabs_advanced" style='width:1800px;'>
   <ul>
     <li><a href="#tabs-1">Leiden</a></li>
@@ -101,6 +102,7 @@ function plot(id,graph){
 
 function LeidenClick(){
 	url='/cluster/advanced/?cluster=LEIDEN&min='+$('#leiden_min').val()+'&max='+$('#leiden_max').val()+'&level='+$('#leiden_levels').val();
+	url+='&cID='+$('#cID').text();
 	$.ajax({
 			url:url,
 			datType:'json',
@@ -127,6 +129,7 @@ function LeidenClick(){
 
 function HDBSCANClick(){
 	url='/cluster/advanced/?cluster=HDBSCAN&min='+$('#HDBSCAN_min').val()+'&max='+$('#HDBSCAN_max').val()+'&level='+$('#HDBSCAN_levels').val();
+	url+='&cID='+$('#cID').text();
 	$.ajax({
 			url:url,
 			datType:'json',

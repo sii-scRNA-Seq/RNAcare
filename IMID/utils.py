@@ -40,9 +40,9 @@ def build_GOEnrichmentStudyNS():
     )
 
 
-def zip_for_vis(X3D1, batch, obs):
+def zip_for_vis(X2D, batch, obs):
     traces = {}
-    for i, j, k in zip(X3D1, batch, obs):
+    for i, j, k in zip(X2D, batch, obs):
         j = str(j)
         if j not in traces:
             traces[j] = {"data": [i], "obs": [k]}
@@ -183,23 +183,28 @@ def bbknn(dfs):
 
 
 def clusteringPostProcess(
-    X3D1, df, adata,  method, BASE_STATIC, username, random_str
+    X2D, df, adata,  method, BASE_STATIC, username, random_str, usr
 ):
     if method != "kmeans" and len(set(adata.obs[method])) == 1:
         # throw error for just 1 cluster
         return HttpResponse("Only 1 Cluster after clustering", status=400)
 
-    df["cluster"] = [i for i in adata.obs[method]]
-    count_dict=Counter(df.cluster)
+    #df["cluster"] = [i for i in adata.obs[method]]
+    li=adata.obs[method].tolist()
+    count_dict=Counter(li)
     for member,count in count_dict.items():
         if count<10:
             return HttpResponse("The number of data in the cluster "+str(member)+" is less than 10, which will not be able for further analysis.", status=405)
-    df.to_csv(BASE_STATIC + username + "_corrected_clusters.csv", index=False)
+    #df.to_csv(BASE_STATIC + username + "_corrected_clusters.csv", index=False)
+    #usr.setIntegrationData(df)
 
-    traces = zip_for_vis(X3D1, list(adata.obs[method]), adata.obs_names.tolist())
+    traces = zip_for_vis(X2D, list(adata.obs[method]), adata.obs_names.tolist())
 
 
-    adata.write(BASE_STATIC + username + "_adata.h5ad")
+    #adata.write(BASE_STATIC + username + "_adata.h5ad")
+    adata.obs['cluster']=li
+    usr.setAnndata(adata)
+
 
     barChart1=[]
     barChart2=[]
@@ -220,7 +225,7 @@ def clusteringPostProcess(
             bbox_inches="tight",
         )
         markers = sc.get.rank_genes_groups_df(adata, None)
-        markers.to_csv(BASE_STATIC + username + "_markers.csv", index=False)
+        usr.setMarkers(markers)
         b = (
             adata.obs.sort_values(["batch1", method])
             .groupby(["batch1", method])
@@ -257,6 +262,8 @@ def clusteringPostProcess(
             }
             for i in set(b["batch"].tolist())
         ]
+
+        usr.save()
 
         return JsonResponse(
             {

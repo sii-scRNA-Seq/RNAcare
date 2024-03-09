@@ -2,6 +2,7 @@
 
 {% block body %}
   <script>
+  clientUniqueID=Math.random().toString(36).slice(-5);
   $( function() {
     $(document).tooltip();$('.accordion').asAccordion({namespace: 'accordion'});
     $('#FR_processed').prop('checked',false);
@@ -30,7 +31,7 @@
 		form_data.append("csrfmiddlewaretoken",csrf_token);
 		
 		$.ajax({
-			url: '/upload/geneExpression/',
+			url: '/upload/geneExpression/?cID='+clientUniqueID,
 			datType:'json',
 			cache:false,
 			contentType:false,
@@ -49,7 +50,7 @@
 				
 			},
 			error:function(response){
-				alert('upload error!');
+				alert(response.responseText);
 			}
 		});
 	});
@@ -70,7 +71,7 @@
 		form_data.append("csrfmiddlewaretoken",csrf_token);
 		
 		$.ajax({
-			url: '/upload/meta/',
+			url: '/upload/meta/?cID='+clientUniqueID,
 			datType:'json',
 			cache:false,
 			contentType:false,
@@ -88,7 +89,7 @@
 				
 			},
 			error:function(response){
-				alert('upload error!');
+				alert(response.responseText);
 			}
 		});
 	});
@@ -116,7 +117,7 @@
    $('#next2').on('click',function(){
    	$('.btn').attr('disabled',true);
 		$.ajax({
-			url: '/eda/?correct='+$('input[name="Comb"]:checked').val()+'&log2='+$('input[name="Log"]:checked').val()+'&fr='+$('input[name="FR"]:checked').val()+'&integrate='+$('#my-select').val(),
+			url: '/eda/?correct='+$('input[name="Comb"]:checked').val()+'&log2='+$('input[name="Log"]:checked').val()+'&fr='+$('input[name="FR"]:checked').val()+'&integrate='+$('#my-select').val()+'&cID='+clientUniqueID,
 			datType:'html',
 			cache:false,
 			contentType:false,
@@ -136,7 +137,7 @@
 				dfs2=JSON.parse(response.dfs2);
 				plotlyPlot('graphDiv2',dfs2);			
 				$.ajax({
-					url: '/dgea/',
+					url: '/dgea/?cID='+clientUniqueID,
 					datType:'json',
 					cache:false,
 					contentType:false,
@@ -156,7 +157,7 @@
 						//$('.accordion').asAccordion({namespace: 'accordion'});
 					},
 					error:function(response){
-						alert(response.responseText);
+						alert(response.responseText);$('#loader').hide();
 						$('.btn').attr('disabled',false);
 						$('#graphDiv11').html('');
 						$('#graphDiv21').html('');
@@ -168,7 +169,7 @@
 	
 			},
 			error:function(response){
-				alert('server error!');
+				alert(response.responseText);$('#loader').hide();
 				$('.btn').attr('disabled',false);
 				return;
 			}
@@ -254,10 +255,12 @@ function plotlyPlot1(idP,dfsP){
 function clusterBtnClick(){
 	if($('input[type=radio][name=clustering]:checked').val()=='LEIDEN')
         	url='/cluster/?cluster=LEIDEN&param='+$('#sliderValue').val();
-        else if($('input[type=radio][name=clustering]:checked').val()=='HDBSCAN')
+    else if($('input[type=radio][name=clustering]:checked').val()=='HDBSCAN')
         	url='/cluster/?cluster=HDBSCAN&param='+$('#hdbP').val();
-        else
+    else
         	url='/cluster/?cluster=Kmeans&param='+$('#kP').val();
+
+		url+='&cID='+clientUniqueID;
         data=[];
         $('.btn').attr('disabled',true);
         $.ajax({
@@ -312,7 +315,7 @@ function clusterBtnClick(){
 function goEnrich(){
 	$('.btn').attr('disabled',true);
 	$.ajax({
-			url:'/goenrich/?cluster_n='+$('#cluster_num').val(),
+			url:'/goenrich/?cluster_n='+$('#cluster_num').val()+'&cID='+clientUniqueID,
 			datType:'json',
 			cache:false,
 			contentType:false,
@@ -343,7 +346,7 @@ function goEnrich(){
 function golasso(){
 	$('.btn').attr('disabled',true);
 	$.ajax({
-			url:'/lasso/?cluster_n='+$('#cluster_num1').val(),
+			url:'/lasso/?cluster_n='+$('#cluster_num1').val()+'&cID='+clientUniqueID,
 			datType:'json',
 			cache:false,
 			contentType:false,
@@ -382,6 +385,7 @@ function getTopGenes(t){
 	else{
 		url='/dgea?clusters='+$('input[type=radio][name=clustering]:checked').val()+'&topN='+$('#topForLabels').val();//LEIDEN,HDBSCAN,Kmeans
 	}
+	url+='&cID='+clientUniqueID;
 	$.ajax({
 			url:url,
 			datType:'text',
@@ -444,14 +448,15 @@ function getTopGenes(t){
     <li><a href="#tabs-1">Data Collection</a></li>
     <li><a href="#tabs-2">Data Processing</a></li>
     <li><a href="#tabs-3">EDA</a></li>
-    <li><a href="#tabs-4">DEGA</a></li>
+    <li><a href="#tabs-4">DEGA-Clustering</a></li>
+	<li><a href='#tabs-7'>DEGA-Target Gene</a></li>
     <li><a href="#tabs-5">LASSO FeastureSelect</a></li>
     <li><a href="#tabs-6">Go Enrichment</a></li>
   </ul>
   <div id="tabs-1">
     <fieldset name="Multiple Files Upload">
     <div id="msg"></div>
-    <p>Upload Gene Expression files&nbsp;<img id='tooltip1'class='question' title="In this section, users upload their files(multiple). File names will be used for later visualisation. ID_REF is a compulsory field for each file.<p><img src='/static/fileUpload.png' width='500' height='auto'/></p>"/>&nbsp;&nbsp;&nbsp;<button id="advancedSearch" class="btn btn-primary" onclick="window.open('/advancedSearch/');" title="This is used for processing any online data. User can search for any public dataset and integrate them into the research.">Advanced Search</button></p>
+    <p>Upload Gene Expression files&nbsp;<img id='tooltip1'class='question' title="In this section, users upload their files(multiple). File names will be used for later visualisation. ID_REF is a compulsory field for each file.<p><img src='/static/fileUpload.png' width='500' height='auto'/></p>"/>&nbsp;&nbsp;&nbsp;<button id="advancedSearch" class="btn btn-primary" onclick="window.open('/advancedSearch/?cID='+clientUniqueID);" title="This is used for processing any online data. User can search for any public dataset and integrate them into the research.">Advanced Search</button></p>
     <table>
     <tr>
 	<td style="vertical-align:top;">
@@ -595,7 +600,7 @@ function getTopGenes(t){
   	</div>
   	<br>
 	<div style="text-align:right;">
-		<button id="download1" class="btn btn-primary" style="width:auto;" onclick="window.location='/static/temp/{{ user.get_username }}_corrected.csv';">Download Processed data</button>
+		<button id="download1" class="btn btn-primary" style="width:auto;" onclick="window.location='/static/temp/{{ user.get_username }}_{{ clientUniqueID }}_corrected.csv';">Download Processed data</button>
 		<br><br>
 		<button id="next3" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
 			
@@ -636,7 +641,7 @@ function getTopGenes(t){
 				</td>
 				<td style="height:50px;">
 				<button id="clusterBtn" class="btn btn-primary" style="width:auto;" onclick="clusterBtnClick();">Cluster the Data</button>
-				<button id='advanced' class="btn btn-primary" style='width:auto;' onclick="window.open('/cluster/advanced/');">Advanced</button>
+				<button id='advanced' class="btn btn-primary" style='width:auto;' onclick="window.open('/cluster/advanced/?cID='+clientUniqueID);">Advanced</button>
 				</td>
 			</tr>
 	</table>
@@ -687,7 +692,7 @@ function getTopGenes(t){
 			</tr>
 			<tr class='downloadData1'>
 				<td style="text-align:right;" colspan='3'>
-				<button id="download2" class="btn btn-primary" style="width:auto;" onclick="window.location='/static/temp/{{ user.get_username }}_adata.h5ad';">Download Processed data</button>
+				<button id="download2" class="btn btn-primary" style="width:auto;" onclick="window.location='/static/temp/{{ user.get_username }}_{{ clientUniqueID}}_adata.h5ad';">Download Processed data</button>
 				<br><br>
 					<button id="next4" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
 				</td>
@@ -695,6 +700,22 @@ function getTopGenes(t){
 	</table>
 	</div>	
 	</table>
+  </div>
+
+  <div id="tabs-7">
+	<p>Input your target gene list for the clusters and choose the separator.</p>
+	<textarea id="targetGene"  rows='5' cols='100'></textarea>
+	<br>
+	<label>Choose the separator for the gene list:</label>
+	<select id="'separator">
+		<option value="Space" selected="selected">Space</option>
+		<option value="Return">Return</option>
+		<option value="Comma">Comma</option>
+		<option value="Tab">Tab</option>
+		<option value="Semicolon">Semicolon</option>
+	</select>&nbsp;&nbsp;&nbsp;
+	<input type="submit" value="Submit" class="btn btn-primary"/>
+
   </div>
   
   <div id='tabs-5'>

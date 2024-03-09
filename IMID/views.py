@@ -40,6 +40,8 @@ from .utils import (
     getTopGeneCSV,
 )
 
+from .models import userData
+
 
 # lasso.R for data visualization
 # sys.path.append('/home/mt229a/Downloads/')#gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
@@ -98,7 +100,10 @@ def uploadMeta(request):
     if request.method != "POST":
         return HttpResponse("Method not allowed", status=405)
     username = request.user.username
-    files = request.FILES.getlist("meta", None)[0]
+    files = request.FILES.getlist("meta", None)
+    if files is None:
+        return HttpResponse("Upload the meta file is required", status=405)
+    files=files[0]
     handle_uploaded_file1(files, username, "meta")
     f = BASE_UPLOAD + username + "_meta.csv"
     context = {}
@@ -130,6 +135,13 @@ def eda(request):
     integrate = request.GET.get("integrate", "").split(",")
     if "" in integrate:
         integrate.remove("")
+
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
+    
+    usr=userData(clientID,username)
+
     for file in glob.glob(BASE_STATIC + "/" + username + "*"):
         os.remove(file)
 
@@ -230,7 +242,9 @@ def eda(request):
     temp = dfs1.set_index("ID_REF").join(temp0.set_index("ID_REF"), how="inner")
     temp["obs"] = temp.index.tolist()
     # temp['FileName']=batch#inner join may not match so valued beforehand
-    temp.to_csv(BASE_STATIC + username + "_corrected.csv", index=False)
+    #temp.to_csv(BASE_STATIC + username + "_corrected.csv", index=False)
+    usr.setIntegrationData(temp)
+
     color2 = [i + "(" + j + ")" for i, j in zip(temp.LABEL, temp.FileName)]
 
     #dfs1.drop(["ID_REF"], axis=1, inplace=True)
@@ -241,12 +255,11 @@ def eda(request):
         tsne = TSNE(n_components=2, random_state=42,n_jobs=2)
         X2D = tsne.fit_transform(df_temp)
     else:
-
         umap1 = umap.UMAP(n_components=2, random_state=42, n_neighbors=30,n_jobs=2)
         X2D = umap1.fit_transform(df_temp)
 
-    with open(BASE_STATIC + username + "_fr.json", "w") as f:
-        f.write(json.dumps(X2D.tolist()))
+    usr.setFRData(X2D.tolist())
+    usr.save()
     traces = zip_for_vis(X2D.tolist(), temp.FileName, temp.obs)
     traces1 = zip_for_vis(X2D.tolist(), color2, temp.obs)
     context = {
@@ -265,26 +278,36 @@ def dgea(request):
     username = request.user.username
     clusters = request.GET.get("clusters", "default")
     n_genes = request.GET.get("topN", 4)
-    if clusters not in ("LEIDEN", "HDBSCAN", "Kmeans"):
-        df = pd.read_csv(BASE_STATIC + username + "_corrected.csv")
-    else:
-        df = pd.read_csv(BASE_STATIC + username + "_corrected_clusters.csv")
-    t = df.loc[
-        :, ~(df.columns.isin(["obs", "FileName", "LABEL", "cluster"]))
-    ]  #'obs','FileName', 'LABEL'
-    adata = sc.AnnData(np.zeros(t.values.shape), dtype=np.float64)
-    adata.X = t.values
-    adata.var_names = t.columns.tolist()
-    adata.obs_names = df.obs.tolist()
-    adata.obs["batch1"] = df.FileName.tolist()
-    adata.obs["batch2"] = [
-        i + "(" + j + ")" for i, j in zip(df.LABEL.tolist(), df.FileName.tolist())
-    ]
 
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
+    
+    usr=userData.read(username,clientID)
+    if usr is None:
+        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
+
+    #if clusters not in ("LEIDEN", "HDBSCAN", "Kmeans"):
+    #    df = usr.getCorrectedCSV()
+    #else:
+    #    df = usr.getCorrectedClusterCSV()
+
+    #t = df.loc[
+    #    :, ~(df.columns.isin(["obs", "FileName", "LABEL", "cluster"]))
+    #]  #'obs','FileName', 'LABEL'
+    #adata = sc.AnnData(np.zeros(t.values.shape), dtype=np.float64)
+    #adata.X = t.values
+    #adata.var_names = t.columns.tolist()
+    #adata.obs_names = df.obs.tolist()
+    #adata.obs["batch1"] = df.FileName.tolist()
+    #adata.obs["batch2"] = [i + "(" + j + ")" for i, j in zip(df.LABEL.tolist(), df.FileName.tolist())]
+    adata=usr.getAnndata()
     with threadpool_limits(limits=2, user_api="blas"):
         sc.tl.pca(adata, svd_solver="arpack")
-    adata.write(BASE_STATIC + username + "_adata.h5ad")
-    random_str = get_random_string(8)
+    #adata.write(BASE_STATIC + username + "_adata.h5ad")
+    usr.setAnndata(adata)
+    usr.save()
+    
     if clusters == "default":
         with plt.rc_context():
             if len(set(adata.obs["batch1"])) > 1:
@@ -294,7 +317,7 @@ def dgea(request):
                     adata, n_genes=int(n_genes), show=False, color_map="bwr"
                 )
                 plt.savefig(
-                    BASE_STATIC + username + "_batch1_" + random_str + ".png",
+                    BASE_STATIC + username + "_batch1_" + clientID + ".png",
                     bbox_inches="tight",
                 )
             else:
@@ -306,15 +329,15 @@ def dgea(request):
                     adata, n_genes=int(n_genes), show=False, color_map="bwr"
                 )
                 plt.savefig(
-                    BASE_STATIC + username + "_batch2_" + random_str + ".png",
+                    BASE_STATIC + username + "_batch2_" + clientID + ".png",
                     bbox_inches="tight",
                 )
             else:
                 pass
         return JsonResponse(
             [
-                username + "_batch1_" + random_str + ".png",
-                username + "_batch2_" + random_str + ".png",
+                username + "_batch1_" + clientID + ".png",
+                username + "_batch2_" + clientID + ".png",
             ],
             safe=False,
         )
@@ -331,15 +354,20 @@ def dgea(request):
 @login_required()
 def clustering(request):
     username = request.user.username
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
+    
+    usr=userData.read(username,clientID)
+    if usr is None:
+        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
     cluster = request.GET.get("cluster", "LEIDEN")
     param = request.GET.get("param", None)
     if param is None:
         return HttpResponse("Param is illegal!", status=400)
-    random_str = get_random_string(8)
-    df = pd.read_csv(BASE_STATIC + username + "_corrected.csv")
-    with open(BASE_STATIC + username + "_fr.json", "r") as f:
-        X2D = json.loads(f.read())
-    adata = sc.read(BASE_STATIC + username + "_adata.h5ad")
+    df = usr.getCorrectedCSV()
+    X2D=usr.getFRData()
+    adata = usr.getAnndata()
     if cluster == "LEIDEN":
         if param is None:
             param = 1
@@ -350,7 +378,7 @@ def clustering(request):
         sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
         sc.tl.leiden(adata, resolution=param)
         Resp = clusteringPostProcess(
-            X2D, df, adata, "leiden", BASE_STATIC, username, random_str
+            X2D, df, adata, "leiden", BASE_STATIC, username, clientID, usr
         )
         return Resp
     elif cluster == "HDBSCAN":
@@ -371,7 +399,7 @@ def clustering(request):
         adata.obs["hdbscan"] = labels
         adata.obs["hdbscan"] = adata.obs["hdbscan"].astype("category")
         Resp = clusteringPostProcess(
-            X2D, df, adata, "hdbscan", BASE_STATIC, username, random_str
+            X2D, df, adata, "hdbscan", BASE_STATIC, username, clientID, usr
         )
         return Resp
     elif cluster == "Kmeans":
@@ -387,26 +415,33 @@ def clustering(request):
         adata.obs["kmeans"] = labels
         adata.obs["kmeans"] = adata.obs["kmeans"].astype("category")
         Resp = clusteringPostProcess(
-            X2D, df, adata,  "kmeans", BASE_STATIC, username, random_str
+            X2D, df, adata,  "kmeans", BASE_STATIC, username, clientID, usr
         )
         return Resp
 
 
 @login_required()
 def clusteringAdvanced(request):
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
     if request.method == "GET" and "cluster" not in request.GET:
         return render(
             request,
             "clustering_advance.html",
+            {'cID':clientID}
         )
     else:
         username = request.user.username
+        usr=userData.read(username,clientID)
+        if usr is None:
+            return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
         cluster = request.GET.get("cluster", "LEIDEN")
         minValue = float(request.GET.get("min", "0"))
         maxValue = float(request.GET.get("max", "1"))
         level = int(request.GET.get("level", 3))
-        adata = sc.read(BASE_STATIC + username + "_adata.h5ad")
-        df = pd.read_csv(BASE_STATIC + username + "_corrected.csv")[["LABEL"]]
+        adata = usr.getAnndata().copy()
+        df = usr.getCorrectedCSV()[["LABEL"]]
         if level > 10 or level <= 1:
             return HttpResponse("Error for the input", status=400)
         if cluster == "LEIDEN":
@@ -441,11 +476,15 @@ def clusteringAdvanced(request):
 def advancedSearch(request):
     username = request.user.username
     name = request.GET.get("name", None)
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
     res = {}
     if name is None:
         return render(
             request,
             "advancedSearch.html",
+            {'clientID':clientID}
         )
     name = name.replace(" ", "")
     res["name"] = name
@@ -499,19 +538,24 @@ def advancedSearch(request):
 def goenrich(request):
     username = request.user.username
     cluster_n = request.GET.get("cluster_n", 0)
-    random_str = get_random_string(8)
-
-    df = pd.read_csv(BASE_STATIC + username + "_corrected.csv")
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
+    usr=userData.read(username,clientID)
+    if usr is None:
+        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
+    df = usr.getCorrectedCSV()
     if (
         any(df.columns.str.startswith("c_")) is True
         or len(set(df.columns).intersection({"age", "crp", "bmi", "esr", "BMI"})) > 0
     ):
         return HttpResponse("Not Allowed Clinic Data", status=400)
-    markers = pd.read_csv(BASE_STATIC + username + "_markers.csv")
+    markers = usr.getMarkers()
+    print(markers.head(8))
     markers = markers[
         (markers.pvals_adj < 0.05)
         & (markers.logfoldchanges > 0.5)
-        & (markers.group == int(cluster_n))
+        & (markers.group.astype(int) == int(cluster_n))
     ]
     if len(markers.index) == 0:
         return HttpResponse("No marker genes", status=400)
@@ -552,15 +596,20 @@ def goenrich(request):
         xaxis=dict(title="Gene Ratio"),
     )
 
-    fig.write_image(BASE_STATIC + username + "_goenrich_" + random_str + ".png")
-    # return render(request,'goenrich.html',{'fileName':username+'_goenrich_'+random_str+'.png'})
-    return JsonResponse({"fileName": username + "_goenrich_" + random_str + ".png"})
+    fig.write_image(BASE_STATIC + username + "_goenrich_" + clientID + ".png")
+    return JsonResponse({"fileName": username + "_goenrich_" + clientID + ".png"})
 
 
 @login_required()
 def lasso(request):
     username = request.user.username
-    random_str = get_random_string(8)
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
+    usr=userData.read(username,clientID)
+    if usr is None:
+        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
+
     cluster = int(request.GET.get("cluster_n", 0))  # +1 for R
     # stdout_file=BASE_STATIC+username+'_'+random_str+'_stdout.txt'
     # stderr_file=BASE_STATIC+username+'_'+random_str+'_stderr.txt'
@@ -585,19 +634,23 @@ def lasso(request):
     # 	else:
     # 		return HttpResponse('Error happened on the Server',status=code)
 
-    df = pd.read_csv(BASE_STATIC + username + "_corrected_clusters.csv")
-    df.drop(["FileName", "LABEL", "obs"], axis=1, inplace=True)
+    #df = usr.getCorrectedClusterCSV()
+    #df.drop(["FileName", "LABEL", "obs"], axis=1, inplace=True)
+    #x = df.drop(["cluster"], axis=1, inplace=False)
+    adata=usr.getAnndata()
+    df=adata.to_df().round(12)
+    df['cluster']=adata.obs['cluster'].astype(int)
     x = df.drop(["cluster"], axis=1, inplace=False)
 
     scaler = StandardScaler().fit(x)
     x = scaler.transform(x)
 
-    index = df["cluster"] == cluster
+    index = df['cluster'] == cluster
     index1 = df["cluster"] != cluster
     df.loc[index, "cluster"] = 1
     df.loc[index1, "cluster"] = 0
     y = pd.Categorical(df.cluster)
-    model = LassoCV(cv=5, random_state=42, n_jobs=2, max_iter=10000, tol=0.01)
+    model = LassoCV(cv=5, random_state=42, n_jobs=-1, max_iter=10000, tol=0.01)
     model.fit(x, y)
 
     # lasso_tuned = Lasso().set_params(alpha=model.alpha_)
@@ -609,6 +662,6 @@ def lasso(request):
     matplotlib.pyplot.clf()  # in order to save a picture
     coef[coef != 0][:50].plot.bar(x="Features", y="Coef")
     plt.savefig(
-        BASE_STATIC + username + "_" + random_str + "_lasso.png", bbox_inches="tight"
+        BASE_STATIC + username + "_" + clientID+ "_lasso.png", bbox_inches="tight"
     )
-    return JsonResponse({"fileName": username + "_" + random_str + "_lasso.png"})
+    return JsonResponse({"fileName": username + "_" + clientID + "_lasso.png"})
