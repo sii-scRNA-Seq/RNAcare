@@ -24,7 +24,6 @@ class userData():
         self.integrationData = pd.DataFrame() #expression+clinic+label
         self.anndata = None #expression+clinic for X
         self.markers=pd.DataFrame()
-        self.fr=None
     
     def setIntegrationData(self, df):
         df=df.round(15)
@@ -77,10 +76,10 @@ class userData():
             return None
 
     def setFRData(self,xfd):
-        self.fr=xfd
+        self.anndata.obsm['X_umap']=xfd
     
     def getFRData(self)  -> 'pd.DataFrame':
-        return self.fr
+        return self.anndata.obsm['X_umap']
 
     def save(self):
         with open(BASE_STATIC+self.uID+'_'+self.cID+'.pkl','wb')as f:

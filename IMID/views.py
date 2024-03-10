@@ -21,7 +21,7 @@ from sklearn.cluster import KMeans
 import matplotlib
 import re
 import seaborn as sns
-sns.set_theme(style='dark')
+import math
 
 matplotlib.use("agg")
 import plotly.graph_objects as go
@@ -261,7 +261,7 @@ def eda(request):
         umap1 = umap.UMAP(n_components=2, random_state=42, n_neighbors=30,n_jobs=2)
         X2D = umap1.fit_transform(pca_temp)
 
-    usr.setFRData(X2D.tolist())
+    usr.setFRData(X2D)
     usr.save()
     traces = zip_for_vis(X2D.tolist(), temp.FileName, temp.obs)
     traces1 = zip_for_vis(X2D.tolist(), color2, temp.obs)
@@ -291,7 +291,6 @@ def dgea(request):
         return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
     
     adata=usr.getAnndata()
-    print(clusters)
     if clusters == "default":
         with plt.rc_context():
             if len(set(adata.obs["batch1"])) > 1:
@@ -349,7 +348,7 @@ def clustering(request):
     if param is None:
         return HttpResponse("Param is illegal!", status=400)
     df = usr.getCorrectedCSV()
-    X2D=usr.getFRData()
+    X2D=usr.getFRData().tolist()
     adata = usr.getAnndata()
     if cluster == "LEIDEN":
         if param is None:
@@ -534,7 +533,6 @@ def goenrich(request):
     ):
         return HttpResponse("Not Allowed Clinic Data", status=400)
     markers = usr.getMarkers()
-    print(markers.head(8))
     markers = markers[
         (markers.pvals_adj < 0.05)
         & (markers.logfoldchanges > 0.5)
@@ -542,7 +540,6 @@ def goenrich(request):
     ]
     if len(markers.index) == 0:
         return HttpResponse("No marker genes", status=400)
-    [(i/3),(i%3)]
     with threadpool_limits(limits=2, user_api="blas"):
         df = go_it(markers.names.values)
     df1 = df.groupby("class").head(10).reset_index(drop=True)
@@ -694,24 +691,71 @@ def vlnPlot(request):
     except:
         return HttpResponse("geneList is illigal", status=400)
     usr=userData.read(username,clientID)
-    markers=usr.getMarkers()
-    markers.to_csv('abc_test.csv')
+    #markers=usr.getMarkers()
+    #markers.to_csv('abc_test.csv')
     adata=usr.getAnndata()
-    df=adata.to_df()
-    df['cluster']=adata.obs['cluster']
 
-    fig,axes=plt.subplots(4,3,figsize=(18,10))
-    fig.suptitle('Violin Plot for Target Genes')
-    for i,j in enumerate(geneList[:12]):
-        sns.violinplot(ax=axes[(i//3),(i%3)], data=df,x='cluster',y=j)
-        sns.swarmplot(ax=axes[(i//3),(i%3)], data=df,x='cluster',y=j, color='black', size=2)
-        axes[(i//3),(i%3)].set_title(j)
-    plt.savefig(
-        BASE_STATIC + username + "_" + clientID+ "_violin.png", bbox_inches="tight"
-    )
+    sc.set_figure_params(dpi=100)
+    sc.settings.verbosity = 0
+    num_genes = len(geneList)
+    max_cols = 3
+    num_rows = math.ceil(num_genes / max_cols)
+
+    # Set the figure size based on number of subplots
+    fig_width = 4.5 * max_cols
+    fig_height = 3 * num_rows
+
+    # Create subplots
+    fig, axes = plt.subplots(num_rows, max_cols, figsize=(fig_width, fig_height), sharex=False, sharey=False)
+
+    # Flatten the axes array for easier indexing
+    axes = axes.flatten()
+
+    # Iterate over genes and plot
+    with plt.rc_context():
+        for i, gene in enumerate(geneList):
+            if i < num_genes:
+                sc.pl.violin(adata, [gene], groupby="cluster", ax=axes[i])
+
+        # Remove any unused subplots
+        for ax in axes[num_genes:]:
+            fig.delaxes(ax)
+
+        # Adjust layout
+        plt.tight_layout()
+        plt.savefig(
+            BASE_STATIC + username + "_" + clientID + "_violin.png", bbox_inches="tight"
+        )
 
     return JsonResponse({'fileName':username + "_" + clientID+ "_violin.png"})
 
+
 @login_required()
 def densiPlot(request):
-    return JsonResponse([],safe=False)
+    username = request.user.username
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
+    geneList=request.GET.get('geneList',None)
+    if geneList is None:
+        return HttpResponse("geneList is Required", status=400)
+    try:
+        geneList=geneList.split(',')
+    except:
+        return HttpResponse("geneList is illigal", status=400)
+    pass
+
+    usr=userData.read(username,clientID)
+    adata=usr.getAnndata()
+
+    sc.set_figure_params(dpi=100)
+    sc.settings.verbosity = 0
+
+    # Iterate over genes and plot
+    with plt.rc_context({"figure.figsize": (4, 4)}):
+        sc.pl.umap(adata, color=geneList, s=50, frameon=False, ncols=4, vmax="p99",cmap='coolwarm')
+        plt.savefig(
+            BASE_STATIC + username + "_" + clientID + "_featurePlot.png", bbox_inches="tight"
+        )
+
+    return JsonResponse({'fileName':username + "_" + clientID+ "_featurePlot.png"})

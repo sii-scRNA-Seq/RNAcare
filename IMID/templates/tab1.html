@@ -459,7 +459,7 @@ function loadCandiGenes()
 				else if(sep=='Comma')sep=',';
 				else if(sep=='Tab')sep='\t';
 				else sep=';';
-				$('#targetGene').text(response.join(sep));
+				$('#targetGene').val(response.join(sep));
 			},
 			error:function(response){
 				alert(response.responseText);
@@ -488,24 +488,26 @@ function TGenePlotClick()
 			contentType:false,
 			processData:false,
 			type:'get',
-			async:true,
+			async:false,
 			beforeSend:function(){
 			$('#loader').show();
 			$('#vlnPlot').html('');
+			$('#densityPlot').html('');
 			},
 			complete:function(){
 			$('#loader').hide();
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				$('#vlnPlot').html('<img src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="1100" height="auto"/>');
+				$('#vlnPlot').html('<img class="imgvln" src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="800" height="auto"/>');
+				//wheelzoom(document.querySelectorAll('img.imgvln'));
 			},
 			error:function(response){
 				alert(response.responseText);
 				$('.btn').attr('disabled',false);
 				return;
 			}
-	});/*
+	});
 	url='/dega/density/?geneList='+tempValue;
 	url+='&cID='+clientUniqueID;
 	$.ajax({
@@ -515,23 +517,25 @@ function TGenePlotClick()
 			contentType:false,
 			processData:false,
 			type:'get',
-			async:true,
+			async:false,
 			beforeSend:function(){
 			$('#loader').show();
+			$('#densityPlot').html('');
 			},
 			complete:function(){
 			$('#loader').hide();
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				$('#densityPlot').html('<img class="img2" src="/static/temp/'+response.fileName+'" width="auto" height="400"/>');
+				$('#densityPlot').html('<img class="feplot" src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="1000" height="auto"/>');
+				//wheelzoom(document.querySelectorAll('img.feplot'));
 			},
 			error:function(response){
 				alert(response.responseText);
 				$('.btn').attr('disabled',false);
 				return;
 			}
-	});*/
+	});
 }
 
   </script>
