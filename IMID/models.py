@@ -1,6 +1,7 @@
 from django.db import models
 import pandas as pd
 from .constants import ONTOLOGY, BASE_UPLOAD, BASE_STATIC
+from threadpoolctl import threadpool_limits
 import pickle
 import scanpy as sc
 import numpy as np
@@ -38,6 +39,8 @@ class userData():
         i + "(" + j + ")" for i, j in zip(df.LABEL.tolist(), df.FileName.tolist())
         ]
         adata.obs['obs']=df.LABEL.tolist()
+        with threadpool_limits(limits=2, user_api="blas"):
+            sc.tl.pca(adata, svd_solver="arpack", n_comps=100)
         self.anndata=adata
     
     def setAnndata(self,adata):
@@ -67,8 +70,11 @@ class userData():
         t['FileName']=self.anndata.obs['batch1']
         t['obs']=self.anndata.obs['obs']
         t['LABEL']=t['obs']
-        t['cluster']=self.anndata.obs['cluster']
-        return t
+        if 'cluster' in self.anndata.obs.columns:
+            t['cluster']=self.anndata.obs['cluster']
+            return t
+        else:
+            return None
 
     def setFRData(self,xfd):
         self.fr=xfd

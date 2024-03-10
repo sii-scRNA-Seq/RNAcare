@@ -189,14 +189,11 @@ def clusteringPostProcess(
         # throw error for just 1 cluster
         return HttpResponse("Only 1 Cluster after clustering", status=400)
 
-    #df["cluster"] = [i for i in adata.obs[method]]
     li=adata.obs[method].tolist()
     count_dict=Counter(li)
     for member,count in count_dict.items():
         if count<10:
             return HttpResponse("The number of data in the cluster "+str(member)+" is less than 10, which will not be able for further analysis.", status=405)
-    #df.to_csv(BASE_STATIC + username + "_corrected_clusters.csv", index=False)
-    #usr.setIntegrationData(df)
 
     traces = zip_for_vis(X2D, list(adata.obs[method]), adata.obs_names.tolist())
 
@@ -278,6 +275,7 @@ def clusteringPostProcess(
 
 def getTopGeneCSV(adata, groupby, n_genes):
     if len(set(adata.obs[groupby])) > 1:
+        print('*********')
         sc.tl.rank_genes_groups(adata, groupby=groupby, method="t-test")
         result = adata.uns["rank_genes_groups"]
         groups = result["names"].dtype.names
