@@ -3,6 +3,7 @@
 {% block body %}
   <script>
   clientUniqueID=Math.random().toString(36).slice(-5);
+  clientUniqueID='12345';//for one user open multi-browsers
   $( function() {
     $(document).tooltip();$('.accordion').asAccordion({namespace: 'accordion'});
     $('#FR_processed').prop('checked',false);
@@ -382,8 +383,14 @@ function getTopGenes(t){
 	else if(t==2){
 		url='/dgea?clusters=label&topN='+$('#topForLabels').val();
 	}
-	else{
+	else if(t==3){
 		url='/dgea?clusters='+$('input[type=radio][name=clustering]:checked').val()+'&topN='+$('#topForLabels').val();//LEIDEN,HDBSCAN,Kmeans
+	}
+	else if(t==4){
+		url='/processedFile/corrected/?usr={{ user.get_username }}';
+	}
+	else if(t==5){
+		url='/processedFile/correctedCluster/?usr={{ user.get_username }}';
 	}
 	url+='&cID='+clientUniqueID;
 	$.ajax({
@@ -421,6 +428,110 @@ function getTopGenes(t){
 				return;
 			}
 	});
+}
+
+
+function loadCandiGenes()
+{
+	tempValue=$('#candidateGeneList').val();
+	if(tempValue=='')return;
+	url='/dega/candiGenes/?method='+tempValue;
+	url+='&cID='+clientUniqueID;
+	$.ajax({
+			url:url,
+			datType:'text',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				sep=$('#separator').val();
+				if(sep=='Space')sep=' ';
+				else if(sep=='Return')sep='\n';
+				else if(sep=='Comma')sep=',';
+				else if(sep=='Tab')sep='\t';
+				else sep=';';
+				$('#targetGene').text(response.join(sep));
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+}
+
+function TGenePlotClick()
+{
+	tempValue=$('#targetGene').val();
+	sep=$('#separator').val();
+	if(sep=='Space')sep=' ';
+	else if(sep=='Return')sep='\n';
+	else if(sep=='Comma')sep=',';
+	else if(sep=='Tab')sep='\t';
+	else sep=';';
+	tempValue=tempValue.split(sep).join(',');
+	url='/dega/vln/?geneList='+tempValue;
+	url+='&cID='+clientUniqueID;
+	$.ajax({
+			url:url,
+			datType:'text',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			$('#vlnPlot').html('');
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				$('#vlnPlot').html('<img src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="1100" height="auto"/>');
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});/*
+	url='/dega/density/?geneList='+tempValue;
+	url+='&cID='+clientUniqueID;
+	$.ajax({
+			url:url,
+			datType:'text',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				$('#densityPlot').html('<img class="img2" src="/static/temp/'+response.fileName+'" width="auto" height="400"/>');
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});*/
 }
 
   </script>
@@ -600,7 +711,7 @@ function getTopGenes(t){
   	</div>
   	<br>
 	<div style="text-align:right;">
-		<button id="download1" class="btn btn-primary" style="width:auto;" onclick="window.location='/static/temp/{{ user.get_username }}_{{ clientUniqueID }}_corrected.csv';">Download Processed data</button>
+		<button id="download1" class="btn btn-primary" style="width:auto;" onclick='getTopGenes(4);'">Download Processed data</button>
 		<br><br>
 		<button id="next3" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
 			
@@ -692,7 +803,7 @@ function getTopGenes(t){
 			</tr>
 			<tr class='downloadData1'>
 				<td style="text-align:right;" colspan='3'>
-				<button id="download2" class="btn btn-primary" style="width:auto;" onclick="window.location='/static/temp/{{ user.get_username }}_{{ clientUniqueID}}_adata.h5ad';">Download Processed data</button>
+				<button id="download2" class="btn btn-primary" style="width:auto;" onclick='getTopGenes(5);'>Download Processed data</button>
 				<br><br>
 					<button id="next4" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
 				</td>
@@ -704,17 +815,30 @@ function getTopGenes(t){
 
   <div id="tabs-7">
 	<p>Input your target gene list for the clusters and choose the separator.</p>
-	<textarea id="targetGene"  rows='5' cols='100'></textarea>
-	<br>
 	<label>Choose the separator for the gene list:</label>
-	<select id="'separator">
-		<option value="Space" selected="selected">Space</option>
+	<select id="separator">
+		<option value="Comma"  selected="selected">Comma</option>
 		<option value="Return">Return</option>
-		<option value="Comma">Comma</option>
+		<option value="Space">Space</option>	
 		<option value="Tab">Tab</option>
 		<option value="Semicolon">Semicolon</option>
 	</select>&nbsp;&nbsp;&nbsp;
-	<input type="submit" value="Submit" class="btn btn-primary"/>
+	<label>Choose Candidate Gene List.</label>
+	<select id="candidateGeneList" onchange="loadCandiGenes();">
+		<option value="" selected="selected"></option>
+		<option value="pca">PCA(3)</option>
+		<option value="Leiden">Leiden</option>
+		<option value="HDBSCAN">HDBSCAN</option>
+		<option value="Kmeans">Kmeans</option>
+	</select>
+	<br><br>
+	<textarea id="targetGene"  rows='5' cols='100'></textarea>
+	<br>
+	<button onclick='TGenePlotClick();' class="btn btn-primary" style="position: relative;left:950px;">Submit</button>
+	<br><br>
+	<div id="vlnPlot"></div>
+	<br><br>
+	<div id="densityPlot"></div>
 
   </div>
   

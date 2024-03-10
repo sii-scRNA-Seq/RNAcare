@@ -20,6 +20,8 @@ from sklearn.cluster import KMeans
 
 import matplotlib
 import re
+import seaborn as sns
+sns.set_theme(style='dark')
 
 matplotlib.use("agg")
 import plotly.graph_objects as go
@@ -249,14 +251,15 @@ def eda(request):
 
     #dfs1.drop(["ID_REF"], axis=1, inplace=True)
     #dfs1.drop(["FileName"], axis=1, inplace=True)
-    df_temp=temp.drop(['LABEL','obs','FileName'],axis=1,inplace=False)
+    #df_temp=temp.drop(['LABEL','obs','FileName'],axis=1,inplace=False)
+    pca_temp=usr.getAnndata().obsm['X_pca']
 
     if fr == "TSNE":
         tsne = TSNE(n_components=2, random_state=42,n_jobs=2)
-        X2D = tsne.fit_transform(df_temp)
+        X2D = tsne.fit_transform(pca_temp)
     else:
         umap1 = umap.UMAP(n_components=2, random_state=42, n_neighbors=30,n_jobs=2)
-        X2D = umap1.fit_transform(df_temp)
+        X2D = umap1.fit_transform(pca_temp)
 
     usr.setFRData(X2D.tolist())
     usr.save()
@@ -286,28 +289,9 @@ def dgea(request):
     usr=userData.read(username,clientID)
     if usr is None:
         return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
-
-    #if clusters not in ("LEIDEN", "HDBSCAN", "Kmeans"):
-    #    df = usr.getCorrectedCSV()
-    #else:
-    #    df = usr.getCorrectedClusterCSV()
-
-    #t = df.loc[
-    #    :, ~(df.columns.isin(["obs", "FileName", "LABEL", "cluster"]))
-    #]  #'obs','FileName', 'LABEL'
-    #adata = sc.AnnData(np.zeros(t.values.shape), dtype=np.float64)
-    #adata.X = t.values
-    #adata.var_names = t.columns.tolist()
-    #adata.obs_names = df.obs.tolist()
-    #adata.obs["batch1"] = df.FileName.tolist()
-    #adata.obs["batch2"] = [i + "(" + j + ")" for i, j in zip(df.LABEL.tolist(), df.FileName.tolist())]
-    adata=usr.getAnndata()
-    with threadpool_limits(limits=2, user_api="blas"):
-        sc.tl.pca(adata, svd_solver="arpack")
-    #adata.write(BASE_STATIC + username + "_adata.h5ad")
-    usr.setAnndata(adata)
-    usr.save()
     
+    adata=usr.getAnndata()
+    print(clusters)
     if clusters == "default":
         with plt.rc_context():
             if len(set(adata.obs["batch1"])) > 1:
@@ -341,13 +325,12 @@ def dgea(request):
             ],
             safe=False,
         )
-    if clusters == "fileName":
+    elif clusters == "fileName":
         # show top gene for specific group
         return getTopGeneCSV(adata, "batch1", n_genes)
     elif clusters == "label":
         return getTopGeneCSV(adata, "batch2", n_genes)
-    elif clusters in ("LEIDEN", "HDBSCAN", "Kmeans"):
-        adata.obs["cluster"] = [str(i) for i in df["cluster"]]
+    elif clusters in ("LEIDEN", "HDBSCAN", "KMeans"):
         return getTopGeneCSV(adata, "cluster", n_genes)
 
 
@@ -390,7 +373,7 @@ def clustering(request):
             return HttpResponse("K should be positive integer.", status=400)
         if param <= 5:
             param = HttpResponse("minSize should be at least 5.", status=400)  
-        labels = hdbscan.HDBSCAN(min_cluster_size=int(param)).fit_predict(adata.X)
+        labels = hdbscan.HDBSCAN(min_cluster_size=int(param)).fit_predict(adata.obsm['X_pca'])
         if min(labels) >= 0:
             labels = [str(i) for i in labels]
         else:
@@ -410,7 +393,7 @@ def clustering(request):
         
         if param <= 1:
             return HttpResponse("K should be larger than 1.", status=400)
-        km = KMeans(n_clusters=int(param), random_state=42, n_init="auto").fit(adata.X)
+        km = KMeans(n_clusters=int(param), random_state=42, n_init="auto").fit(adata.obsm['X_pca'])
         labels = [str(i) for i in km.labels_]
         adata.obs["kmeans"] = labels
         adata.obs["kmeans"] = adata.obs["kmeans"].astype("category")
@@ -464,7 +447,7 @@ def clusteringAdvanced(request):
                 df["level" + str(i + 1)] = [
                     "level" + str(i + 1) + "_" + str(j)
                     for j in hdbscan.HDBSCAN(min_cluster_size=int(parami)).fit_predict(
-                        adata.X
+                        adata.obsm['X_pca']
                     )
                 ]
 
@@ -559,7 +542,7 @@ def goenrich(request):
     ]
     if len(markers.index) == 0:
         return HttpResponse("No marker genes", status=400)
-    
+    [(i/3),(i%3)]
     with threadpool_limits(limits=2, user_api="blas"):
         df = go_it(markers.names.values)
     df1 = df.groupby("class").head(10).reset_index(drop=True)
@@ -611,32 +594,6 @@ def lasso(request):
         return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
 
     cluster = int(request.GET.get("cluster_n", 0))  # +1 for R
-    # stdout_file=BASE_STATIC+username+'_'+random_str+'_stdout.txt'
-    # stderr_file=BASE_STATIC+username+'_'+random_str+'_stderr.txt'
-    # code=400
-    # print('Rscript lasso.R '+username+' '+str(cluster))
-    # try:
-    # 	with open(stdout_file,'w')as out, open(stderr_file,'w')as err:
-    # 		Popen(['Rscript --max-ppsize=5000000 lasso.R '+username+' '+str(cluster)+' '+random_str],stdout=out,stderr=err,shell=True).communicate()#calling Rscript
-    # 	with open(stdout_file,'r')as out, open(stderr_file,'r')as err:
-    # 		stdout=out.read()
-    # 		stderr=err.read()
-    # 	code=200
-    # except:
-    # 	retValueOut=str(stderr)
-    # 	code=400
-    # finally:
-    # 	if code==200:
-    # 		if os.path.exists(stdout_file):
-    # 			os.remove(stdout_file)
-    # 		if os.path.exists(stderr_file):
-    # 			os.remove(stderr_file)
-    # 	else:
-    # 		return HttpResponse('Error happened on the Server',status=code)
-
-    #df = usr.getCorrectedClusterCSV()
-    #df.drop(["FileName", "LABEL", "obs"], axis=1, inplace=True)
-    #x = df.drop(["cluster"], axis=1, inplace=False)
     adata=usr.getAnndata()
     df=adata.to_df().round(12)
     df['cluster']=adata.obs['cluster'].astype(int)
@@ -665,3 +622,96 @@ def lasso(request):
         BASE_STATIC + username + "_" + clientID+ "_lasso.png", bbox_inches="tight"
     )
     return JsonResponse({"fileName": username + "_" + clientID + "_lasso.png"})
+
+
+@login_required()
+def downloadCorrected(request):
+    username = request.user.username
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
+    usr=userData.read(username,clientID)
+    if usr is None:
+        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
+    result_df=usr.getCorrectedCSV()
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = "attachment; filename=corrected.csv"
+    result_df.to_csv(path_or_buf=response)
+    return response
+
+
+@login_required()
+def downloadCorrectedCluster(request):
+    username = request.user.username
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
+    usr=userData.read(username,clientID)
+    if usr is None:
+        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
+    result_df=usr.getCorrectedClusterCSV()
+    if result_df is None:
+        return HttpResponse("Please do clustering first.", status=400)
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = "attachment; filename=correctedCluster.csv"
+    result_df.to_csv(path_or_buf=response)
+    return response
+
+@login_required()
+def candiGenes(request):
+    username = request.user.username
+    clientID=request.GET.get('cID',None)
+    method=request.GET.get('method',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
+    usr=userData.read(username,clientID)
+    if usr is None:
+        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
+    adata=usr.getAnndata()
+    if method is None or method=='pca':
+        n_pcs = 3
+        pcs_loadings=pd.DataFrame(adata.varm['PCs'][:,:n_pcs],index=adata.var_names)
+        pcs_loadings.dropna(inplace=True)
+        result=[]
+        for i in pcs_loadings.columns:
+            result.extend(pcs_loadings.nlargest(2,columns=i).index.tolist())
+            result.extend(pcs_loadings.nsmallest(2,columns=i).index.tolist())
+        return JsonResponse(result,safe=False)
+    else:
+        pass
+
+@login_required()
+def vlnPlot(request):
+    username = request.user.username
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
+    geneList=request.GET.get('geneList',None)
+    if geneList is None:
+        return HttpResponse("geneList is Required", status=400)
+    try:
+        geneList=geneList.split(',')
+    except:
+        return HttpResponse("geneList is illigal", status=400)
+    usr=userData.read(username,clientID)
+    markers=usr.getMarkers()
+    markers.to_csv('abc_test.csv')
+    adata=usr.getAnndata()
+    df=adata.to_df()
+    df['cluster']=adata.obs['cluster']
+
+    fig,axes=plt.subplots(4,3,figsize=(18,10))
+    fig.suptitle('Violin Plot for Target Genes')
+    for i,j in enumerate(geneList[:12]):
+        sns.violinplot(ax=axes[(i//3),(i%3)], data=df,x='cluster',y=j)
+        sns.swarmplot(ax=axes[(i//3),(i%3)], data=df,x='cluster',y=j, color='black', size=2)
+        axes[(i//3),(i%3)].set_title(j)
+    plt.savefig(
+        BASE_STATIC + username + "_" + clientID+ "_violin.png", bbox_inches="tight"
+    )
+
+    return JsonResponse({'fileName':username + "_" + clientID+ "_violin.png"})
+
+@login_required()
+def densiPlot(request):
+    return JsonResponse([],safe=False)
