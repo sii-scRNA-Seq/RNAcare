@@ -38,8 +38,9 @@ class userData():
         i + "(" + j + ")" for i, j in zip(df.LABEL.tolist(), df.FileName.tolist())
         ]
         adata.obs['obs']=df.LABEL.tolist()
+        n_comps=100
         with threadpool_limits(limits=2, user_api="blas"):
-            sc.tl.pca(adata, svd_solver="arpack", n_comps=100)
+            sc.tl.pca(adata, svd_solver="arpack", n_comps=min(t.shape[0]-1,t.shape[1]-1,n_comps))
         self.anndata=adata
     
     def setAnndata(self,adata):
