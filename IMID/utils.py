@@ -10,7 +10,7 @@ from genes_ncbi_proteincoding import GENEID2NT
 
 import random
 import string
-from .constants import BASE_UPLOAD
+from .constants import BASE_UPLOAD, BASE_STATIC
 from .models import Gene, GOTerm
 from harmony import harmonize
 import pandas as pd
@@ -21,6 +21,8 @@ from combat.pycombat import pycombat
 from matplotlib import pyplot as plt
 from django.http import HttpResponse, JsonResponse
 from collections import Counter
+from .models import userData
+import math
 
 
 @lru_cache(maxsize=None)
@@ -183,7 +185,7 @@ def bbknn(dfs):
 
 
 def clusteringPostProcess(
-    X2D, df, adata,  method, BASE_STATIC, username, random_str, usr
+    X2D, adata,  method, BASE_STATIC, username, random_str, usr
 ):
     if method != "kmeans" and len(set(adata.obs[method])) == 1:
         # throw error for just 1 cluster
@@ -275,7 +277,6 @@ def clusteringPostProcess(
 
 def getTopGeneCSV(adata, groupby, n_genes):
     if len(set(adata.obs[groupby])) > 1:
-        print('*********')
         sc.tl.rank_genes_groups(adata, groupby=groupby, method="t-test")
         result = adata.uns["rank_genes_groups"]
         groups = result["names"].dtype.names
@@ -292,3 +293,134 @@ def getTopGeneCSV(adata, groupby, n_genes):
 
     else:
         return HttpResponse("Only one cluster", status=500)
+
+
+def vlnPlot(request):
+    username = request.user.username
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
+    geneList=request.GET.get('geneList',None)
+    if geneList is None:
+        return HttpResponse("geneList is Required", status=400)
+    try:
+        geneList=geneList.split(',')
+    except:
+        return HttpResponse("geneList is illigal", status=400)
+    usr=userData.read(username,clientID)
+    #markers=usr.getMarkers()
+    #markers.to_csv('abc_test.csv')
+    adata=usr.getAnndata()
+    if adata is None:
+        return HttpResponse("No data is in use for the account", status=400)
+
+    X2D=usr.getFRData()
+    if X2D is None:
+        return HttpResponse("Please run clustering first.", status=400)
+
+    sc.set_figure_params(dpi=100)
+    sc.settings.verbosity = 0
+    num_genes = len(geneList)
+    max_cols = 3
+    num_rows = math.ceil(num_genes / max_cols)
+
+    # Set the figure size based on number of subplots
+    fig_width = 4.5 * max_cols
+    fig_height = 3 * num_rows
+
+    # Create subplots
+    fig, axes = plt.subplots(num_rows, max_cols, figsize=(fig_width, fig_height), sharex=False, sharey=False)
+
+    # Flatten the axes array for easier indexing
+    axes = axes.flatten()
+
+    # Iterate over genes and plot
+    with plt.rc_context():
+        for i, gene in enumerate(geneList):
+            if i < num_genes:
+                sc.pl.violin(adata, [gene], groupby="cluster", ax=axes[i])
+
+        # Remove any unused subplots
+        for ax in axes[num_genes:]:
+            fig.delaxes(ax)
+
+        # Adjust layout
+        plt.tight_layout()
+        plt.savefig(
+            BASE_STATIC + username + "_" + clientID + "_violin.png", bbox_inches="tight"
+        )
+    return JsonResponse({'fileName':username + "_" + clientID+ "_violin.png"})
+
+def densiPlot(request):
+    username = request.user.username
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
+    geneList=request.GET.get('geneList',None)
+    if geneList is None:
+        return HttpResponse("geneList is Required", status=400)
+    try:
+        geneList=geneList.split(',')
+    except:
+        return HttpResponse("geneList is illigal", status=400)
+
+    usr=userData.read(username,clientID)
+    adata=usr.getAnndata()
+    if adata is None:
+        return HttpResponse("No data is in use for the account", status=400)
+
+    X2D=usr.getFRData()
+    if X2D is None:
+        return HttpResponse("Please run feature reduction first.", status=400)
+
+    sc.set_figure_params(dpi=100)
+    sc.settings.verbosity = 0
+
+    # Iterate over genes and plot
+    with plt.rc_context({"figure.figsize": (4, 4)}):
+        sc.pl.umap(adata, color=geneList, s=50, frameon=False, ncols=4, vmax="p99",cmap='coolwarm')
+        plt.savefig(
+            BASE_STATIC + username + "_" + clientID + "_featurePlot.png", bbox_inches="tight"
+        )
+
+    return JsonResponse({'fileName':username + "_" + clientID+ "_featurePlot.png"})
+
+def heatmapPlot(request):
+    username = request.user.username
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
+    geneList=request.GET.get('geneList',None)
+    if geneList is None:
+        return HttpResponse("geneList is Required", status=400)
+    try:
+        geneList=geneList.split(',')
+    except:
+        return HttpResponse("geneList is illigal", status=400)
+
+    usr=userData.read(username,clientID)
+    adata=usr.getAnndata()
+    if adata is None:
+        return HttpResponse("No data is in use for the account", status=400)
+    X2D=usr.getFRData()
+    if X2D is None:
+        return HttpResponse("Please run feature reduction first.", status=400)
+
+    # scale and store results in layer
+    adata.layers["scaled"] = sc.pp.scale(adata, copy=True).X
+    sc.pl.heatmap(
+        adata,
+        geneList,
+        groupby="cluster",
+        layer="scaled",
+        vmin=-2,
+        vmax=2,
+        cmap="viridis",
+        dendrogram=True,
+        swap_axes=True,
+        figsize=(11, 4),
+    )
+    plt.savefig(
+            BASE_STATIC + username + "_" + clientID + "_heatmapPlot.png", bbox_inches="tight"
+    )
+    return JsonResponse({'fileName':username + "_" + clientID+ "_heatmapPlot.png"})

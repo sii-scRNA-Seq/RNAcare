@@ -297,6 +297,8 @@ function clusterBtnClick(){
 					$('#cluster_num1').append(new Option(key,key));
 				}
 				$('.btn').attr('disabled',false);
+				$('#targetGene').val('')
+				$('#candidateGeneList').val('');
 			},
 			error:function(response){
 				alert(response.responseText);
@@ -330,7 +332,7 @@ function goEnrich(){
 			$('#loader').hide();
 			},
 			success:function(response){
-				$('#goEnrichPic').html('<img class="imgGo" src="/static/temp/'+response.fileName+'" width="500" height="auto"/><br><a href="/static/temp/'+response.fileName+'" target="_blank">Download Image</a>');
+				$('#goEnrichPic').html('<img class="imgGo" src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="500" height="auto"/><br><a href="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" target="_blank">Download Image</a>');
 				alert('Calculation Succeed!');
 				wheelzoom(document.querySelectorAll('img.imgGo'));
 				$('.btn').attr('disabled',false);
@@ -479,7 +481,8 @@ function TGenePlotClick()
 	else if(sep=='Tab')sep='\t';
 	else sep=';';
 	tempValue=tempValue.split(sep).join(',');
-	url='/dega/vln/?geneList='+tempValue;
+	if(tempValue=='')return;
+	url='/dega/plot/?type=vln&geneList='+tempValue;
 	url+='&cID='+clientUniqueID;
 	$.ajax({
 			url:url,
@@ -493,13 +496,14 @@ function TGenePlotClick()
 			$('#loader').show();
 			$('#vlnPlot').html('');
 			$('#densityPlot').html('');
+			$('#heatmapPlot').html('');
 			},
 			complete:function(){
 			$('#loader').hide();
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				$('#vlnPlot').html('<img class="imgvln" src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="800" height="auto"/>');
+				$('#vlnPlot').html('<label style="display:block;text-align: center;">Violin Plot for target genes</label><br><br><img class="imgvln" src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="800" height="auto"/>');
 				//wheelzoom(document.querySelectorAll('img.imgvln'));
 			},
 			error:function(response){
@@ -508,7 +512,7 @@ function TGenePlotClick()
 				return;
 			}
 	});
-	url='/dega/density/?geneList='+tempValue;
+	url='/dega/plot/?type=density&geneList='+tempValue;
 	url+='&cID='+clientUniqueID;
 	$.ajax({
 			url:url,
@@ -520,15 +524,41 @@ function TGenePlotClick()
 			async:false,
 			beforeSend:function(){
 			$('#loader').show();
-			$('#densityPlot').html('');
 			},
 			complete:function(){
 			$('#loader').hide();
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				$('#densityPlot').html('<img class="feplot" src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="1000" height="auto"/>');
+				$('#densityPlot').html('<label style="display:block;text-align: center;">Feature Plot for target genes</label><br><br><img class="feplot" src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="1000" height="auto"/>');
 				//wheelzoom(document.querySelectorAll('img.feplot'));
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+	url='/dega/plot/?type=heatmap&geneList='+tempValue;
+	url+='&cID='+clientUniqueID;
+	$.ajax({
+			url:url,
+			datType:'text',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:false,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				$('#heatmapPlot').html('<label style="display:block;text-align: center;">Heatmap Plot for target genes(Scaled)</label><br><br><img class="heatplot" src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="1000" height="auto"/>');
+				//wheelzoom(document.querySelectorAll('img.heatplot'));
 			},
 			error:function(response){
 				alert(response.responseText);
@@ -831,9 +861,7 @@ function TGenePlotClick()
 	<select id="candidateGeneList" onchange="loadCandiGenes();">
 		<option value="" selected="selected"></option>
 		<option value="pca">PCA(3)</option>
-		<option value="Leiden">Leiden</option>
-		<option value="HDBSCAN">HDBSCAN</option>
-		<option value="Kmeans">Kmeans</option>
+		<option value="clusters">Leiden/HDBSCAN/KMeans</option>
 	</select>
 	<br><br>
 	<textarea id="targetGene"  rows='5' cols='100'></textarea>
@@ -843,6 +871,8 @@ function TGenePlotClick()
 	<div id="vlnPlot"></div>
 	<br><br>
 	<div id="densityPlot"></div>
+	<br><br>
+	<div id="heatmapPlot"></div>
 
   </div>
   

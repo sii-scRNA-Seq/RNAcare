@@ -20,8 +20,6 @@ from sklearn.cluster import KMeans
 
 import matplotlib
 import re
-import seaborn as sns
-import math
 
 matplotlib.use("agg")
 import plotly.graph_objects as go
@@ -33,13 +31,15 @@ from .utils import (
     zip_for_vis,
     fromPdtoSangkey,
     go_it,
-    get_random_string,
     handle_uploaded_file1,
     combat,
     harmony,
     bbknn,
     clusteringPostProcess,
     getTopGeneCSV,
+    vlnPlot,
+    densiPlot,
+    heatmapPlot
 )
 
 from .models import userData
@@ -347,8 +347,10 @@ def clustering(request):
     param = request.GET.get("param", None)
     if param is None:
         return HttpResponse("Param is illegal!", status=400)
-    df = usr.getCorrectedCSV()
-    X2D=usr.getFRData().tolist()
+    X2D=usr.getFRData()
+    if X2D is None:
+        return HttpResponse("Please run feature reduction first.", status=400)
+    X2D=X2D.tolist()
     adata = usr.getAnndata()
     if cluster == "LEIDEN":
         if param is None:
@@ -360,7 +362,7 @@ def clustering(request):
         sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
         sc.tl.leiden(adata, resolution=param)
         Resp = clusteringPostProcess(
-            X2D, df, adata, "leiden", BASE_STATIC, username, clientID, usr
+            X2D,  adata, "leiden", BASE_STATIC, username, clientID, usr
         )
         return Resp
     elif cluster == "HDBSCAN":
@@ -381,7 +383,7 @@ def clustering(request):
         adata.obs["hdbscan"] = labels
         adata.obs["hdbscan"] = adata.obs["hdbscan"].astype("category")
         Resp = clusteringPostProcess(
-            X2D, df, adata, "hdbscan", BASE_STATIC, username, clientID, usr
+            X2D, adata, "hdbscan", BASE_STATIC, username, clientID, usr
         )
         return Resp
     elif cluster == "Kmeans":
@@ -397,7 +399,7 @@ def clustering(request):
         adata.obs["kmeans"] = labels
         adata.obs["kmeans"] = adata.obs["kmeans"].astype("category")
         Resp = clusteringPostProcess(
-            X2D, df, adata,  "kmeans", BASE_STATIC, username, clientID, usr
+            X2D, adata,  "kmeans", BASE_STATIC, username, clientID, usr
         )
         return Resp
 
@@ -533,6 +535,8 @@ def goenrich(request):
     ):
         return HttpResponse("Not Allowed Clinic Data", status=400)
     markers = usr.getMarkers()
+    if markers is None:
+        return HttpResponse("Please run clustering method first.", status=400)
     markers = markers[
         (markers.pvals_adj < 0.05)
         & (markers.logfoldchanges > 0.5)
@@ -593,6 +597,8 @@ def lasso(request):
     cluster = int(request.GET.get("cluster_n", 0))  # +1 for R
     adata=usr.getAnndata()
     df=adata.to_df().round(12)
+    if 'cluster' not in adata.obs.columns:
+        return HttpResponse("Please run clustering method first.", status=400)
     df['cluster']=adata.obs['cluster'].astype(int)
     x = df.drop(["cluster"], axis=1, inplace=False)
 
@@ -659,13 +665,14 @@ def candiGenes(request):
     username = request.user.username
     clientID=request.GET.get('cID',None)
     method=request.GET.get('method',None)
+    maxGene=12
     if clientID is None:
         return HttpResponse("clientID is Required", status=400)
     usr=userData.read(username,clientID)
     if usr is None:
-        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
-    adata=usr.getAnndata()
+        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)  
     if method is None or method=='pca':
+        adata=usr.getAnndata()
         n_pcs = 3
         pcs_loadings=pd.DataFrame(adata.varm['PCs'][:,:n_pcs],index=adata.var_names)
         pcs_loadings.dropna(inplace=True)
@@ -675,87 +682,20 @@ def candiGenes(request):
             result.extend(pcs_loadings.nsmallest(2,columns=i).index.tolist())
         return JsonResponse(result,safe=False)
     else:
-        pass
+        markers=usr.getMarkers()
+        if markers is None:
+            return HttpResponse("Please run clustering method first.", status=400)
+        clusters=set(markers.group)
+        number=maxGene//len(clusters)
+        result=markers.groupby('group').apply(lambda x: x.nlargest(number, 'scores')).names.tolist()
+        return JsonResponse(result,safe=False)
 
 @login_required()
-def vlnPlot(request):
-    username = request.user.username
-    clientID=request.GET.get('cID',None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-    geneList=request.GET.get('geneList',None)
-    if geneList is None:
-        return HttpResponse("geneList is Required", status=400)
-    try:
-        geneList=geneList.split(',')
-    except:
-        return HttpResponse("geneList is illigal", status=400)
-    usr=userData.read(username,clientID)
-    #markers=usr.getMarkers()
-    #markers.to_csv('abc_test.csv')
-    adata=usr.getAnndata()
-
-    sc.set_figure_params(dpi=100)
-    sc.settings.verbosity = 0
-    num_genes = len(geneList)
-    max_cols = 3
-    num_rows = math.ceil(num_genes / max_cols)
-
-    # Set the figure size based on number of subplots
-    fig_width = 4.5 * max_cols
-    fig_height = 3 * num_rows
-
-    # Create subplots
-    fig, axes = plt.subplots(num_rows, max_cols, figsize=(fig_width, fig_height), sharex=False, sharey=False)
-
-    # Flatten the axes array for easier indexing
-    axes = axes.flatten()
-
-    # Iterate over genes and plot
-    with plt.rc_context():
-        for i, gene in enumerate(geneList):
-            if i < num_genes:
-                sc.pl.violin(adata, [gene], groupby="cluster", ax=axes[i])
-
-        # Remove any unused subplots
-        for ax in axes[num_genes:]:
-            fig.delaxes(ax)
-
-        # Adjust layout
-        plt.tight_layout()
-        plt.savefig(
-            BASE_STATIC + username + "_" + clientID + "_violin.png", bbox_inches="tight"
-        )
-
-    return JsonResponse({'fileName':username + "_" + clientID+ "_violin.png"})
-
-
-@login_required()
-def densiPlot(request):
-    username = request.user.username
-    clientID=request.GET.get('cID',None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-    geneList=request.GET.get('geneList',None)
-    if geneList is None:
-        return HttpResponse("geneList is Required", status=400)
-    try:
-        geneList=geneList.split(',')
-    except:
-        return HttpResponse("geneList is illigal", status=400)
-    pass
-
-    usr=userData.read(username,clientID)
-    adata=usr.getAnndata()
-
-    sc.set_figure_params(dpi=100)
-    sc.settings.verbosity = 0
-
-    # Iterate over genes and plot
-    with plt.rc_context({"figure.figsize": (4, 4)}):
-        sc.pl.umap(adata, color=geneList, s=50, frameon=False, ncols=4, vmax="p99",cmap='coolwarm')
-        plt.savefig(
-            BASE_STATIC + username + "_" + clientID + "_featurePlot.png", bbox_inches="tight"
-        )
-
-    return JsonResponse({'fileName':username + "_" + clientID+ "_featurePlot.png"})
+def genePlot(request):
+    type=request.GET.get('type','vln')
+    if type=='vln':
+        return vlnPlot(request)
+    elif type=='density':
+        return densiPlot(request)
+    else:#type=='heatmap'
+        return heatmapPlot(request)
