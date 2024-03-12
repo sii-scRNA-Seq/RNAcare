@@ -10,7 +10,7 @@ from genes_ncbi_proteincoding import GENEID2NT
 
 import random
 import string
-from .constants import BASE_UPLOAD, BASE_STATIC
+from .constants import BASE_UPLOAD, BASE_STATIC, GeneID_URL
 from .models import Gene, GOTerm
 from harmony import harmonize
 import pandas as pd
@@ -21,8 +21,9 @@ from combat.pycombat import pycombat
 from matplotlib import pyplot as plt
 from django.http import HttpResponse, JsonResponse
 from collections import Counter
-from .models import userData
 import math
+import requests
+import json
 
 
 @lru_cache(maxsize=None)
@@ -369,3 +370,26 @@ def heatmapPlot(geneList, adata, clientID, username):
         bbox_inches="tight",
     )
     return JsonResponse({"fileName": username + "_" + clientID + "_heatmapPlot.png"})
+
+
+def GeneID2SymID(geneList):
+    geneIDs = []
+    for g in geneList:
+        if g.startswith("ENSG"):
+            geneIDs.append(g)
+    if len(geneIDs) == 0:
+        return geneList
+    ids_json = json.dumps(geneIDs)
+    body = {"api": 1, "ids": ids_json}
+    try:
+        response = requests.post(GeneID_URL, data=body)
+        text = json.loads(response.text)
+    except:
+        return None
+    retRes = []
+    for i in geneList:
+        if i in text:
+            retRes.append(text[i])
+        else:
+            retRes.append(i)
+    return retRes

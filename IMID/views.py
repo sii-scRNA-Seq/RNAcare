@@ -41,6 +41,7 @@ from .utils import (
     vlnPlot,
     densiPlot,
     heatmapPlot,
+    GeneID2SymID,
 )
 
 from .models import userData
@@ -731,13 +732,34 @@ def genePlot(request):
     adata = usr.getAnndata()
     if adata is None:
         return HttpResponse("No data is in use for the account", status=400)
-
+    geneList1 = []
+    for i in geneList:  # find legal geneList
+        if i in adata.var_names:
+            geneList1.append(i)
+    if len(geneList1) == 0:
+        return HttpResponse("Can't find legal gene in the list", status=400)
     X2D = usr.getFRData()
     if X2D is None:
         return HttpResponse("Please run feature reduction first.", status=400)
     if type == "vln":
-        return vlnPlot(geneList, adata, clientID, username)
+        return vlnPlot(geneList1, adata, clientID, username)
     elif type == "density":
-        return densiPlot(geneList, adata, clientID, username)
+        return densiPlot(geneList1, adata, clientID, username)
     else:  # type=='heatmap'
-        return heatmapPlot(geneList, adata, clientID, username)
+        return heatmapPlot(geneList1, adata, clientID, username)
+
+
+@login_required()
+def GeneLookup(request):
+    geneList = request.GET.get("geneList", None)
+    if geneList is None:
+        return HttpResponse("geneList is Required", status=400)
+    try:
+        geneList = geneList.split(",")
+        geneList = [i for i in geneList if i != "None"]
+    except:
+        return HttpResponse("geneList is illigal", status=400)
+    result = GeneID2SymID(geneList)
+    if result is None:
+        return HttpResponse("geneList is illigal", status=400)
+    return JsonResponse(result, safe=False)
