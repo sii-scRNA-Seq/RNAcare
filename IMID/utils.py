@@ -295,45 +295,19 @@ def getTopGeneCSV(adata, groupby, n_genes):
         return HttpResponse("Only one cluster", status=500)
 
 
-def vlnPlot(request):
-    username = request.user.username
-    clientID=request.GET.get('cID',None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-    geneList=request.GET.get('geneList',None)
-    if geneList is None:
-        return HttpResponse("geneList is Required", status=400)
-    try:
-        geneList=geneList.split(',')
-    except:
-        return HttpResponse("geneList is illigal", status=400)
-    usr=userData.read(username,clientID)
-    #markers=usr.getMarkers()
-    #markers.to_csv('abc_test.csv')
-    adata=usr.getAnndata()
-    if adata is None:
-        return HttpResponse("No data is in use for the account", status=400)
-
-    X2D=usr.getFRData()
-    if X2D is None:
-        return HttpResponse("Please run clustering first.", status=400)
-
+def vlnPlot(geneList,adata,clientID,username):
     sc.set_figure_params(dpi=100)
     sc.settings.verbosity = 0
     num_genes = len(geneList)
     max_cols = 3
     num_rows = math.ceil(num_genes / max_cols)
-
     # Set the figure size based on number of subplots
     fig_width = 4.5 * max_cols
     fig_height = 3 * num_rows
-
     # Create subplots
     fig, axes = plt.subplots(num_rows, max_cols, figsize=(fig_width, fig_height), sharex=False, sharey=False)
-
     # Flatten the axes array for easier indexing
     axes = axes.flatten()
-
     # Iterate over genes and plot
     with plt.rc_context():
         for i, gene in enumerate(geneList):
@@ -351,31 +325,9 @@ def vlnPlot(request):
         )
     return JsonResponse({'fileName':username + "_" + clientID+ "_violin.png"})
 
-def densiPlot(request):
-    username = request.user.username
-    clientID=request.GET.get('cID',None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-    geneList=request.GET.get('geneList',None)
-    if geneList is None:
-        return HttpResponse("geneList is Required", status=400)
-    try:
-        geneList=geneList.split(',')
-    except:
-        return HttpResponse("geneList is illigal", status=400)
-
-    usr=userData.read(username,clientID)
-    adata=usr.getAnndata()
-    if adata is None:
-        return HttpResponse("No data is in use for the account", status=400)
-
-    X2D=usr.getFRData()
-    if X2D is None:
-        return HttpResponse("Please run feature reduction first.", status=400)
-
+def densiPlot(geneList,adata,clientID,username):
     sc.set_figure_params(dpi=100)
     sc.settings.verbosity = 0
-
     # Iterate over genes and plot
     with plt.rc_context({"figure.figsize": (4, 4)}):
         sc.pl.umap(adata, color=geneList, s=50, frameon=False, ncols=4, vmax="p99",cmap='coolwarm')
@@ -385,27 +337,7 @@ def densiPlot(request):
 
     return JsonResponse({'fileName':username + "_" + clientID+ "_featurePlot.png"})
 
-def heatmapPlot(request):
-    username = request.user.username
-    clientID=request.GET.get('cID',None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-    geneList=request.GET.get('geneList',None)
-    if geneList is None:
-        return HttpResponse("geneList is Required", status=400)
-    try:
-        geneList=geneList.split(',')
-    except:
-        return HttpResponse("geneList is illigal", status=400)
-
-    usr=userData.read(username,clientID)
-    adata=usr.getAnndata()
-    if adata is None:
-        return HttpResponse("No data is in use for the account", status=400)
-    X2D=usr.getFRData()
-    if X2D is None:
-        return HttpResponse("Please run feature reduction first.", status=400)
-
+def heatmapPlot(geneList,adata,clientID,username):
     # scale and store results in layer
     adata.layers["scaled"] = sc.pp.scale(adata, copy=True).X
     sc.pl.heatmap(

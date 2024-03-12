@@ -299,6 +299,9 @@ function clusterBtnClick(){
 				$('.btn').attr('disabled',false);
 				$('#targetGene').val('')
 				$('#candidateGeneList').val('');
+				$('#vlnPlot').html('');
+				$('#densityPlot').html('');
+				$('#heatmapPlot').html('');
 			},
 			error:function(response){
 				alert(response.responseText);
