@@ -388,7 +388,7 @@ def GeneID2SymID(geneList):
         return None
     retRes = []
     for i in geneList:
-        if i in text:
+        if i in text and text[i] is not None:
             retRes.append(text[i])
         else:
             retRes.append(i)
