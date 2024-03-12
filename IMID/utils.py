@@ -184,36 +184,35 @@ def bbknn(dfs):
     return dfs
 
 
-def clusteringPostProcess(
-    X2D, adata,  method, BASE_STATIC, username, random_str, usr
-):
+def clusteringPostProcess(X2D, adata, method, BASE_STATIC, username, random_str, usr):
     if method != "kmeans" and len(set(adata.obs[method])) == 1:
         # throw error for just 1 cluster
         return HttpResponse("Only 1 Cluster after clustering", status=400)
 
-    li=adata.obs[method].tolist()
-    count_dict=Counter(li)
-    for member,count in count_dict.items():
-        if count<10:
-            return HttpResponse("The number of data in the cluster "+str(member)+" is less than 10, which will not be able for further analysis.", status=405)
+    li = adata.obs[method].tolist()
+    count_dict = Counter(li)
+    for member, count in count_dict.items():
+        if count < 10:
+            return HttpResponse(
+                "The number of data in the cluster "
+                + str(member)
+                + " is less than 10, which will not be able for further analysis.",
+                status=405,
+            )
 
     traces = zip_for_vis(X2D, list(adata.obs[method]), adata.obs_names.tolist())
 
-
-    #adata.write(BASE_STATIC + username + "_adata.h5ad")
-    adata.obs['cluster']=li
+    # adata.write(BASE_STATIC + username + "_adata.h5ad")
+    adata.obs["cluster"] = li
     usr.setAnndata(adata)
 
-
-    barChart1=[]
-    barChart2=[]
+    barChart1 = []
+    barChart2 = []
 
     with plt.rc_context():
         sc.tl.rank_genes_groups(adata, groupby=method, method="t-test")
         sc.tl.dendrogram(adata, groupby=method)
-        sc.pl.rank_genes_groups_dotplot(
-            adata, n_genes=4, show=False, color_map="bwr"
-        )
+        sc.pl.rank_genes_groups_dotplot(adata, n_genes=4, show=False, color_map="bwr")
         plt.savefig(
             BASE_STATIC + username + "_cluster_" + random_str + "_1.png",
             bbox_inches="tight",
@@ -295,7 +294,7 @@ def getTopGeneCSV(adata, groupby, n_genes):
         return HttpResponse("Only one cluster", status=500)
 
 
-def vlnPlot(geneList,adata,clientID,username):
+def vlnPlot(geneList, adata, clientID, username):
     sc.set_figure_params(dpi=100)
     sc.settings.verbosity = 0
     num_genes = len(geneList)
@@ -305,7 +304,9 @@ def vlnPlot(geneList,adata,clientID,username):
     fig_width = 4.5 * max_cols
     fig_height = 3 * num_rows
     # Create subplots
-    fig, axes = plt.subplots(num_rows, max_cols, figsize=(fig_width, fig_height), sharex=False, sharey=False)
+    fig, axes = plt.subplots(
+        num_rows, max_cols, figsize=(fig_width, fig_height), sharex=False, sharey=False
+    )
     # Flatten the axes array for easier indexing
     axes = axes.flatten()
     # Iterate over genes and plot
@@ -323,21 +324,32 @@ def vlnPlot(geneList,adata,clientID,username):
         plt.savefig(
             BASE_STATIC + username + "_" + clientID + "_violin.png", bbox_inches="tight"
         )
-    return JsonResponse({'fileName':username + "_" + clientID+ "_violin.png"})
+    return JsonResponse({"fileName": username + "_" + clientID + "_violin.png"})
 
-def densiPlot(geneList,adata,clientID,username):
+
+def densiPlot(geneList, adata, clientID, username):
     sc.set_figure_params(dpi=100)
     sc.settings.verbosity = 0
     # Iterate over genes and plot
     with plt.rc_context({"figure.figsize": (4, 4)}):
-        sc.pl.umap(adata, color=geneList, s=50, frameon=False, ncols=4, vmax="p99",cmap='coolwarm')
+        sc.pl.umap(
+            adata,
+            color=geneList,
+            s=50,
+            frameon=False,
+            ncols=4,
+            vmax="p99",
+            cmap="coolwarm",
+        )
         plt.savefig(
-            BASE_STATIC + username + "_" + clientID + "_featurePlot.png", bbox_inches="tight"
+            BASE_STATIC + username + "_" + clientID + "_featurePlot.png",
+            bbox_inches="tight",
         )
 
-    return JsonResponse({'fileName':username + "_" + clientID+ "_featurePlot.png"})
+    return JsonResponse({"fileName": username + "_" + clientID + "_featurePlot.png"})
 
-def heatmapPlot(geneList,adata,clientID,username):
+
+def heatmapPlot(geneList, adata, clientID, username):
     # scale and store results in layer
     adata.layers["scaled"] = sc.pp.scale(adata, copy=True).X
     sc.pl.heatmap(
@@ -353,6 +365,7 @@ def heatmapPlot(geneList,adata,clientID,username):
         figsize=(11, 4),
     )
     plt.savefig(
-            BASE_STATIC + username + "_" + clientID + "_heatmapPlot.png", bbox_inches="tight"
+        BASE_STATIC + username + "_" + clientID + "_heatmapPlot.png",
+        bbox_inches="tight",
     )
-    return JsonResponse({'fileName':username + "_" + clientID+ "_heatmapPlot.png"})
+    return JsonResponse({"fileName": username + "_" + clientID + "_heatmapPlot.png"})
