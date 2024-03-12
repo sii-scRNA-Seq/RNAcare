@@ -15,6 +15,7 @@ from threadpoolctl import threadpool_limits
 from sklearn.linear_model import LassoCV, Lasso
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
+import math
 
 # gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
 
@@ -205,8 +206,6 @@ def eda(request):
         temp1 = temp.reset_index().drop(
             ["ID_REF", "LABEL"], axis=1, inplace=False
         )  # exclude ID_REF & LABEL
-        # temp0.append(temp1.filter(regex='c_'))#clinic data
-        # temp1=temp1.loc[:,~temp1.columns.str.startswith('c_')]#transcript data
         # rpkm to CPM
         if temp1.shape[0] != 0:
             temp1 = (temp1.div(temp1.sum(axis=0), axis=1) * 1e6) / temp1.sum().sum()
@@ -686,16 +685,36 @@ def candiGenes(request):
         if markers is None:
             return HttpResponse("Please run clustering method first.", status=400)
         clusters=set(markers.group)
-        number=maxGene//len(clusters)
+        number=math.ceil(maxGene/len(clusters))
         result=markers.groupby('group').apply(lambda x: x.nlargest(number, 'scores')).names.tolist()
         return JsonResponse(result,safe=False)
 
 @login_required()
 def genePlot(request):
     type=request.GET.get('type','vln')
+    geneList=request.GET.get('geneList',None)
+    if geneList is None:
+        return HttpResponse("geneList is Required", status=400)
+    try:
+        geneList=geneList.split(',')
+        geneList=[i for i in geneList if i!='None']
+    except:
+        return HttpResponse("geneList is illigal", status=400)
+    username = request.user.username
+    clientID=request.GET.get('cID',None)
+    if clientID is None:
+        return HttpResponse("clientID is Required", status=400)
+    usr=userData.read(username,clientID)
+    adata=usr.getAnndata()
+    if adata is None:
+        return HttpResponse("No data is in use for the account", status=400)
+
+    X2D=usr.getFRData()
+    if X2D is None:
+        return HttpResponse("Please run feature reduction first.", status=400)
     if type=='vln':
-        return vlnPlot(request)
+        return vlnPlot(geneList,adata,clientID,username)
     elif type=='density':
-        return densiPlot(request)
+        return densiPlot(geneList,adata,clientID,username)
     else:#type=='heatmap'
-        return heatmapPlot(request)
+        return heatmapPlot(geneList,adata,clientID,username)
