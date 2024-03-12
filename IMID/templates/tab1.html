@@ -448,6 +448,7 @@ function getSep()
 
 function loadCandiGenes()
 {
+	sep=getSep();
 	tempValue=$('#candidateGeneList').val();
 	if(tempValue=='')return;
 	url='/dega/candiGenes/?method='+tempValue;
@@ -468,7 +469,6 @@ function loadCandiGenes()
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				
 				$('#targetGene').val(response.join(sep));
 			},
 			error:function(response){
