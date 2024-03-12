@@ -42,6 +42,7 @@ from .utils import (
     densiPlot,
     heatmapPlot,
     GeneID2SymID,
+    usrCheck,
 )
 
 from .models import userData
@@ -132,20 +133,20 @@ def uploadMeta(request):
 
 @login_required()
 def eda(request):
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
     username = request.user.username
+    clientID = request.GET.get("cID", None)
+
     corrected = request.GET.get("correct", "Combat")
     log2 = request.GET.get("log2", "No")
     fr = request.GET.get("fr", "TSNE")
     integrate = request.GET.get("integrate", "").split(",")
     if "" in integrate:
         integrate.remove("")
-
-    clientID = request.GET.get("cID", None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-
-    usr = userData(clientID, username)
-
     for file in glob.glob(BASE_STATIC + "/" + username + "*"):
         os.remove(file)
 
@@ -282,21 +283,18 @@ def eda(request):
 
 @login_required()
 def dgea(request):
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
     username = request.user.username
+    clientID = request.GET.get("cID", None)
+    adata = usr.getAnndata()
+
     clusters = request.GET.get("clusters", "default")
     n_genes = request.GET.get("topN", 4)
 
-    clientID = request.GET.get("cID", None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-
-    usr = userData.read(username, clientID)
-    if usr is None:
-        return HttpResponse(
-            "Can't find the user/device.Please request from the beginning.", status=400
-        )
-
-    adata = usr.getAnndata()
     if clusters == "default":
         with plt.rc_context():
             if len(set(adata.obs["batch1"])) > 1:
@@ -341,16 +339,14 @@ def dgea(request):
 
 @login_required()
 def clustering(request):
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
     username = request.user.username
     clientID = request.GET.get("cID", None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
 
-    usr = userData.read(username, clientID)
-    if usr is None:
-        return HttpResponse(
-            "Can't find the user/device.Please request from the beginning.", status=400
-        )
     cluster = request.GET.get("cluster", "LEIDEN")
     param = request.GET.get("param", None)
     if param is None:
@@ -424,13 +420,11 @@ def clusteringAdvanced(request):
     if request.method == "GET" and "cluster" not in request.GET:
         return render(request, "clustering_advance.html", {"cID": clientID})
     else:
-        username = request.user.username
-        usr = userData.read(username, clientID)
-        if usr is None:
-            return HttpResponse(
-                "Can't find the user/device.Please request from the beginning.",
-                status=400,
-            )
+        checkRes = usrCheck(request)
+        if checkRes["status"] == 0:
+            return HttpResponse(checkRes["message"], status=400)
+        else:
+            usr = checkRes["usrData"]
         cluster = request.GET.get("cluster", "LEIDEN")
         minValue = float(request.GET.get("min", "0"))
         maxValue = float(request.GET.get("max", "1"))
@@ -469,7 +463,7 @@ def clusteringAdvanced(request):
 
 @login_required()
 def advancedSearch(request):
-    username = request.user.username
+    # username = request.user.username
     name = request.GET.get("name", None)
     clientID = request.GET.get("cID", None)
     if clientID is None:
@@ -530,13 +524,11 @@ def goenrich(request):
     username = request.user.username
     cluster_n = request.GET.get("cluster_n", 0)
     clientID = request.GET.get("cID", None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-    usr = userData.read(username, clientID)
-    if usr is None:
-        return HttpResponse(
-            "Can't find the user/device.Please request from the beginning.", status=400
-        )
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
     df = usr.getCorrectedCSV()
     if (
         any(df.columns.str.startswith("c_")) is True
@@ -597,13 +589,11 @@ def goenrich(request):
 def lasso(request):
     username = request.user.username
     clientID = request.GET.get("cID", None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-    usr = userData.read(username, clientID)
-    if usr is None:
-        return HttpResponse(
-            "Can't find the user/device.Please request from the beginning.", status=400
-        )
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
 
     cluster = int(request.GET.get("cluster_n", 0))  # +1 for R
     adata = usr.getAnndata()
@@ -640,15 +630,11 @@ def lasso(request):
 
 @login_required()
 def downloadCorrected(request):
-    username = request.user.username
-    clientID = request.GET.get("cID", None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-    usr = userData.read(username, clientID)
-    if usr is None:
-        return HttpResponse(
-            "Can't find the user/device.Please request from the beginning.", status=400
-        )
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
     result_df = usr.getCorrectedCSV()
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = "attachment; filename=corrected.csv"
@@ -658,15 +644,12 @@ def downloadCorrected(request):
 
 @login_required()
 def downloadCorrectedCluster(request):
-    username = request.user.username
-    clientID = request.GET.get("cID", None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-    usr = userData.read(username, clientID)
-    if usr is None:
-        return HttpResponse(
-            "Can't find the user/device.Please request from the beginning.", status=400
-        )
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
+
     result_df = usr.getCorrectedClusterCSV()
     if result_df is None:
         return HttpResponse("Please do clustering first.", status=400)
@@ -678,17 +661,14 @@ def downloadCorrectedCluster(request):
 
 @login_required()
 def candiGenes(request):
-    username = request.user.username
-    clientID = request.GET.get("cID", None)
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
+
     method = request.GET.get("method", None)
     maxGene = 12
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-    usr = userData.read(username, clientID)
-    if usr is None:
-        return HttpResponse(
-            "Can't find the user/device.Please request from the beginning.", status=400
-        )
     if method is None or method == "pca":
         adata = usr.getAnndata()
         n_pcs = 3
@@ -715,6 +695,11 @@ def candiGenes(request):
 
 @login_required()
 def genePlot(request):
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
     type = request.GET.get("type", "vln")
     geneList = request.GET.get("geneList", None)
     if geneList is None:
@@ -724,11 +709,9 @@ def genePlot(request):
         geneList = [i for i in geneList if i != "None"]
     except:
         return HttpResponse("geneList is illigal", status=400)
+
     username = request.user.username
     clientID = request.GET.get("cID", None)
-    if clientID is None:
-        return HttpResponse("clientID is Required", status=400)
-    usr = userData.read(username, clientID)
     adata = usr.getAnndata()
     if adata is None:
         return HttpResponse("No data is in use for the account", status=400)
