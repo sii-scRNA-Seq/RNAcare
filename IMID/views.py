@@ -40,7 +40,7 @@ from .utils import (
     getTopGeneCSV,
     vlnPlot,
     densiPlot,
-    heatmapPlot
+    heatmapPlot,
 )
 
 from .models import userData
@@ -83,7 +83,7 @@ def uploadExpression(request):
 
     for f in fileNames:
         df = pd.read_csv(f, nrows=5, header=0)
-        if 'ID_REF' not in df.columns:
+        if "ID_REF" not in df.columns:
             return HttpResponse("No ID_REF column in the expression file", status=400)
         if len(df.columns) > 7:  # only show 7 columns
             df = pd.concat([df.iloc[:, 0:4], df.iloc[:, -3:]], axis=1)
@@ -106,15 +106,15 @@ def uploadMeta(request):
     files = request.FILES.getlist("meta", None)
     if files is None:
         return HttpResponse("Upload the meta file is required", status=405)
-    files=files[0]
+    files = files[0]
     handle_uploaded_file1(files, username, "meta")
     f = BASE_UPLOAD + username + "_meta.csv"
     context = {}
     context["metaFile"] = {}
     df = pd.read_csv(f, nrows=5, header=0)
-    if 'ID_REF' not in df.columns:
+    if "ID_REF" not in df.columns:
         return HttpResponse("No ID_REF column in the expression file", status=400)
-    if 'LABEL' not in df.columns:
+    if "LABEL" not in df.columns:
         return HttpResponse("No LABEL column in the expression file", status=400)
     if len(df.columns) > 7:  # only show 7 columns
         df = pd.concat([df.iloc[:, 0:4], df.iloc[:, -3:]], axis=1)
@@ -139,11 +139,11 @@ def eda(request):
     if "" in integrate:
         integrate.remove("")
 
-    clientID=request.GET.get('cID',None)
+    clientID = request.GET.get("cID", None)
     if clientID is None:
         return HttpResponse("clientID is Required", status=400)
-    
-    usr=userData(clientID,username)
+
+    usr = userData(clientID, username)
 
     for file in glob.glob(BASE_STATIC + "/" + username + "*"):
         os.remove(file)
@@ -184,14 +184,18 @@ def eda(request):
         temp0 = pd.DataFrame()
     if len(integrate) != 0 and integrate[0] != "null":  # jquery plugin compatible
         for i in files_meta:
-            if temp0.shape==(0,0):
+            if temp0.shape == (0, 0):
                 temp0 = pd.concat(
-                    [temp0, pd.read_csv(BASE_UPLOAD + i).dropna(axis=1, inplace=False)], axis=0, join="outer"
-                    )
+                    [temp0, pd.read_csv(BASE_UPLOAD + i).dropna(axis=1, inplace=False)],
+                    axis=0,
+                    join="outer",
+                )
             else:
                 temp0 = pd.concat(
-                    [temp0, pd.read_csv(BASE_UPLOAD + i).dropna(axis=1, inplace=False)], axis=0, join="inner"
-                    )
+                    [temp0, pd.read_csv(BASE_UPLOAD + i).dropna(axis=1, inplace=False)],
+                    axis=0,
+                    join="inner",
+                )
     if temp0.shape == (0, 0):
         return HttpResponse("No data uploaded", status=400)
     for file in files:
@@ -238,26 +242,26 @@ def eda(request):
     dfs1["ID_REF"] = obs
     dfs1["FileName"] = batch
     # temp0=pd.concat(temp0,axis=0).reset_index(drop=True) #combine all clinic data
-    if flag == 0 and len(files_meta)==0:
+    if flag == 0 and len(files_meta) == 0:
         return HttpResponse("Can't find meta file", status=400)
     temp = dfs1.set_index("ID_REF").join(temp0.set_index("ID_REF"), how="inner")
     temp["obs"] = temp.index.tolist()
     # temp['FileName']=batch#inner join may not match so valued beforehand
-    #temp.to_csv(BASE_STATIC + username + "_corrected.csv", index=False)
+    # temp.to_csv(BASE_STATIC + username + "_corrected.csv", index=False)
     usr.setIntegrationData(temp)
 
     color2 = [i + "(" + j + ")" for i, j in zip(temp.LABEL, temp.FileName)]
 
-    #dfs1.drop(["ID_REF"], axis=1, inplace=True)
-    #dfs1.drop(["FileName"], axis=1, inplace=True)
-    #df_temp=temp.drop(['LABEL','obs','FileName'],axis=1,inplace=False)
-    pca_temp=usr.getAnndata().obsm['X_pca']
+    # dfs1.drop(["ID_REF"], axis=1, inplace=True)
+    # dfs1.drop(["FileName"], axis=1, inplace=True)
+    # df_temp=temp.drop(['LABEL','obs','FileName'],axis=1,inplace=False)
+    pca_temp = usr.getAnndata().obsm["X_pca"]
 
     if fr == "TSNE":
-        tsne = TSNE(n_components=2, random_state=42,n_jobs=2)
+        tsne = TSNE(n_components=2, random_state=42, n_jobs=2)
         X2D = tsne.fit_transform(pca_temp)
     else:
-        umap1 = umap.UMAP(n_components=2, random_state=42, n_neighbors=30,n_jobs=2)
+        umap1 = umap.UMAP(n_components=2, random_state=42, n_neighbors=30, n_jobs=2)
         X2D = umap1.fit_transform(pca_temp)
 
     usr.setFRData(X2D)
@@ -281,15 +285,17 @@ def dgea(request):
     clusters = request.GET.get("clusters", "default")
     n_genes = request.GET.get("topN", 4)
 
-    clientID=request.GET.get('cID',None)
+    clientID = request.GET.get("cID", None)
     if clientID is None:
         return HttpResponse("clientID is Required", status=400)
-    
-    usr=userData.read(username,clientID)
+
+    usr = userData.read(username, clientID)
     if usr is None:
-        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
-    
-    adata=usr.getAnndata()
+        return HttpResponse(
+            "Can't find the user/device.Please request from the beginning.", status=400
+        )
+
+    adata = usr.getAnndata()
     if clusters == "default":
         with plt.rc_context():
             if len(set(adata.obs["batch1"])) > 1:
@@ -335,45 +341,49 @@ def dgea(request):
 @login_required()
 def clustering(request):
     username = request.user.username
-    clientID=request.GET.get('cID',None)
+    clientID = request.GET.get("cID", None)
     if clientID is None:
         return HttpResponse("clientID is Required", status=400)
-    
-    usr=userData.read(username,clientID)
+
+    usr = userData.read(username, clientID)
     if usr is None:
-        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
+        return HttpResponse(
+            "Can't find the user/device.Please request from the beginning.", status=400
+        )
     cluster = request.GET.get("cluster", "LEIDEN")
     param = request.GET.get("param", None)
     if param is None:
         return HttpResponse("Param is illegal!", status=400)
-    X2D=usr.getFRData()
+    X2D = usr.getFRData()
     if X2D is None:
         return HttpResponse("Please run feature reduction first.", status=400)
-    X2D=X2D.tolist()
+    X2D = X2D.tolist()
     adata = usr.getAnndata()
     if cluster == "LEIDEN":
         if param is None:
             param = 1
         try:
-            param=float(param)
+            param = float(param)
         except:
             return HttpResponse("Resolution should be a float", status=400)
         sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
         sc.tl.leiden(adata, resolution=param)
         Resp = clusteringPostProcess(
-            X2D,  adata, "leiden", BASE_STATIC, username, clientID, usr
+            X2D, adata, "leiden", BASE_STATIC, username, clientID, usr
         )
         return Resp
     elif cluster == "HDBSCAN":
         if param is None:
             param = 20
         try:
-            param=int(param)
+            param = int(param)
         except:
             return HttpResponse("K should be positive integer.", status=400)
         if param <= 5:
-            param = HttpResponse("minSize should be at least 5.", status=400)  
-        labels = hdbscan.HDBSCAN(min_cluster_size=int(param)).fit_predict(adata.obsm['X_pca'])
+            param = HttpResponse("minSize should be at least 5.", status=400)
+        labels = hdbscan.HDBSCAN(min_cluster_size=int(param)).fit_predict(
+            adata.obsm["X_pca"]
+        )
         if min(labels) >= 0:
             labels = [str(i) for i in labels]
         else:
@@ -387,38 +397,39 @@ def clustering(request):
         return Resp
     elif cluster == "Kmeans":
         try:
-            param=int(param)
+            param = int(param)
         except:
             return HttpResponse("K should be positive integer.", status=400)
-        
+
         if param <= 1:
             return HttpResponse("K should be larger than 1.", status=400)
-        km = KMeans(n_clusters=int(param), random_state=42, n_init="auto").fit(adata.obsm['X_pca'])
+        km = KMeans(n_clusters=int(param), random_state=42, n_init="auto").fit(
+            adata.obsm["X_pca"]
+        )
         labels = [str(i) for i in km.labels_]
         adata.obs["kmeans"] = labels
         adata.obs["kmeans"] = adata.obs["kmeans"].astype("category")
         Resp = clusteringPostProcess(
-            X2D, adata,  "kmeans", BASE_STATIC, username, clientID, usr
+            X2D, adata, "kmeans", BASE_STATIC, username, clientID, usr
         )
         return Resp
 
 
 @login_required()
 def clusteringAdvanced(request):
-    clientID=request.GET.get('cID',None)
+    clientID = request.GET.get("cID", None)
     if clientID is None:
         return HttpResponse("clientID is Required", status=400)
     if request.method == "GET" and "cluster" not in request.GET:
-        return render(
-            request,
-            "clustering_advance.html",
-            {'cID':clientID}
-        )
+        return render(request, "clustering_advance.html", {"cID": clientID})
     else:
         username = request.user.username
-        usr=userData.read(username,clientID)
+        usr = userData.read(username, clientID)
         if usr is None:
-            return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
+            return HttpResponse(
+                "Can't find the user/device.Please request from the beginning.",
+                status=400,
+            )
         cluster = request.GET.get("cluster", "LEIDEN")
         minValue = float(request.GET.get("min", "0"))
         maxValue = float(request.GET.get("max", "1"))
@@ -447,7 +458,7 @@ def clusteringAdvanced(request):
                 df["level" + str(i + 1)] = [
                     "level" + str(i + 1) + "_" + str(j)
                     for j in hdbscan.HDBSCAN(min_cluster_size=int(parami)).fit_predict(
-                        adata.obsm['X_pca']
+                        adata.obsm["X_pca"]
                     )
                 ]
 
@@ -459,16 +470,12 @@ def clusteringAdvanced(request):
 def advancedSearch(request):
     username = request.user.username
     name = request.GET.get("name", None)
-    clientID=request.GET.get('cID',None)
+    clientID = request.GET.get("cID", None)
     if clientID is None:
         return HttpResponse("clientID is Required", status=400)
     res = {}
     if name is None:
-        return render(
-            request,
-            "advancedSearch.html",
-            {'clientID':clientID}
-        )
+        return render(request, "advancedSearch.html", {"clientID": clientID})
     name = name.replace(" ", "")
     res["name"] = name
     url = "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=" + name
@@ -521,12 +528,14 @@ def advancedSearch(request):
 def goenrich(request):
     username = request.user.username
     cluster_n = request.GET.get("cluster_n", 0)
-    clientID=request.GET.get('cID',None)
+    clientID = request.GET.get("cID", None)
     if clientID is None:
         return HttpResponse("clientID is Required", status=400)
-    usr=userData.read(username,clientID)
+    usr = userData.read(username, clientID)
     if usr is None:
-        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
+        return HttpResponse(
+            "Can't find the user/device.Please request from the beginning.", status=400
+        )
     df = usr.getCorrectedCSV()
     if (
         any(df.columns.str.startswith("c_")) is True
@@ -586,25 +595,27 @@ def goenrich(request):
 @login_required()
 def lasso(request):
     username = request.user.username
-    clientID=request.GET.get('cID',None)
+    clientID = request.GET.get("cID", None)
     if clientID is None:
         return HttpResponse("clientID is Required", status=400)
-    usr=userData.read(username,clientID)
+    usr = userData.read(username, clientID)
     if usr is None:
-        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
+        return HttpResponse(
+            "Can't find the user/device.Please request from the beginning.", status=400
+        )
 
     cluster = int(request.GET.get("cluster_n", 0))  # +1 for R
-    adata=usr.getAnndata()
-    df=adata.to_df().round(12)
-    if 'cluster' not in adata.obs.columns:
+    adata = usr.getAnndata()
+    df = adata.to_df().round(12)
+    if "cluster" not in adata.obs.columns:
         return HttpResponse("Please run clustering method first.", status=400)
-    df['cluster']=adata.obs['cluster'].astype(int)
+    df["cluster"] = adata.obs["cluster"].astype(int)
     x = df.drop(["cluster"], axis=1, inplace=False)
 
     scaler = StandardScaler().fit(x)
     x = scaler.transform(x)
 
-    index = df['cluster'] == cluster
+    index = df["cluster"] == cluster
     index1 = df["cluster"] != cluster
     df.loc[index, "cluster"] = 1
     df.loc[index1, "cluster"] = 0
@@ -621,7 +632,7 @@ def lasso(request):
     matplotlib.pyplot.clf()  # in order to save a picture
     coef[coef != 0][:50].plot.bar(x="Features", y="Coef")
     plt.savefig(
-        BASE_STATIC + username + "_" + clientID+ "_lasso.png", bbox_inches="tight"
+        BASE_STATIC + username + "_" + clientID + "_lasso.png", bbox_inches="tight"
     )
     return JsonResponse({"fileName": username + "_" + clientID + "_lasso.png"})
 
@@ -629,13 +640,15 @@ def lasso(request):
 @login_required()
 def downloadCorrected(request):
     username = request.user.username
-    clientID=request.GET.get('cID',None)
+    clientID = request.GET.get("cID", None)
     if clientID is None:
         return HttpResponse("clientID is Required", status=400)
-    usr=userData.read(username,clientID)
+    usr = userData.read(username, clientID)
     if usr is None:
-        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
-    result_df=usr.getCorrectedCSV()
+        return HttpResponse(
+            "Can't find the user/device.Please request from the beginning.", status=400
+        )
+    result_df = usr.getCorrectedCSV()
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = "attachment; filename=corrected.csv"
     result_df.to_csv(path_or_buf=response)
@@ -645,13 +658,15 @@ def downloadCorrected(request):
 @login_required()
 def downloadCorrectedCluster(request):
     username = request.user.username
-    clientID=request.GET.get('cID',None)
+    clientID = request.GET.get("cID", None)
     if clientID is None:
         return HttpResponse("clientID is Required", status=400)
-    usr=userData.read(username,clientID)
+    usr = userData.read(username, clientID)
     if usr is None:
-        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)
-    result_df=usr.getCorrectedClusterCSV()
+        return HttpResponse(
+            "Can't find the user/device.Please request from the beginning.", status=400
+        )
+    result_df = usr.getCorrectedClusterCSV()
     if result_df is None:
         return HttpResponse("Please do clustering first.", status=400)
     response = HttpResponse(content_type="text/csv")
@@ -659,62 +674,70 @@ def downloadCorrectedCluster(request):
     result_df.to_csv(path_or_buf=response)
     return response
 
+
 @login_required()
 def candiGenes(request):
     username = request.user.username
-    clientID=request.GET.get('cID',None)
-    method=request.GET.get('method',None)
-    maxGene=12
+    clientID = request.GET.get("cID", None)
+    method = request.GET.get("method", None)
+    maxGene = 12
     if clientID is None:
         return HttpResponse("clientID is Required", status=400)
-    usr=userData.read(username,clientID)
+    usr = userData.read(username, clientID)
     if usr is None:
-        return HttpResponse("Can't find the user/device.Please request from the beginning.", status=400)  
-    if method is None or method=='pca':
-        adata=usr.getAnndata()
+        return HttpResponse(
+            "Can't find the user/device.Please request from the beginning.", status=400
+        )
+    if method is None or method == "pca":
+        adata = usr.getAnndata()
         n_pcs = 3
-        pcs_loadings=pd.DataFrame(adata.varm['PCs'][:,:n_pcs],index=adata.var_names)
+        pcs_loadings = pd.DataFrame(adata.varm["PCs"][:, :n_pcs], index=adata.var_names)
         pcs_loadings.dropna(inplace=True)
-        result=[]
+        result = []
         for i in pcs_loadings.columns:
-            result.extend(pcs_loadings.nlargest(2,columns=i).index.tolist())
-            result.extend(pcs_loadings.nsmallest(2,columns=i).index.tolist())
-        return JsonResponse(result,safe=False)
+            result.extend(pcs_loadings.nlargest(2, columns=i).index.tolist())
+            result.extend(pcs_loadings.nsmallest(2, columns=i).index.tolist())
+        return JsonResponse(result, safe=False)
     else:
-        markers=usr.getMarkers()
+        markers = usr.getMarkers()
         if markers is None:
             return HttpResponse("Please run clustering method first.", status=400)
-        clusters=set(markers.group)
-        number=math.ceil(maxGene/len(clusters))
-        result=markers.groupby('group').apply(lambda x: x.nlargest(number, 'scores')).names.tolist()
-        return JsonResponse(result,safe=False)
+        clusters = set(markers.group)
+        number = math.ceil(maxGene / len(clusters))
+        result = (
+            markers.groupby("group")
+            .apply(lambda x: x.nlargest(number, "scores"))
+            .names.tolist()
+        )
+        return JsonResponse(result, safe=False)
+
 
 @login_required()
 def genePlot(request):
-    type=request.GET.get('type','vln')
-    geneList=request.GET.get('geneList',None)
+    type = request.GET.get("type", "vln")
+    geneList = request.GET.get("geneList", None)
     if geneList is None:
         return HttpResponse("geneList is Required", status=400)
     try:
-        geneList=geneList.split(',')
-        geneList=[i for i in geneList if i!='None']
+        geneList = geneList.split(",")
+        geneList = [i for i in geneList if i != "None"]
     except:
         return HttpResponse("geneList is illigal", status=400)
     username = request.user.username
-    clientID=request.GET.get('cID',None)
+    clientID = request.GET.get("cID", None)
     if clientID is None:
         return HttpResponse("clientID is Required", status=400)
-    usr=userData.read(username,clientID)
-    adata=usr.getAnndata()
+    usr = userData.read(username, clientID)
+    adata = usr.getAnndata()
     if adata is None:
         return HttpResponse("No data is in use for the account", status=400)
 
-    X2D=usr.getFRData()
+    X2D = usr.getFRData()
     if X2D is None:
         return HttpResponse("Please run feature reduction first.", status=400)
-    if type=='vln':
-        return vlnPlot(geneList,adata,clientID,username)
-    elif type=='density':
-        return densiPlot(geneList,adata,clientID,username)
-    else:#type=='heatmap'
-        return heatmapPlot(geneList,adata,clientID,username)
+    if type == "vln":
+        return vlnPlot(geneList, adata, clientID, username)
+    elif type == "density":
+        return densiPlot(geneList, adata, clientID, username)
+    else:  # type=='heatmap'
+        return heatmapPlot(geneList, adata, clientID, username)
