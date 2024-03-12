@@ -11,7 +11,7 @@ from genes_ncbi_proteincoding import GENEID2NT
 import random
 import string
 from .constants import BASE_UPLOAD, BASE_STATIC, GeneID_URL
-from .models import Gene, GOTerm
+from .models import Gene, GOTerm, userData
 from harmony import harmonize
 import pandas as pd
 import numpy as np
@@ -393,3 +393,17 @@ def GeneID2SymID(geneList):
         else:
             retRes.append(i)
     return retRes
+
+
+def usrCheck(request):
+    username = request.user.username
+    clientID = request.GET.get("cID", None)
+    if clientID is None:
+        return {"status": 0, "message": "clientID is Required."}
+    usr = userData.read(username, clientID)
+    if usr is None:
+        return {
+            "status": 0,
+            "message": "Can't find the user/device.Please request from the beginning.",
+        }
+    return {"status": 1, "usrData": usr}
