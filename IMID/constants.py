@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-Ontology = namedtuple('Ontology', ['name', 'color'])
+Ontology = namedtuple("Ontology", ["name", "color"])
 
 ONTOLOGY = {
     "BP": Ontology(name="biological_process", color="blues_r"),
@@ -10,3 +10,4 @@ ONTOLOGY = {
 
 BASE_UPLOAD = "IMID/geneData/upload/"
 BASE_STATIC = "IMID/static/temp/"
+GeneID_URL = "https://biotools.fr/human/ensembl_symbol_converter/"

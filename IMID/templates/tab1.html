@@ -435,6 +435,16 @@ function getTopGenes(t){
 	});
 }
 
+function getSep()
+{
+	sep=$('#separator').val();
+	if(sep=='Space')sep=' ';
+	else if(sep=='Return')sep='\n';
+	else if(sep=='Comma')sep=',';
+	else if(sep=='Tab')sep='\t';
+	else sep=';';
+	return sep;
+}
 
 function loadCandiGenes()
 {
@@ -458,12 +468,7 @@ function loadCandiGenes()
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				sep=$('#separator').val();
-				if(sep=='Space')sep=' ';
-				else if(sep=='Return')sep='\n';
-				else if(sep=='Comma')sep=',';
-				else if(sep=='Tab')sep='\t';
-				else sep=';';
+				
 				$('#targetGene').val(response.join(sep));
 			},
 			error:function(response){
@@ -477,12 +482,7 @@ function loadCandiGenes()
 function TGenePlotClick()
 {
 	tempValue=$('#targetGene').val();
-	sep=$('#separator').val();
-	if(sep=='Space')sep=' ';
-	else if(sep=='Return')sep='\n';
-	else if(sep=='Comma')sep=',';
-	else if(sep=='Tab')sep='\t';
-	else sep=';';
+	sep=getSep();
 	tempValue=tempValue.split(sep).join(',');
 	if(tempValue=='')return;
 	url='/dega/plot/?type=vln&geneList='+tempValue;
@@ -562,6 +562,40 @@ function TGenePlotClick()
 				$('.btn').attr('disabled',false);
 				$('#heatmapPlot').html('<label style="display:block;text-align: center;">Heatmap Plot for target genes(Scaled)</label><br><br><img class="heatplot" src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="1000" height="auto"/>');
 				//wheelzoom(document.querySelectorAll('img.heatplot'));
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+}
+
+function LookUpGeneID()
+{
+	tempValue=$('#targetGene').val();
+	sep=getSep();
+	tempValue=tempValue.split(sep).join(',');
+	if(tempValue=='')return;
+	url='/GeneLookup/?geneList='+tempValue;
+	url+='&cID='+clientUniqueID;
+	$.ajax({
+			url:url,
+			datType:'text',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:false,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				$('#targetGene').val(response.join(sep));
 			},
 			error:function(response){
 				alert(response.responseText);
@@ -867,7 +901,10 @@ function TGenePlotClick()
 		<option value="clusters">Leiden/HDBSCAN/KMeans</option>
 	</select>
 	<br><br>
+	<div style="position:relative;display:inline-block;">
 	<textarea id="targetGene"  rows='5' cols='100'></textarea>
+	&nbsp;&nbsp;<button onclick='LookUpGeneID();' class="btn btn-primary" style="position:absolute; width:100px; height:100px;top:15px;">LookUp Symbol ID</button>
+	</div>
 	<br>
 	<button onclick='TGenePlotClick();' class="btn btn-primary" style="position: relative;left:950px;">Submit</button>
 	<br><br>
