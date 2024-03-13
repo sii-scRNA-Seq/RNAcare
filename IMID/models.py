@@ -7,6 +7,34 @@ import scanpy as sc
 import numpy as np
 import os
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
+import uuid
+
+
+# def get_file_path(instance, filename):
+#     if hasattr(instance, "user"):
+#         return os.path.join(str(instance.user.uuid), filename)
+#     return os.path.join(str(instance.uuid), filename)
+
+
+# class CustomUser(User):
+#     uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#     cID = models.CharField(max_length=10, blank=False, null=False)
+#     pickle_file = models.FileField(upload_to=get_file_path, null=True)
+
+
+# class UploadedFile(models.Model):
+#     user = models.ForeignKey(
+#         CustomUser, on_delete=models.CASCADE, related_name="uploaded_file"
+#     )
+#     cID = models.CharField(max_length=10, blank=False, null=False)
+#     file = models.FileField(upload_to=get_file_path, null=True)
+#     type = models.CharField(max_length=3, blank=False, null=False)
+#     label = models.CharField(max_length=10, blank=True, null=True)
+
+#     @property
+#     def filename(self):
+#         return os.path.basename(self.file.path)
 
 
 class Gene(models.Model):
@@ -22,7 +50,7 @@ class GOTerm(models.Model):
 
 class MetaFileColumn(models.Model):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="Uploaded_File_Meta_info"
+        User, on_delete=models.CASCADE, related_name="meta_file_column"
     )
     cID = models.CharField(max_length=10, blank=False, null=False)
     colName = models.CharField(max_length=50, blank=False, null=False)
@@ -115,6 +143,14 @@ class userData:
     def save(self):
         with open(BASE_STATIC + self.uID + "_" + self.cID + ".pkl", "wb") as f:
             pickle.dump(self, f)
+        # custom_user = CustomUser.objects.create(
+        #     user=self.uID,
+        #     cID=self.cID,
+        #     pickle_file=ContentFile(
+        #         pickle.dumps(self), self.uID + "_" + self.cID + ".pkl"
+        #     ),
+        # )
+        # custom_user.save()
 
     @classmethod
     def read(self, uID, cID) -> "userData":
@@ -123,3 +159,9 @@ class userData:
                 return pickle.load(f)
         else:
             return None
+        # custom_user = CustomUser.objects.filter(user=uID, cID=cID).first()
+        # if custom_user is None:
+        #     return None
+        # else:
+        #     with custom_user.pickle_file.open(mode="rb") as f:
+        #         return pickle.loads(f)

@@ -639,6 +639,7 @@ function LookUpGeneID()
 function metaAdvanced()
 {
 	txt=$('#metaAdvancedSettingClick').html();
+	signal=0;
 	if(integrated==0&&txt=='&gt;&gt;Enable Meta File Advanced Setting'){
 		url='/user/?cID='+clientUniqueID;
 		$.ajax({
@@ -654,13 +655,13 @@ function metaAdvanced()
 			},
 			error:function(response){
 				$('.btn').attr('disabled',false);
-				alert('Please Integrate/Process the data first.')
-				return;
+				alert('Please Integrate/Process the data first.');
+				signal=1;
 			}
 		});
 		
 	}
-	
+	if(signal==1)return;
 	if(txt=='&gt;&gt;Enable Meta File Advanced Setting')
 	{
 		$('#metaAdvancedSettingClick').html('&gt;&gt;Disable Meta File Advanced Setting');

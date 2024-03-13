@@ -11,7 +11,7 @@ from genes_ncbi_proteincoding import GENEID2NT
 import random
 import string
 from .constants import BASE_UPLOAD, BASE_STATIC, GeneID_URL
-from .models import Gene, GOTerm, userData
+from .models import Gene, GOTerm, userData, MetaFileColumn
 from harmony import harmonize
 import pandas as pd
 import numpy as np
@@ -402,7 +402,6 @@ def UploadFileColumnCheck(df):
 def usrCheck(request, flag=1):
     username = request.user.username
     clientID = request.GET.get("cID", None)
-    print(username, clientID)
     if clientID is None:
         return {"status": 0, "message": "clientID is Required."}
     if flag == 0:

@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "IMID",
     "accounts",
+    "django_cleanup.apps.CleanupConfig",  # Needs to be last in list
 ]
 
 MIDDLEWARE = [
@@ -129,4 +130,4 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.path.join(BASE_DIR, "uploaded")
