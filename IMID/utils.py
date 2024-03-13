@@ -395,15 +395,23 @@ def GeneID2SymID(geneList):
     return retRes
 
 
-def usrCheck(request):
+def UploadFileColumnCheck(df):
+    return 1
+
+
+def usrCheck(request, flag=1):
     username = request.user.username
     clientID = request.GET.get("cID", None)
+    print(username, clientID)
     if clientID is None:
         return {"status": 0, "message": "clientID is Required."}
-    usr = userData.read(username, clientID)
-    if usr is None:
-        return {
-            "status": 0,
-            "message": "Can't find the user/device.Please request from the beginning.",
-        }
+    if flag == 0:
+        usr = userData(clientID, username)
+    else:
+        usr = userData.read(username, clientID)
+        if usr is None:
+            return {
+                "status": 0,
+                "message": "Can't find the user/device.Please request from the beginning.",
+            }
     return {"status": 1, "usrData": usr}

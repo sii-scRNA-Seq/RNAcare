@@ -6,6 +6,7 @@ urlpatterns = [
     path(r"GeneLookup/", views.GeneLookup, name="GeneLookup"),
     path(r"upload/geneExpression/", views.uploadExpression, name="upload_expression"),
     path(r"upload/meta/", views.uploadMeta, name="upload_meta"),
+    path(r"eda/integrate/", views.edaIntegrate, name="edaIntegrate"),
     path(r"eda/", views.eda, name="eda"),
     path(r"dega/candiGenes/", views.candiGenes, name="candiGenes"),
     path(r"dega/plot/", views.genePlot, name="genePlot"),
@@ -19,6 +20,7 @@ urlpatterns = [
     path(
         r"processedFile/corrected/", views.downloadCorrected, name="downloadCorrected"
     ),
+    path(r"user/", views.checkUser, name="checkUser"),
     path(
         r"processedFile/correctedCluster/",
         views.downloadCorrectedCluster,
