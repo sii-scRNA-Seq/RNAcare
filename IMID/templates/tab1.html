@@ -4,8 +4,11 @@
   <script>
   clientUniqueID=Math.random().toString(36).slice(-5);
   clientUniqueID='12345';//for one user open multi-browsers
+  integrated=0;
   $( function() {
-    $(document).tooltip();$('.accordion').asAccordion({namespace: 'accordion'});
+    $(document).tooltip();
+	$('.accordion').asAccordion({namespace: 'accordion'});
+	$('#metaAdvancedSetting').fadeOut();
     $('#FR_processed').prop('checked',false);
     tabs=$( "#tabs" );
     tabs.tabs();
@@ -110,16 +113,14 @@
 		$('#slider1').slider('refresh');
 	});
 	
-
-	
    $('#next1').on('click',function(){	
 		tabs.tabs('option','active',1);
 	});
    $('#next2').on('click',function(){
    	$('.btn').attr('disabled',true);
 		$.ajax({
-			url: '/eda/?correct='+$('input[name="Comb"]:checked').val()+'&log2='+$('input[name="Log"]:checked').val()+'&fr='+$('input[name="FR"]:checked').val()+'&integrate='+$('#my-select').val()+'&cID='+clientUniqueID,
-			datType:'html',
+			url: '/eda/integrate/?correct='+$('input[name="Comb"]:checked').val()+'&log2='+$('input[name="Log"]:checked').val()+'&fr='+$('input[name="FR"]:checked').val()+'&integrate='+$('#my-select').val()+'&cID='+clientUniqueID,
+			datType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -128,7 +129,38 @@
 			beforeSend:function(){
 			$('#loader').show();
 			},
-			
+			complete:function(){
+				$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				alert('Data Process successful.');
+				integrated=1;
+			},
+			error:function(response){
+				alert(response.responseText);$('#loader').hide();
+				$('.btn').attr('disabled',false);
+				return;
+			}
+		});
+		$('.btn').attr('disabled',false);	
+	});
+
+   $('#next2EDA').on('click',function(){
+	$.ajax({
+			url: '/eda/?cID='+clientUniqueID,
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+				$('#loader').hide();
+			},
 			success:function(response){
 				$('#tab3div').show();
 				tabs.tabs('option','active',2);
@@ -155,7 +187,6 @@
 						$('#graphDiv21').html('<img class="img1" src="/static/temp/'+response[1]+'" width="auto" height="400px"/>');
 						alert('Calculation Succeed!');
 						wheelzoom(document.querySelectorAll('img.img1'));
-						//$('.accordion').asAccordion({namespace: 'accordion'});
 					},
 					error:function(response){
 						alert(response.responseText);$('#loader').hide();
@@ -176,8 +207,8 @@
 			}
 		});
 		$('.btn').attr('disabled',false);
-		
 	});
+
    $('#next3').on('click',function(){
 		tabs.tabs('option','active',3);
 		$('#tab4div').hide();
@@ -266,7 +297,7 @@ function clusterBtnClick(){
         $('.btn').attr('disabled',true);
         $.ajax({
 			url: url,
-			datType:'html',
+			datType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -455,7 +486,7 @@ function loadCandiGenes()
 	url+='&cID='+clientUniqueID;
 	$.ajax({
 			url:url,
-			datType:'text',
+			datType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -489,7 +520,7 @@ function TGenePlotClick()
 	url+='&cID='+clientUniqueID;
 	$.ajax({
 			url:url,
-			datType:'text',
+			datType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -519,7 +550,7 @@ function TGenePlotClick()
 	url+='&cID='+clientUniqueID;
 	$.ajax({
 			url:url,
-			datType:'text',
+			datType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -546,7 +577,7 @@ function TGenePlotClick()
 	url+='&cID='+clientUniqueID;
 	$.ajax({
 			url:url,
-			datType:'text',
+			datType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -603,6 +634,43 @@ function LookUpGeneID()
 				return;
 			}
 	});
+}
+
+function metaAdvanced()
+{
+	txt=$('#metaAdvancedSettingClick').html();
+	if(integrated==0&&txt=='&gt;&gt;Enable Meta File Advanced Setting'){
+		url='/user/?cID='+clientUniqueID;
+		$.ajax({
+			url:url,
+			datType:'text',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:false,
+			success:function(response){
+				$('.btn').attr('disabled',false);
+			},
+			error:function(response){
+				$('.btn').attr('disabled',false);
+				alert('Please Integrate/Process the data first.')
+				return;
+			}
+		});
+		
+	}
+	
+	if(txt=='&gt;&gt;Enable Meta File Advanced Setting')
+	{
+		$('#metaAdvancedSettingClick').html('&gt;&gt;Disable Meta File Advanced Setting');
+	}
+	else
+	{
+		$('#metaAdvancedSettingClick').html('&gt;&gt;Enable Meta File Advanced Setting');
+	}
+	
+	$('#metaAdvancedSetting').slideToggle(300);
 }
 
   </script>
@@ -679,7 +747,8 @@ function LookUpGeneID()
   <table>
   
   <tr>
-  	<h5>Choose the built-in compiled cohort(s) you want to integrate with:</h5>
+  	<h5>Choose the built-in compiled cohort(s) you want to integrate with:</h5metaSetting>
+	<br><br>
 	<select id="my-select" multiple>
 	<optgroup label='Shared-Cohorts'>
     	<option value="SERA" title="The Scotish Early Rheumatoid Arthritis;">SERA</option>
@@ -694,7 +763,7 @@ function LookUpGeneID()
   	
   <tr>
   	<td>
-   	<div name="Options1" style="left:30px; width:250px;">
+   	<div name="Options1" style="left:30px; width:300px;">
    		<br>
 		<p>Combined Options</p>
 		<input type="radio" name="Comb" value="Combat" checked="checked" /><label>&nbsp;Combat&nbsp;</label><img class='question' style="max-width:4%;" title="ComBat, originally implemented in the R library sva. This tool leverages a parametric and non-parametric empirical Bayes approach for correcting the batch effect in microarray datasets that works for small sample sizes or in the presence of outliers."/>
@@ -706,7 +775,7 @@ function LookUpGeneID()
 	</td>
 	
 	<td>
-	<div name="Options2" style="left:30px; width:250px;">
+	<div name="Options2" style="left:30px; width:300px;">
 		<br>
 		<p>Log2 Transformation</p>
 		<input type="radio" name="Log" value="Yes" /><label>&nbsp;Yes</label>
@@ -718,7 +787,7 @@ function LookUpGeneID()
 	</td>
 
 	<td>
-	<div name="Options3" style="left:30px; width:250px;">
+	<div name="Options3" style="left:30px; width:300px;">
 		<br>
 		<p>Feature Reduction Method</p>
 		<input type="radio" name="FR" value="TSNE" /><label>&nbsp;TSNE&nbsp;</label><img class='question' style="max-width:4%;" title="<p>t-SNE (t-distributed Stochastic Neighbor Embedding) is an unsupervised non-linear dimensionality reduction technique for data exploration and visualizing high-dimensional data. Non-linear dimensionality reduction means that the algorithm allows us to separate data that cannot be separated by a straight line. </p>"/>
@@ -728,18 +797,51 @@ function LookUpGeneID()
 		<br>
 	</div>
 	</td>
+	<td>
+  	</td>
+	</td>
   </tr>
   <tr>
-  	<td colspan='2' style="text-align:right;">
-	<button id="next2" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
-  	</td>
+	<td>
+		<div id="metaAdvancedSettingClick" onclick="metaAdvanced();">&gt;&gt;Enable Meta File Advanced Setting</div>
+	</td>
+  	<td style="text-align:right;" colspan='2'>
+		<button id="next2" class="btn btn-primary">&nbsp;&nbsp;Integrate&nbsp;&nbsp;</button>
+		<button id="next2EDA" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
+	</td>
   </tr>
   </table>
+  <div id="metaAdvancedSetting">
+	<ul data-direction="vertical" data-multiple="true" data-initial-index="[0]" data-event="click" class="accordion accordion--box accordion--vertical">
+		<li class="accordion__panel">
+		  <span class="accordion__heading">Assign New Labels<i class="-icon -icon--left"></i></span>
+		  <div class="accordion__expander">
+			<select id='topForLabels'>
+				<option value='50' selected='selected'>50</option>
+				<option value='100'>100</option>
+				<option value='500'>500</option>
+		  </select>
+		  </div>
+		</li>
+		<li class="accordion__panel">
+		  <span class="accordion__heading">Modify Labels<i class="-icon -icon--left"></i></span>
+		  <div class="accordion__expander">
+			<select id='topForLabels'>
+				<option value='50' selected='selected'>50</option>
+				<option value='100'>100</option>
+				<option value='500'>500</option>
+		  </select>
+		  </div>
+		</li>
+	  </ul>
+
+  </div>
   </div>
   
 
   <div id="tabs-3">
   	<p>Gene Data Explory Data Analyses</p>
+	<br>
   	<div id='tab3div'>	
           <ul data-direction="horizontal" data-multiple="true" data-initial-index="[0]" data-event="click" class="accordion accordion--box accordion--horizontal1">
             <li class="accordion__panel">

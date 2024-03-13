@@ -6,6 +6,8 @@ import pickle
 import scanpy as sc
 import numpy as np
 import os
+from django.contrib.auth.models import User
+
 
 class Gene(models.Model):
     id = models.IntegerField(primary_key=True)
@@ -17,17 +19,34 @@ class GOTerm(models.Model):
     term = models.CharField(max_length=255, blank=True, null=True)
     gene = models.ManyToManyField(Gene, related_name="go_term")
 
-class userData():
-    def __init__(self,cID,uID):
-        self.cID=cID
-        self.uID=uID
-        self.integrationData = pd.DataFrame() #expression+clinic+label
-        self.anndata = None #expression+clinic for X
-        
+
+class MetaFileColumn(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="Uploaded_File_Meta_info"
+    )
+    cID = models.CharField(max_length=10, blank=False, null=False)
+    colName = models.CharField(max_length=50, blank=False, null=False)
+    label = models.CharField(max_length=1, blank=False, null=False)
+
+    @classmethod
+    def create(cls, user, cID, colName, label=0):
+        if user is not None and cID is not None and colName is not None:
+            f = cls(user=user, cID=cID, colName=colName, label=label)
+            return f
+        else:
+            return None
+
+
+class userData:
+    def __init__(self, cID, uID):
+        self.cID = cID
+        self.uID = uID
+        self.integrationData = pd.DataFrame()  # expression+clinic+label
+        self.anndata = None  # expression+clinic for X
 
     def setIntegrationData(self, df):
-        df=df.round(15)
-        self.integrationData=df
+        df = df.round(15)
+        self.integrationData = df
         t = df.loc[:, ~(df.columns.isin(["obs", "FileName", "LABEL", "cluster"]))]
         adata = sc.AnnData(np.zeros(t.values.shape), dtype=np.float64)
         adata.X = t.values
@@ -35,68 +54,72 @@ class userData():
         adata.obs_names = df.obs.tolist()
         adata.obs["batch1"] = df.FileName.tolist()
         adata.obs["batch2"] = [
-        i + "(" + j + ")" for i, j in zip(df.LABEL.tolist(), df.FileName.tolist())
+            i + "(" + j + ")" for i, j in zip(df.LABEL.tolist(), df.FileName.tolist())
         ]
-        adata.obs['obs']=df.LABEL.tolist()
-        n_comps=100
-        
-        with threadpool_limits(limits=2, user_api="blas"):
-            sc.tl.pca(adata, svd_solver="arpack", n_comps=min(t.shape[0]-1,t.shape[1]-1,n_comps))
-        self.anndata=adata
-    
-    def setAnndata(self,adata):
-        self.anndata=adata
+        adata.obs["obs"] = df.LABEL.tolist()
+        n_comps = 100
 
-    def setMarkers(self,markers):
-        self.anndata.uns['markers']=markers
+        with threadpool_limits(limits=2, user_api="blas"):
+            sc.tl.pca(
+                adata,
+                svd_solver="arpack",
+                n_comps=min(t.shape[0] - 1, t.shape[1] - 1, n_comps),
+            )
+        self.anndata = adata
+
+    def setAnndata(self, adata):
+        self.anndata = adata
+
+    def setMarkers(self, markers):
+        self.anndata.uns["markers"] = markers
 
     def getMarkers(self):
-        if 'markers' in self.anndata.uns_keys():
-            return self.anndata.uns['markers']
+        if "markers" in self.anndata.uns_keys():
+            return self.anndata.uns["markers"]
         else:
             return None
 
-    def getIntegrationData(self) -> 'pd.DataFrame':
+    def getIntegrationData(self) -> "pd.DataFrame":
         return self.integrationData
-    
-    def getAnndata(self) ->'sc.AnnData':
+
+    def getAnndata(self) -> "sc.AnnData":
         return self.anndata
 
-    def getCorrectedCSV(self)  -> 'pd.DataFrame':
-        t=self.anndata.to_df()
-        t['FileName']=self.anndata.obs['batch1']
-        t['obs']=self.anndata.obs['obs']
-        t['LABEL']=t['obs']
+    def getCorrectedCSV(self) -> "pd.DataFrame":
+        t = self.anndata.to_df()
+        t["FileName"] = self.anndata.obs["batch1"]
+        t["obs"] = self.anndata.obs["obs"]
+        t["LABEL"] = t["obs"]
         return t
 
-    def getCorrectedClusterCSV(self)  -> 'pd.DataFrame':
-        t=self.anndata.to_df()
-        t['FileName']=self.anndata.obs['batch1']
-        t['obs']=self.anndata.obs['obs']
-        t['LABEL']=t['obs']
-        if 'cluster' in self.anndata.obs.columns:
-            t['cluster']=self.anndata.obs['cluster']
+    def getCorrectedClusterCSV(self) -> "pd.DataFrame":
+        t = self.anndata.to_df()
+        t["FileName"] = self.anndata.obs["batch1"]
+        t["obs"] = self.anndata.obs["obs"]
+        t["LABEL"] = t["obs"]
+        if "cluster" in self.anndata.obs.columns:
+            t["cluster"] = self.anndata.obs["cluster"]
             return t
         else:
             return None
 
-    def setFRData(self,xfd):
-        self.anndata.obsm['X_umap']=xfd
-    
-    def getFRData(self)  -> 'pd.DataFrame':
-        if 'X_umap' in self.anndata.obsm_keys():
-            return self.anndata.obsm['X_umap']
+    def setFRData(self, xfd):
+        self.anndata.obsm["X_umap"] = xfd
+
+    def getFRData(self) -> "pd.DataFrame":
+        if "X_umap" in self.anndata.obsm_keys():
+            return self.anndata.obsm["X_umap"]
         else:
             return None
 
     def save(self):
-        with open(BASE_STATIC+self.uID+'_'+self.cID+'.pkl','wb')as f:
-            pickle.dump(self,f)
+        with open(BASE_STATIC + self.uID + "_" + self.cID + ".pkl", "wb") as f:
+            pickle.dump(self, f)
 
     @classmethod
-    def read(self,uID,cID) -> 'userData':
-        if os.path.isfile(BASE_STATIC+uID+'_'+cID+'.pkl'):
-            with open(BASE_STATIC+uID+'_'+cID+'.pkl','rb')as f:
+    def read(self, uID, cID) -> "userData":
+        if os.path.isfile(BASE_STATIC + uID + "_" + cID + ".pkl"):
+            with open(BASE_STATIC + uID + "_" + cID + ".pkl", "rb") as f:
                 return pickle.load(f)
         else:
             return None

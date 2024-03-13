@@ -43,9 +43,11 @@ from .utils import (
     heatmapPlot,
     GeneID2SymID,
     usrCheck,
+    UploadFileColumnCheck,
 )
 
-from .models import userData
+from .models import userData, MetaFileColumn
+from django.db import transaction
 
 
 # lasso.R for data visualization
@@ -87,6 +89,8 @@ def uploadExpression(request):
         df = pd.read_csv(f, nrows=5, header=0)
         if "ID_REF" not in df.columns:
             return HttpResponse("No ID_REF column in the expression file", status=400)
+        if UploadFileColumnCheck(df) == 0:
+            return HttpResponse("Column name illegal.", status=400)
         if len(df.columns) > 7:  # only show 7 columns
             df = pd.concat([df.iloc[:, 0:4], df.iloc[:, -3:]], axis=1)
 
@@ -97,6 +101,7 @@ def uploadExpression(request):
         data = json.loads(json_re)
         context["_".join(f.split("_")[1:])]["d"] = data
         context["_".join(f.split("_")[1:])]["names"] = ["index"] + df.columns.to_list()
+
     return render(request, "table.html", {"root": context})
 
 
@@ -115,9 +120,9 @@ def uploadMeta(request):
     context["metaFile"] = {}
     df = pd.read_csv(f, nrows=5, header=0)
     if "ID_REF" not in df.columns:
-        return HttpResponse("No ID_REF column in the expression file", status=400)
+        return HttpResponse("No ID_REF column in the clinical file", status=400)
     if "LABEL" not in df.columns:
-        return HttpResponse("No LABEL column in the expression file", status=400)
+        return HttpResponse("No LABEL column in the clinical file", status=400)
     if len(df.columns) > 7:  # only show 7 columns
         df = pd.concat([df.iloc[:, 0:4], df.iloc[:, -3:]], axis=1)
 
@@ -132,14 +137,14 @@ def uploadMeta(request):
 
 
 @login_required()
-def eda(request):
-    checkRes = usrCheck(request)
+def edaIntegrate(request):
+    checkRes = usrCheck(request, 0)
     if checkRes["status"] == 0:
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
     username = request.user.username
-    clientID = request.GET.get("cID", None)
+    cID = request.GET.get("cID", None)
 
     corrected = request.GET.get("correct", "Combat")
     log2 = request.GET.get("log2", "No")
@@ -153,7 +158,6 @@ def eda(request):
     directory = os.listdir(BASE_UPLOAD)
     files = [i for i in directory if username == i.split("_")[0]]
     files_meta = set()
-
     in_ta = {
         "SERA": "share_SERA_BLOOD.csv",
         "PEAC": "share_PEAC_recon.csv",
@@ -176,7 +180,6 @@ def eda(request):
     batch = []
     obs = []
     temp0 = []
-    color2 = []
     flag = 0
 
     if os.path.isfile(BASE_UPLOAD + username + "_meta.csv"):
@@ -200,6 +203,7 @@ def eda(request):
                 )
     if temp0.shape == (0, 0):
         return HttpResponse("No data uploaded", status=400)
+
     for file in files:
         if "meta" in file:
             flag = 1
@@ -248,15 +252,8 @@ def eda(request):
         return HttpResponse("Can't find meta file", status=400)
     temp = dfs1.set_index("ID_REF").join(temp0.set_index("ID_REF"), how="inner")
     temp["obs"] = temp.index.tolist()
-    # temp['FileName']=batch#inner join may not match so valued beforehand
-    # temp.to_csv(BASE_STATIC + username + "_corrected.csv", index=False)
     usr.setIntegrationData(temp)
 
-    color2 = [i + "(" + j + ")" for i, j in zip(temp.LABEL, temp.FileName)]
-
-    # dfs1.drop(["ID_REF"], axis=1, inplace=True)
-    # dfs1.drop(["FileName"], axis=1, inplace=True)
-    # df_temp=temp.drop(['LABEL','obs','FileName'],axis=1,inplace=False)
     pca_temp = usr.getAnndata().obsm["X_pca"]
 
     if fr == "TSNE":
@@ -268,16 +265,46 @@ def eda(request):
 
     usr.setFRData(X2D)
     usr.save()
-    traces = zip_for_vis(X2D.tolist(), temp.FileName, temp.obs)
-    traces1 = zip_for_vis(X2D.tolist(), color2, temp.obs)
-    context = {
-        "dfs1": json.dumps(traces),
-        "dfs2": json.dumps(traces1),
-        "fr": fr,
-        "log": log2,
-        "correct": corrected,
-    }
-    # return render(request,'eda.html',context)
+
+    # store column info of meta file into database
+    try:
+        with transaction.atomic():
+            new_file_columns = []
+            MetaFileColumn.objects.filter(user=request.user, cID=cID).delete()
+            for cn in temp0.columns:
+                if cn == "LABEL":
+                    label = "1"
+                else:
+                    label = "0"
+                temp_meta = MetaFileColumn.create(
+                    user=request.user, cID=cID, colName=cn, label=label
+                )
+                if temp_meta is None:
+                    raise Exception("MetaFileColumn create Failed.")
+                else:
+                    new_file_columns.append(temp_meta)
+            MetaFileColumn.objects.bulk_create(new_file_columns)
+    except:
+        return HttpResponse("Error for registering to DataBase.", status=400)
+
+    return HttpResponse("Operation successful.", status=200)
+
+
+@login_required()
+def eda(request):
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
+    adata = usr.getAnndata()
+    color2 = adata.obs["batch2"]  # temp.LABEL, temp.FileName
+    X2D = usr.getFRData()
+    traces = zip_for_vis(
+        X2D.tolist(), adata.obs["batch1"], adata.obs_names
+    )  # temp.FileName, temp.obs
+    traces1 = zip_for_vis(X2D.tolist(), color2, adata.obs_names)
+    context = {"dfs1": json.dumps(traces), "dfs2": json.dumps(traces1)}
     return JsonResponse(context)
 
 
@@ -746,3 +773,17 @@ def GeneLookup(request):
     if result is None:
         return HttpResponse("geneList is illigal", status=400)
     return JsonResponse(result, safe=False)
+
+
+@login_required()
+def checkUser(request):
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        return HttpResponse("User exists.", status=200)
+
+
+@login_required()
+def integrate(request):
+    pass
