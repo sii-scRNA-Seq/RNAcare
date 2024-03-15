@@ -210,7 +210,6 @@ def edaIntegrate(request):
     batch = []
     obs = []
     temp0 = []
-    flag = 0
 
     f = UploadedFile.objects.filter(user=request.user, type1="cli", cID=cID).first()
     if f is not None:
@@ -233,7 +232,9 @@ def edaIntegrate(request):
                     join="inner",
                 )
     if temp0.shape == (0, 0):
-        return HttpResponse("No data uploaded", status=400)
+        return HttpResponse("Can't find meta file", status=400)
+    if len(files) == 0:
+        return HttpResponse("Can't find expression file", status=400)
 
     for file in files:
         temp01 = pd.read_csv(file).set_index("ID_REF")
@@ -276,8 +277,6 @@ def edaIntegrate(request):
     dfs1["ID_REF"] = obs
     dfs1["FileName"] = batch
     # temp0=pd.concat(temp0,axis=0).reset_index(drop=True) #combine all clinic data
-    if flag == 0 and len(files_meta) == 0:
-        return HttpResponse("Can't find meta file", status=400)
     temp = dfs1.set_index("ID_REF").join(temp0.set_index("ID_REF"), how="inner")
     temp["obs"] = temp.index.tolist()
     usr.setIntegrationData(temp)
@@ -329,6 +328,7 @@ def eda(request):
         usr = checkRes["usrData"]
     adata = usr.getAnndata()
     color2 = adata.obs["batch2"]  # temp.LABEL, temp.FileName
+    print(color2)
     X2D = usr.getFRData()
     traces = zip_for_vis(
         X2D.tolist(), adata.obs["batch1"], adata.obs_names
@@ -813,5 +813,16 @@ def checkUser(request):
 
 
 @login_required()
-def integrate(request):
-    pass
+def meta_columns(request):
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
+    result = [
+        [i[0], i[1]]
+        for i in MetaFileColumn.objects.filter(user=request.user, cID=usr.cID)
+        .all()
+        .values_list("colName", "label")
+    ]
+    return JsonResponse(result, safe=False)

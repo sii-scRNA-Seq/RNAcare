@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import MetaFileColumn, CustomUser, UploadedFile, ProcessFile, SharedFile
+from .models import (
+    MetaFileColumn,
+    CustomUser,
+    UploadedFile,
+    ProcessFile,
+    SharedFile,
+    SharedFileInstance,
+)
 
 
 # Register your models here.
@@ -7,7 +14,7 @@ from .models import MetaFileColumn, CustomUser, UploadedFile, ProcessFile, Share
 
 @admin.register(MetaFileColumn)
 class FileColumnAdmin(admin.ModelAdmin):
-    list_display = ("cID", "colName", "label")
+    list_display = ("user", "cID", "colName", "label")
 
 
 @admin.register(CustomUser)
@@ -36,4 +43,9 @@ class FileColumnAdmin(admin.ModelAdmin):
 
 @admin.register(SharedFile)
 class SharedFileAdmin(admin.ModelAdmin):
-    list_display = ("user", "cohort", "type1", "file", "label")
+    list_display = ("user", "cohort", "type1", "filename", "label")
+
+
+@admin.register(SharedFileInstance)
+class SharedFileInstanceAdmin(admin.ModelAdmin):
+    list_display = ("user", "filename", "label")
