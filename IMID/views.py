@@ -280,6 +280,7 @@ def edaIntegrate(request):
         X2D = umap1.fit_transform(pca_temp)
 
     usr.setFRData(X2D)
+
     if usr.save() is False:
         return HttpResponse("Error for creating user records.", status=400)
 
@@ -293,7 +294,6 @@ def edaIntegrate(request):
                     label = "1"
                 else:
                     label = "0"
-
                 temp_meta = MetaFileColumn(
                     user=request.user, cID=cID, colName=cn, label=label
                 )

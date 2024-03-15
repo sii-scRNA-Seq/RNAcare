@@ -3,6 +3,8 @@ from .models import MetaFileColumn, CustomUser, UploadedFile, ProcessFile, Share
 
 
 # Register your models here.
+
+
 @admin.register(MetaFileColumn)
 class FileColumnAdmin(admin.ModelAdmin):
     list_display = ("cID", "colName", "label")
