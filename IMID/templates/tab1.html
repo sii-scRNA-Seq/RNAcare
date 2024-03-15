@@ -4,14 +4,18 @@
   <script>
   clientUniqueID=Math.random().toString(36).slice(-5);
   clientUniqueID='12345';//for one user open multi-browsers
+  flag_open=0;
   integrated=0;
   $( function() {
     $(document).tooltip();
-	$('.accordion').asAccordion({namespace: 'accordion'});
 	$('#metaAdvancedSetting').fadeOut();
     $('#FR_processed').prop('checked',false);
-    tabs=$( "#tabs" );
-    tabs.tabs();
+	$('#my-select-label').multiSelect({ keepOrder: true,selectableHeader:'<div class="custom-header">Select for coloring</div>',selectionHeader:'<div class="custom-header">Established Labels</div>'});
+    tabs=$('#tabs');
+	tabs.tabs();
+	$('#tabs-label').tabs();
+	$('#tabs-eda').tabs();
+	$('#tabs-dega').tabs();
     $('#HPara').hide();
     $('#KPara').hide();
     $('#tab3div').hide();$('#tab4div').hide();
@@ -138,6 +142,9 @@
 				$('.btn').attr('disabled',false);
 				alert('Data Process successful.');
 				integrated=1;
+				if(flag_open==1){
+					metaAdvanced();
+				}
 			},
 			error:function(response){
 				alert(response.responseText);$('#loader').hide();
@@ -160,9 +167,6 @@
 			beforeSend:function(){
 			$('#loader').show();
 			},
-			complete:function(){
-				$('#loader').hide();
-			},
 			success:function(response){
 				$('#tab3div').show();
 				tabs.tabs('option','active',2);
@@ -170,7 +174,7 @@
 				plotlyPlot('graphDiv1',dfs1);
 				$('.btn').attr('disabled',false);
 				dfs2=JSON.parse(response.dfs2);
-				plotlyPlot('graphDiv2',dfs2);			
+				plotlyPlot('graphDiv2',dfs2);		
 				$.ajax({
 					url: '/dgea/?cID='+clientUniqueID,
 					datType:'json',
@@ -190,7 +194,7 @@
 						alert('Calculation Succeed!');
 						wheelzoom(document.querySelectorAll('img.img1'));
 					},
-					error:function(response){
+					error:function(response){alert('678');
 						alert(response.responseText);$('#loader').hide();
 						$('.btn').attr('disabled',false);
 						$('#graphDiv11').html('');
@@ -322,6 +326,7 @@ function clusterBtnClick(){
 				$('#graphDiv1-cluster-top-gene').html('<img class="img2" src="/static/temp/'+response.fileName1+'" width="1000" height="auto"/>');
 				alert('Calculation Succeed!');
 				wheelzoom(document.querySelectorAll('img.img2'));
+				alert('Calculation Succeed!');
 				$('.downloadData1').show();
 				$('#cluster_num').html("<option value='' selected='selected'>----SELECT----</option>");
 				$('#cluster_num1').html("<option value='' selected='selected'>----SELECT----</option>");
@@ -619,7 +624,7 @@ function LookUpGeneID()
 			contentType:false,
 			processData:false,
 			type:'get',
-			async:false,
+			async:true,
 			beforeSend:function(){
 			$('#loader').show();
 			},
@@ -638,10 +643,11 @@ function LookUpGeneID()
 	});
 }
 
+
 function metaAdvanced()
 {
 	txt=$('#metaAdvancedSettingClick').html();
-	signal=0;
+	flag=0;
 	if(integrated==0&&txt=='&gt;&gt;Enable Meta File Advanced Setting'){
 		url='/user/?cID='+clientUniqueID;
 		$.ajax({
@@ -651,29 +657,84 @@ function metaAdvanced()
 			contentType:false,
 			processData:false,
 			type:'get',
-			async:false,
+			async:true,
 			success:function(response){
 				$('.btn').attr('disabled',false);
 			},
 			error:function(response){
 				$('.btn').attr('disabled',false);
 				alert('Please Integrate/Process the data first.');
-				signal=1;
+				flag=1;
 			}
 		});
 		
 	}
-	if(signal==1)return;
+	if(flag==1)return;
 	if(txt=='&gt;&gt;Enable Meta File Advanced Setting')
 	{
 		$('#metaAdvancedSettingClick').html('&gt;&gt;Disable Meta File Advanced Setting');
+		$('#metaAdvancedSetting').slideToggle(300);
+		flag_open=1;
 	}
 	else
 	{
 		$('#metaAdvancedSettingClick').html('&gt;&gt;Enable Meta File Advanced Setting');
+		$('#metaAdvancedSetting').slideToggle(300);
+		flag_open=0;
+		return;
 	}
+
+	url='/meta/columns/?';
+	url+='&cID='+clientUniqueID;
+	$.ajax({
+			url:url,
+			datType:'text',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				$('#my-select-label').html('');
+				for (i=0;i<response.length;i++)
+				{
+					colName=response[i][0];
+					labeled=response[i][1];
+					if(labeled=='0')
+					{
+						if(colName!='ID_REF') $('#my-select-label').append('<option value="'+colName+'">'+response[i][0]+'</option>');
+						else $('#my-select-label').append('<option value="'+colName+'" disabled="">'+response[i][0]+'</option>');
+					}
+					else{
+						if(colName!='LABEL')
+						{
+							$('#my-select-label').append('<option value="'+colName+'" selected="">'+colName+'</option>');
+						}
+						else
+						{
+							$('#my-select-label').append('<option value="'+colName+'" selected="" disabled="">'+colName+'</option>');
+							
+						}
+					}
+				}
+				$('#my-select-label').multiSelect('refresh');
+				
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+
 	
-	$('#metaAdvancedSetting').slideToggle(300);
 }
 
   </script>
@@ -752,7 +813,7 @@ function metaAdvanced()
   <tr>
   	<h5>Choose the built-in compiled cohort(s) you want to integrate with:</h5metaSetting>
 	<br><br>
-	<select id="my-select" multiple>
+	<select id="my-select" multiple="multiple">
 	<optgroup label='Shared-Cohorts'>
 		{% for cohort in root.cohorts %}
     		<option value="{{ cohort.0 }}" title="{{ cohort.1 }}">{{ cohort.0 }}</option>
@@ -813,29 +874,19 @@ function metaAdvanced()
   </tr>
   </table>
   <div id="metaAdvancedSetting">
-	<ul data-direction="vertical" data-multiple="true" data-initial-index="[0]" data-event="click" class="accordion accordion--box accordion--vertical">
-		<li class="accordion__panel">
-		  <span class="accordion__heading">Assign New Labels<i class="-icon -icon--left"></i></span>
-		  <div class="accordion__expander">
-			<select id='topForLabels'>
-				<option value='50' selected='selected'>50</option>
-				<option value='100'>100</option>
-				<option value='500'>500</option>
-		  </select>
-		  </div>
-		</li>
-		<li class="accordion__panel">
-		  <span class="accordion__heading">Modify Labels<i class="-icon -icon--left"></i></span>
-		  <div class="accordion__expander">
-			<select id='topForLabels'>
-				<option value='50' selected='selected'>50</option>
-				<option value='100'>100</option>
-				<option value='500'>500</option>
-		  </select>
-		  </div>
-		</li>
-	  </ul>
-
+	<div id="tabs-label" style='width:1250px;'>
+		<ul>
+		  <li><a href="#tabs-label-1">Label Assignment</a></li>
+		  <li><a href="#tabs-label-2">Label Generation</a></li>
+		</ul>
+		<div id="tabs-label-1">
+			<select id="my-select-label" multiple="multiple">
+			</select>
+		</div>
+		<div id="tabs-label-2">
+			<label>12313131313133</label>
+		</div>
+	</div>
   </div>
   </div>
   
@@ -843,45 +894,42 @@ function metaAdvanced()
   <div id="tabs-3">
   	<p>Gene Data Explory Data Analyses</p>
 	<br>
-  	<div id='tab3div'>	
-          <ul data-direction="horizontal" data-multiple="true" data-initial-index="[0]" data-event="click" class="accordion accordion--box accordion--horizontal1">
-            <li class="accordion__panel">
-              <span class="accordion__heading">Data processed by Labels<i class="-icon -icon--left"></i></span>
-              <div class="accordion__expander">
-              		<div id="graphDiv2" style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
-  			<div style="width:100%; border-top:1px solid #ccc;"></div>
-  			<p>Dotplot of top 4 genes for each LABEL​</p>
-			<a id='graphDiv21A' href="..." target="_blank" style="display: block;">Download Image</a><br><br><br><br><br><br><br><br><br>
-  			<div id="graphDiv21" class="rotated" style="width:800px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
-			<br><br><br><br><br><br><br><br><br>
-			<p>Customised Top Number of Genes for Download​:</p>
-			<select id='topForLabels'>
+  	<div id='tab3div'>
+		<div id="tabs-eda" style='width:1250px;'>
+			<ul>
+			  <li><a href="#tabs-eda-1">Data processed by Labels</a></li>
+			  <li><a href="#tabs-eda-2">Data processed by FileNames</a></li>
+			</ul>
+			<div id="tabs-eda-1">
+				<div id="graphDiv2" style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
+				<p>Dotplot of top 4 genes for each LABEL​</p>
+				<a id='graphDiv21A' href="..." target="_blank" style="display: block;">Download Image</a><br><br><br><br><br><br><br><br><br>
+  				<div id="graphDiv21" class="rotated" style="width:800px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+				<br><br><br><br><br><br><br><br><br>
+				<p>Customised Top Number of Genes for Download​:</p>
+				<select id='topForLabels'>
 					<option value='50' selected='selected'>50</option>
 					<option value='100'>100</option>
 					<option value='500'>500</option>
-  			</select>
-  			<button id='topForLabelsDownloadBtn' class='btn btn-primary' onclick='getTopGenes(2);'>Download Top Genes</button>
-              </div>
-            </li>
-            <li class="accordion__panel">
-              <span class="accordion__heading">Data processed by FileNames<i class="-icon -icon--left"></i></span>
-              <div class="accordion__expander">
-              		<div id="graphDiv1" style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
-  			<div style="width:100%; border-top:1px solid #ccc;"></div>
-  			<p>Dotplot of top 4 genes for each file​</p>
-			<a id='graphDiv11A' href="..." target="_blank" style="display: block;">Download Image</a><br><br><br><br><br><br><br><br><br>
-  			<div id="graphDiv11" class="rotated" style="width:800px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
-			<br><br><br><br><br><br><br><br><br>
-			<p>Customised Top Number for Download​:</p>
-			<select id='topForFiles'>
-					<option value='50' selected='selected'>50</option>
-					<option value='100'>100</option>
-					<option value='500'>500</option>
-  			</select>
-  			<button id='topForFilesDownloadBtn' class='btn btn-primary' onclick='getTopGenes(1);'>Download Top Genes</button>
-            </div>
-            </li>
-          </ul>
+  				</select>
+  				<button id='topForLabelsDownloadBtn' class='btn btn-primary' onclick='getTopGenes(2);'>Download Top Genes</button>		
+			</div>
+			<div id="tabs-eda-2">
+				<div id="graphDiv1" style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
+				<div style="width:100%; border-top:1px solid #ccc;"></div>
+				<p>Dotplot of top 4 genes for each file​</p>
+				<a id='graphDiv11A' href="..." target="_blank" style="display: block;">Download Image</a><br><br><br><br><br><br><br><br><br>
+				<div id="graphDiv11" class="rotated" style="width:800px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+				<br><br><br><br><br><br><br><br><br>
+				<p>Customised Top Number for Download​:</p>
+				<select id='topForFiles'>
+						<option value='50' selected='selected'>50</option>
+						<option value='100'>100</option>
+						<option value='500'>500</option>
+				</select>
+				<button id='topForFilesDownloadBtn' class='btn btn-primary' onclick='getTopGenes(1);'>Download Top Genes</button>
+			</div>
+		</div>
   	</div>
   	<br>
 	<div style="text-align:right;">
@@ -931,17 +979,16 @@ function metaAdvanced()
 			</tr>
 	</table>
 	<div id='tab4div'>
-	<ul data-direction="horizontal" data-multiple="true" data-initial-index="[0]" data-event="click" class="accordion accordion--box accordion--horizontal2">
-            <li class="accordion__panel">
-              <span class="accordion__heading">Data colored by clusters<i class="-icon -icon--left"></i></span>
-              <div class="accordion__expander">
-              		<div id='graphDiv1-cluster' style="width:850px; height:850px; overflow-x:scroll; overflow-y:scroll;"></div>
-              </div>
-            </li>
-            <li class="accordion__panel">
-              <span class="accordion__heading">Dotplot of top 4 genes for each cluster<i class="-icon -icon--left"></i></span>
-              <div class="accordion__expander">
-              		<br><br><br>
+		<div id="tabs-dega" style='width:1250px;'>
+			<ul>
+			  <li><a href="#tabs-dega-1">Data colored by clusters</a></li>
+			  <li><a href="#tabs-dega-2">Dotplot of top 4 genes for each cluster</a></li>
+			</ul>
+			<div id="tabs-dega-1">
+				<div id='graphDiv1-cluster' style="width:850px; height:850px; overflow-x:scroll; overflow-y:scroll;"></div>
+			</div>
+			<div id="tabs-dega-2">
+				<br><br><br>
 					<a id="graphDiv1-cluster-gene-A" href="..."  target="_blank" style="display: block;">Download Image</a><br><br>
               		<div id="graphDiv1-cluster-gene" class='rotated' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 					<br><br><br>
@@ -952,9 +999,8 @@ function metaAdvanced()
 							<option value='500'>500</option>
 						</select>
 					<button id='topForLabelsDownloadBtn' class='btn btn-primary' onclick='getTopGenes(3);'>Download Top Genes</button>
-              </div>
-            </li>
-        </ul>
+			</div>
+		</div>
 	<table>
 			<tr>
 				<td><p>Contributions from each file</p></td>

@@ -17,6 +17,7 @@ urlpatterns = [
     path(r"lasso/", views.lasso, name="lasso"),
     path(r"tab/", views.tab, name="tab"),
     path(r"advancedSearch/", views.advancedSearch, name="advancedSearch"),
+    path(r"meta/columns/", views.meta_columns, name="meta_columns"),
     path(
         r"processedFile/corrected/", views.downloadCorrected, name="downloadCorrected"
     ),
