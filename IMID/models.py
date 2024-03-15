@@ -47,10 +47,14 @@ class SharedFile(models.Model):
         choices=(("meta", "Meta Data"), ("expression", "Expression Data")),
     )
     file = models.FileField(upload_to=get_share_file_path, null=True)
-    label = models.CharField(max_length=10, blank=True, null=True)
+    label = models.CharField(max_length=200, blank=True, null=True)
     groups = models.ManyToManyField(
         Group, related_name="shared_file_groups", blank=True
     )
+
+    class Meta:
+        # Define a unique constraint for cohort and type1 fields
+        unique_together = ["cohort", "type1"]
 
 
 class ProcessFile(models.Model):

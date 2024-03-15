@@ -63,10 +63,22 @@ def index(request):
 
 @login_required()
 def tab(request):
-    return render(
-        request,
-        "tab1.html",
-    )
+    context = {}
+    if request.user.groups.exists():
+        context["cohorts"] = list(
+            SharedFile.objects.filter(
+                type1="expression", groups__in=request.user.groups.all()
+            )
+            .all()
+            .values_list("cohort", "label")
+        )
+    else:
+        context["cohorts"] = list(
+            SharedFile.objects.filter(type1="expression")
+            .all()
+            .values_list("cohort", "label")
+        )
+    return render(request, "tab1.html", {"root": context})
 
 
 @login_required()
@@ -172,12 +184,24 @@ def edaIntegrate(request):
         files = [i.file.path for i in files]
     else:
         files = []
+
     files_meta = set()
     in_ta, in_ta1 = {}, {}
-    for i in SharedFile.objects.filter(type1="expression").all():
-        in_ta[i.cohort] = i.file.path
-    for i in SharedFile.objects.filter(type1="meta").all():
-        in_ta1[i.cohort] = i.file.path
+    if request.user.groups.exists():
+        for i in SharedFile.objects.filter(
+            type1="expression", groups__in=request.user.groups.all()
+        ).all():
+            in_ta[i.cohort] = i.file.path
+        for i in SharedFile.objects.filter(
+            type1="meta", groups__in=request.user.groups.all()
+        ).all():
+            in_ta1[i.cohort] = i.file.path
+    else:
+        for i in SharedFile.objects.filter(type1="expression").all():
+            in_ta[i.cohort] = i.file.path
+        for i in SharedFile.objects.filter(type1="meta").all():
+            in_ta1[i.cohort] = i.file.path
+
     for i in integrate:
         if i in in_ta:
             files.append(in_ta[i])
@@ -212,9 +236,6 @@ def edaIntegrate(request):
         return HttpResponse("No data uploaded", status=400)
 
     for file in files:
-        if "meta" in file:
-            flag = 1
-            continue
         temp01 = pd.read_csv(file).set_index("ID_REF")
         if "raw" in file or "RAW" in file:
             temp01 = temp01.div(temp01.sum(axis=1), axis=0) * 1e6
