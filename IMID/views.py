@@ -45,7 +45,7 @@ from .utils import (
     UploadFileColumnCheck,
 )
 
-from .models import userData, MetaFileColumn, CustomUser, UploadedFile
+from .models import userData, MetaFileColumn, CustomUser, UploadedFile, SharedFile
 from django.db import transaction
 
 
@@ -173,20 +173,11 @@ def edaIntegrate(request):
     else:
         files = []
     files_meta = set()
-    in_ta = {
-        "SERA": "share/share_SERA_BLOOD.csv",
-        "PEAC": "share/share_PEAC_recon.csv",
-        "PSORT": "share/share_PSORT.csv",
-        "RAMAP": "share/share_RAMAP_WHL.csv",
-        "ORBIT": "share/share_ORBIT.csv",
-    }
-    in_ta1 = {
-        "SERA": "share/share_IMID_meta.csv",
-        "PEAC": "share/share_IMID_meta.csv",
-        "PSORT": "share/share_IMID_meta.csv",
-        "RAMAP": "share/share_IMID_meta.csv",
-        "ORBIT": "share/share_ORBIT_meta.csv",
-    }
+    in_ta, in_ta1 = {}, {}
+    for i in SharedFile.objects.filter(type1="expression").all():
+        in_ta[i.cohort] = i.file.path
+    for i in SharedFile.objects.filter(type1="meta").all():
+        in_ta1[i.cohort] = i.file.path
     for i in integrate:
         if i in in_ta:
             files.append(in_ta[i])
@@ -207,13 +198,13 @@ def edaIntegrate(request):
         for i in files_meta:
             if temp0.shape == (0, 0):
                 temp0 = pd.concat(
-                    [temp0, pd.read_csv(BASE_UPLOAD + i).dropna(axis=1, inplace=False)],
+                    [temp0, pd.read_csv(i).dropna(axis=1, inplace=False)],
                     axis=0,
                     join="outer",
                 )
             else:
                 temp0 = pd.concat(
-                    [temp0, pd.read_csv(BASE_UPLOAD + i).dropna(axis=1, inplace=False)],
+                    [temp0, pd.read_csv(i).dropna(axis=1, inplace=False)],
                     axis=0,
                     join="inner",
                 )
@@ -224,7 +215,7 @@ def edaIntegrate(request):
         if "meta" in file:
             flag = 1
             continue
-        temp01 = pd.read_csv(BASE_UPLOAD + file).set_index("ID_REF")
+        temp01 = pd.read_csv(file).set_index("ID_REF")
         if "raw" in file or "RAW" in file:
             temp01 = temp01.div(temp01.sum(axis=1), axis=0) * 1e6
             # temp01=temp01/temp01.sum()*1e6
