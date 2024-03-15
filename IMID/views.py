@@ -32,7 +32,6 @@ from .utils import (
     zip_for_vis,
     fromPdtoSangkey,
     go_it,
-    handle_uploaded_file1,
     combat,
     harmony,
     bbknn,
@@ -43,9 +42,11 @@ from .utils import (
     heatmapPlot,
     GeneID2SymID,
     usrCheck,
+    UploadFileColumnCheck,
 )
 
-from .models import userData
+from .models import userData, MetaFileColumn, CustomUser, UploadedFile
+from django.db import transaction
 
 
 # lasso.R for data visualization
@@ -73,20 +74,32 @@ def uploadExpression(request):
     if request.method != "POST":
         return HttpResponse("Method not allowed", status=405)
     username = request.user.username
-    for file in glob.glob(BASE_UPLOAD + "/" + username + "*"):
-        os.remove(file)
+    cID = request.POST.get("cID", None)
+    if cID is None:
+        return HttpResponse("cID not provided.", status=400)
     fileNames = []
     context = {}
+    UploadedFile.objects.filter(user=request.user, type1="exp", cID=cID).delete()
     files = request.FILES.getlist("files[]", None)
+    new_exp_files = []
+
     for f in files:
-        handle_uploaded_file1(f, username)
+        new_exp_files.append(
+            UploadedFile(user=request.user, cID=cID, type1="exp", file=f)
+        )
         fileNames.append(BASE_UPLOAD + username + "_" + f.name)
         context[f.name] = {}
+    UploadedFile.objects.bulk_create(new_exp_files)
 
-    for f in fileNames:
-        df = pd.read_csv(f, nrows=5, header=0)
+    for file in UploadedFile.objects.filter(
+        user=request.user, type1="exp", cID=cID
+    ).all():
+        df = pd.read_csv(file.file.path, nrows=5, header=0)
+        f = file.file.name
         if "ID_REF" not in df.columns:
             return HttpResponse("No ID_REF column in the expression file", status=400)
+        if UploadFileColumnCheck(df) == 0:
+            return HttpResponse("Column name illegal.", status=400)
         if len(df.columns) > 7:  # only show 7 columns
             df = pd.concat([df.iloc[:, 0:4], df.iloc[:, -3:]], axis=1)
 
@@ -97,6 +110,7 @@ def uploadExpression(request):
         data = json.loads(json_re)
         context["_".join(f.split("_")[1:])]["d"] = data
         context["_".join(f.split("_")[1:])]["names"] = ["index"] + df.columns.to_list()
+
     return render(request, "table.html", {"root": context})
 
 
@@ -104,20 +118,23 @@ def uploadExpression(request):
 def uploadMeta(request):
     if request.method != "POST":
         return HttpResponse("Method not allowed", status=405)
-    username = request.user.username
+    cID = request.POST.get("cID", None)
+    if cID is None:
+        return HttpResponse("cID not provided.", status=400)
     files = request.FILES.getlist("meta", None)
     if files is None:
         return HttpResponse("Upload the meta file is required", status=405)
     files = files[0]
-    handle_uploaded_file1(files, username, "meta")
-    f = BASE_UPLOAD + username + "_meta.csv"
+    UploadedFile.objects.filter(user=request.user, type1="cli", cID=cID).delete()
+    UploadedFile.objects.create(user=request.user, cID=cID, type1="cli", file=files)
+    f = UploadedFile.objects.filter(user=request.user, type1="cli", cID=cID).first()
     context = {}
     context["metaFile"] = {}
-    df = pd.read_csv(f, nrows=5, header=0)
+    df = pd.read_csv(f.file.path, nrows=5, header=0)
     if "ID_REF" not in df.columns:
-        return HttpResponse("No ID_REF column in the expression file", status=400)
+        return HttpResponse("No ID_REF column in the clinical file", status=400)
     if "LABEL" not in df.columns:
-        return HttpResponse("No LABEL column in the expression file", status=400)
+        return HttpResponse("No LABEL column in the clinical file", status=400)
     if len(df.columns) > 7:  # only show 7 columns
         df = pd.concat([df.iloc[:, 0:4], df.iloc[:, -3:]], axis=1)
 
@@ -132,14 +149,14 @@ def uploadMeta(request):
 
 
 @login_required()
-def eda(request):
-    checkRes = usrCheck(request)
+def edaIntegrate(request):
+    checkRes = usrCheck(request, 0)
     if checkRes["status"] == 0:
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
     username = request.user.username
-    clientID = request.GET.get("cID", None)
+    cID = request.GET.get("cID", None)
 
     corrected = request.GET.get("correct", "Combat")
     log2 = request.GET.get("log2", "No")
@@ -150,23 +167,25 @@ def eda(request):
     for file in glob.glob(BASE_STATIC + "/" + username + "*"):
         os.remove(file)
 
-    directory = os.listdir(BASE_UPLOAD)
-    files = [i for i in directory if username == i.split("_")[0]]
+    files = UploadedFile.objects.filter(user=request.user, type1="exp", cID=cID).all()
+    if files:
+        files = [i.file.path for i in files]
+    else:
+        files = []
     files_meta = set()
-
     in_ta = {
-        "SERA": "share_SERA_BLOOD.csv",
-        "PEAC": "share_PEAC_recon.csv",
-        "PSORT": "share_PSORT.csv",
-        "RAMAP": "share_RAMAP_WHL.csv",
-        "ORBIT": "share_ORBIT.csv",
+        "SERA": "share/share_SERA_BLOOD.csv",
+        "PEAC": "share/share_PEAC_recon.csv",
+        "PSORT": "share/share_PSORT.csv",
+        "RAMAP": "share/share_RAMAP_WHL.csv",
+        "ORBIT": "share/share_ORBIT.csv",
     }
     in_ta1 = {
-        "SERA": "share_IMID_meta.csv",
-        "PEAC": "share_IMID_meta.csv",
-        "PSORT": "share_IMID_meta.csv",
-        "RAMAP": "share_IMID_meta.csv",
-        "ORBIT": "share_ORBIT_meta.csv",
+        "SERA": "share/share_IMID_meta.csv",
+        "PEAC": "share/share_IMID_meta.csv",
+        "PSORT": "share/share_IMID_meta.csv",
+        "RAMAP": "share/share_IMID_meta.csv",
+        "ORBIT": "share/share_ORBIT_meta.csv",
     }
     for i in integrate:
         if i in in_ta:
@@ -176,11 +195,11 @@ def eda(request):
     batch = []
     obs = []
     temp0 = []
-    color2 = []
     flag = 0
 
-    if os.path.isfile(BASE_UPLOAD + username + "_meta.csv"):
-        temp0 = pd.read_csv(BASE_UPLOAD + username + "_meta.csv")
+    f = UploadedFile.objects.filter(user=request.user, type1="cli", cID=cID).first()
+    if f is not None:
+        temp0 = pd.read_csv(f.file.path)
         temp0 = temp0.dropna(axis=1)
     else:
         temp0 = pd.DataFrame()
@@ -200,6 +219,7 @@ def eda(request):
                 )
     if temp0.shape == (0, 0):
         return HttpResponse("No data uploaded", status=400)
+
     for file in files:
         if "meta" in file:
             flag = 1
@@ -248,15 +268,8 @@ def eda(request):
         return HttpResponse("Can't find meta file", status=400)
     temp = dfs1.set_index("ID_REF").join(temp0.set_index("ID_REF"), how="inner")
     temp["obs"] = temp.index.tolist()
-    # temp['FileName']=batch#inner join may not match so valued beforehand
-    # temp.to_csv(BASE_STATIC + username + "_corrected.csv", index=False)
     usr.setIntegrationData(temp)
 
-    color2 = [i + "(" + j + ")" for i, j in zip(temp.LABEL, temp.FileName)]
-
-    # dfs1.drop(["ID_REF"], axis=1, inplace=True)
-    # dfs1.drop(["FileName"], axis=1, inplace=True)
-    # df_temp=temp.drop(['LABEL','obs','FileName'],axis=1,inplace=False)
     pca_temp = usr.getAnndata().obsm["X_pca"]
 
     if fr == "TSNE":
@@ -267,17 +280,49 @@ def eda(request):
         X2D = umap1.fit_transform(pca_temp)
 
     usr.setFRData(X2D)
-    usr.save()
-    traces = zip_for_vis(X2D.tolist(), temp.FileName, temp.obs)
-    traces1 = zip_for_vis(X2D.tolist(), color2, temp.obs)
-    context = {
-        "dfs1": json.dumps(traces),
-        "dfs2": json.dumps(traces1),
-        "fr": fr,
-        "log": log2,
-        "correct": corrected,
-    }
-    # return render(request,'eda.html',context)
+    if usr.save() is False:
+        return HttpResponse("Error for creating user records.", status=400)
+
+    # store column info of meta file into database
+    try:
+        with transaction.atomic():
+            new_file_columns = []
+            MetaFileColumn.objects.filter(user=request.user, cID=cID).delete()
+            for cn in temp0.columns:
+                if cn == "LABEL":
+                    label = "1"
+                else:
+                    label = "0"
+
+                temp_meta = MetaFileColumn(
+                    user=request.user, cID=cID, colName=cn, label=label
+                )
+                if temp_meta is None:
+                    raise Exception("MetaFileColumn create Failed.")
+                else:
+                    new_file_columns.append(temp_meta)
+            MetaFileColumn.objects.bulk_create(new_file_columns)
+    except:
+        return HttpResponse("Error for registering to DataBase.", status=400)
+
+    return HttpResponse("Operation successful.", status=200)
+
+
+@login_required()
+def eda(request):
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
+    adata = usr.getAnndata()
+    color2 = adata.obs["batch2"]  # temp.LABEL, temp.FileName
+    X2D = usr.getFRData()
+    traces = zip_for_vis(
+        X2D.tolist(), adata.obs["batch1"], adata.obs_names
+    )  # temp.FileName, temp.obs
+    traces1 = zip_for_vis(X2D.tolist(), color2, adata.obs_names)
+    context = {"dfs1": json.dumps(traces), "dfs2": json.dumps(traces1)}
     return JsonResponse(context)
 
 
@@ -614,8 +659,6 @@ def lasso(request):
     model = LassoCV(cv=5, random_state=42, n_jobs=-1, max_iter=10000, tol=0.01)
     model.fit(x, y)
 
-    # lasso_tuned = Lasso().set_params(alpha=model.alpha_)
-    # lasso_tuned.fit(x, y)
     coef = pd.Series(
         model.coef_, df.drop(["cluster"], axis=1, inplace=False).columns
     ).sort_values(key=abs, ascending=False)
@@ -746,3 +789,17 @@ def GeneLookup(request):
     if result is None:
         return HttpResponse("geneList is illigal", status=400)
     return JsonResponse(result, safe=False)
+
+
+@login_required()
+def checkUser(request):
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        return HttpResponse("User exists.", status=200)
+
+
+@login_required()
+def integrate(request):
+    pass

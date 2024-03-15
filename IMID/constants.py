@@ -8,6 +8,6 @@ ONTOLOGY = {
     "MF": Ontology(name="molecular_function", color="oranges_r"),
 }
 
-BASE_UPLOAD = "IMID/geneData/upload/"
+BASE_UPLOAD = "uploaded/"
 BASE_STATIC = "IMID/static/temp/"
 GeneID_URL = "https://biotools.fr/human/ensembl_symbol_converter/"

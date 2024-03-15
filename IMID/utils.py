@@ -11,7 +11,7 @@ from genes_ncbi_proteincoding import GENEID2NT
 import random
 import string
 from .constants import BASE_UPLOAD, BASE_STATIC, GeneID_URL
-from .models import Gene, GOTerm, userData
+from .models import Gene, GOTerm, userData, MetaFileColumn
 from harmony import harmonize
 import pandas as pd
 import numpy as np
@@ -139,17 +139,6 @@ def get_random_string(length):
     letters = string.ascii_lowercase
     result_str = "".join(random.choice(letters) for i in range(length))
     return result_str
-
-
-def handle_uploaded_file1(f, username, filename=""):
-    if filename == "":
-        with open(BASE_UPLOAD + username + "_" + f.name, "wb+") as dest:
-            for chunk in f.chunks():
-                dest.write(chunk)
-    else:
-        with open(BASE_UPLOAD + username + "_" + filename + ".csv", "wb+") as dest:
-            for chunk in f.chunks():
-                dest.write(chunk)
 
 
 def combat(dfs):
@@ -388,22 +377,29 @@ def GeneID2SymID(geneList):
         return None
     retRes = []
     for i in geneList:
-        if i in text:
+        if i in text and text[i] is not None:
             retRes.append(text[i])
         else:
             retRes.append(i)
     return retRes
 
 
-def usrCheck(request):
+def UploadFileColumnCheck(df):
+    return 1
+
+
+def usrCheck(request, flag=1):
     username = request.user.username
     clientID = request.GET.get("cID", None)
     if clientID is None:
         return {"status": 0, "message": "clientID is Required."}
-    usr = userData.read(username, clientID)
-    if usr is None:
-        return {
-            "status": 0,
-            "message": "Can't find the user/device.Please request from the beginning.",
-        }
+    if flag == 0:
+        usr = userData(clientID, username)
+    else:
+        usr = userData.read(username, clientID)
+        if usr is None:
+            return {
+                "status": 0,
+                "message": "Can't find the user/device.Please request from the beginning.",
+            }
     return {"status": 1, "usrData": usr}
