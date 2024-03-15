@@ -754,11 +754,9 @@ function metaAdvanced()
 	<br><br>
 	<select id="my-select" multiple>
 	<optgroup label='Shared-Cohorts'>
-    	<option value="SERA" title="The Scotish Early Rheumatoid Arthritis;">SERA</option>
-    	<option value="PEAC" title="The Pathobiology of Early Arthritis Cohort;">PEAC</option>
-    	<option value="PSORT" title="Psoriasis Stratification to Optimise Relevant Therapy;">PSORT</option>
-    	<option value="RAMAP" title="Rheumatoid Arthritis Map;">RAMAP</option>
-		<option value="ORBIT" title="ORBIT was a study comparing Rituximab to Anti-TNF treatments. ">ORBIT</option>
+		{% for cohort in root.cohorts %}
+    		<option value="{{ cohort.0 }}" title="{{ cohort.1 }}">{{ cohort.0 }}</option>
+    	{% endfor %}
     	</optgroup>
 	</select>
   </tr>
