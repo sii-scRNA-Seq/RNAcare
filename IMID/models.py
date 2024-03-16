@@ -1,6 +1,6 @@
 from django.db import models
 import pandas as pd
-from .constants import ONTOLOGY, BASE_UPLOAD, BASE_STATIC
+from .constants import ONTOLOGY, BASE_UPLOAD, BASE_STATIC, BUILT_IN_LABELS
 from threadpoolctl import threadpool_limits
 import pickle
 import scanpy as sc
@@ -144,9 +144,15 @@ class userData:
         self.anndata = None  # expression+clinic for X
 
     def setIntegrationData(self, df):
-        df = df.round(15)
+        df = df.copy().round(15)
         self.integrationData = df
-        t = df.loc[:, ~(df.columns.isin(["obs", "FileName", "LABEL", "cluster"]))]
+        self.dfSetAnndata(df)
+
+    def dfSetAnndata(self, df):
+        t = df.loc[:, ~(df.columns.isin(BUILT_IN_LABELS))].copy()
+        string_cols = t.select_dtypes(include=["object", "bool"]).columns
+        for col in string_cols:
+            t[col] = t[col].astype("category").cat.codes
         adata = sc.AnnData(np.zeros(t.values.shape), dtype=np.float64)
         adata.X = t.values
         adata.var_names = t.columns.tolist()
@@ -167,7 +173,11 @@ class userData:
         self.anndata = adata
 
     def setAnndata(self, adata):
-        self.anndata = adata
+        adata = adata.copy()
+        if type(adata) == type(sc.AnnData()):
+            self.anndata = adata
+        elif type(adata) == type(pd.DataFrame()):
+            self.dfSetAnndata(adata)
 
     def setMarkers(self, markers):
         self.anndata.uns["markers"] = markers

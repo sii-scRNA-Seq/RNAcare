@@ -124,8 +124,10 @@
 	});
    $('#next2').on('click',function(){
    	$('.btn').attr('disabled',true);
+	url='/eda/integrate/?correct='+$('input[name="Comb"]:checked').val()+'&log2='+$('input[name="Log"]:checked').val()+'&fr='+$('input[name="FR"]:checked').val()+'&integrate='+$('#my-select').val();
+	url+='&cID='+clientUniqueID;
 		$.ajax({
-			url: '/eda/integrate/?correct='+$('input[name="Comb"]:checked').val()+'&log2='+$('input[name="Log"]:checked').val()+'&fr='+$('input[name="FR"]:checked').val()+'&integrate='+$('#my-select').val()+'&cID='+clientUniqueID,
+			url: url,
 			datType:'json',
 			cache:false,
 			contentType:false,
@@ -156,8 +158,11 @@
 	});
 
    $('#next2EDA').on('click',function(){
+	orig_label=$('#eda-label-choose').val();
+	url='/eda/?cID='+clientUniqueID;
+	url+='&label='+$('#eda-label-choose').val();
 	$.ajax({
-			url: '/eda/?cID='+clientUniqueID,
+			url: url,
 			datType:'json',
 			cache:false,
 			contentType:false,
@@ -170,13 +175,25 @@
 			success:function(response){
 				$('#tab3div').show();
 				tabs.tabs('option','active',2);
-				dfs1=JSON.parse(response.dfs1);
+				dfs1 = response.dfs1;
 				plotlyPlot('graphDiv1',dfs1);
 				$('.btn').attr('disabled',false);
-				dfs2=JSON.parse(response.dfs2);
-				plotlyPlot('graphDiv2',dfs2);		
+				dfs2 = response.dfs2;
+				plotlyPlot('graphDiv2',dfs2);
+				$('#eda-label-choose').html('');
+				for(i=0;i<response.labels.length;i++)
+				{
+					temp_r=response.labels[i];
+					if(temp_r=='LABEL')temp_r='batch2';
+					if(temp_r==orig_label){
+						$('#eda-label-choose').append("<option value='"+temp_r+"' selected='selected'>"+response.labels[i]+"</option>");
+					}
+					else{
+						$('#eda-label-choose').append("<option value='"+temp_r+"'>"+response.labels[i]+"</option>");
+					}
+				}	
 				$.ajax({
-					url: '/dgea/?cID='+clientUniqueID,
+					url: '/dgea/?cID='+clientUniqueID+'&label='+$('#eda-label-choose').val(),
 					datType:'json',
 					cache:false,
 					contentType:false,
@@ -187,14 +204,14 @@
 						$('#loader').hide();
 					},
 					success:function(response){
-						$('#graphDiv11A').attr('href','/static/temp/'+response[0]);
-						$('#graphDiv21A').attr('href','/static/temp/'+response[1]);
-						$('#graphDiv11').html('<img class="img1" src="/static/temp/'+response[0]+'" width="auto" height="400px"/>');
-						$('#graphDiv21').html('<img class="img1" src="/static/temp/'+response[1]+'" width="auto" height="400px"/>');
+						$('#graphDiv11A').attr('href','data:image/png;base64,'+response[0]);
+						$('#graphDiv21A').attr('href','data:image/png;base64,'+response[1]);
+						$('#graphDiv11').html('<img class="img1" src="data:image/png;base64,'+response[0]+'" width="auto" height="400px"/>');
+						$('#graphDiv21').html('<img class="img1" src="data:image/png;base64,'+response[1]+'" width="auto" height="400px"/>');
 						alert('Calculation Succeed!');
 						wheelzoom(document.querySelectorAll('img.img1'));
 					},
-					error:function(response){alert('678');
+					error:function(response){
 						alert(response.responseText);$('#loader').hide();
 						$('.btn').attr('disabled',false);
 						$('#graphDiv11').html('');
@@ -320,10 +337,10 @@ function clusterBtnClick(){
 				plotlyPlot('graphDiv1-cluster',response.traces);
 				plotlyPlot1('bc1',response.bc1);
 				plotlyPlot1('bc2',response.bc2);
-				$('#graphDiv1-cluster-gene-A').attr('href','/static/temp/'+response.fileName);
-				$('#graphDiv1-cluster-gene').html('<img class="img2" src="/static/temp/'+response.fileName+'" width="auto" height="400"/>');
-				$('#graphDiv1-cluster-top-gene-A').attr('href','/static/temp/'+response.fileName1);
-				$('#graphDiv1-cluster-top-gene').html('<img class="img2" src="/static/temp/'+response.fileName1+'" width="1000" height="auto"/>');
+				$('#graphDiv1-cluster-gene-A').attr('href','data:image/png;base64,'+response.fileName);
+				$('#graphDiv1-cluster-gene').html('<img class="img2" src="data:image/png;base64,'+response.fileName+'" width="auto" height="400"/>');
+				$('#graphDiv1-cluster-top-gene-A').attr('href','data:image/png;base64,'+response.fileName1);
+				$('#graphDiv1-cluster-top-gene').html('<img class="img2" src="data:image/png;base64,'+response.fileName1+'" width="1000" height="auto"/>');
 				alert('Calculation Succeed!');
 				wheelzoom(document.querySelectorAll('img.img2'));
 				alert('Calculation Succeed!');
@@ -373,7 +390,7 @@ function goEnrich(){
 			$('#loader').hide();
 			},
 			success:function(response){
-				$('#goEnrichPic').html('<img class="imgGo" src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="500" height="auto"/><br><a href="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" target="_blank">Download Image</a>');
+				$('#goEnrichPic').html('<img class="imgGo" src="data:image/png;base64,'+response+'" width="500" height="auto"/><br><a href="data:image/png;base64,'+response+'" target="_blank">Download Image</a>');
 				alert('Calculation Succeed!');
 				wheelzoom(document.querySelectorAll('img.imgGo'));
 				$('.btn').attr('disabled',false);
@@ -404,7 +421,7 @@ function golasso(){
 			$('#loader').hide();
 			},
 			success:function(response){
-				$('#lassoPic').html('<img class="imgLasso" src="/static/temp/'+response.fileName+'" width="1000" height="auto"/><br><a href="/static/temp/'+response.fileName+'" target="_blank">Download Image</a>');
+				$('#lassoPic').html('<img class="imgLasso" src="data:image/png;base64,'+response+'" width="1000" height="auto"/><br><a href="data:image/png;base64,'+response+'" target="_blank">Download Image</a>');
 				alert('Calculation Succeed!');
 				wheelzoom(document.querySelectorAll('img.imgLasso'));
 				$('.btn').attr('disabled',false);
@@ -421,13 +438,13 @@ function golasso(){
 function getTopGenes(t){
 	url='';
 	if(t==1){
-		url='/dgea?clusters=fileName&topN='+$('#topForFiles').val();
+		url='/dgea/?clusters=fileName&topN='+$('#topForFiles').val();
 	}
 	else if(t==2){
-		url='/dgea?clusters=label&topN='+$('#topForLabels').val();
+		url='/dgea/?clusters=label&topN='+$('#topForLabels').val();
 	}
 	else if(t==3){
-		url='/dgea?clusters='+$('input[type=radio][name=clustering]:checked').val()+'&topN='+$('#topForLabels').val();//LEIDEN,HDBSCAN,Kmeans
+		url='/dgea/?clusters='+$('input[type=radio][name=clustering]:checked').val()+'&topN='+$('#topForLabels').val();//LEIDEN,HDBSCAN,Kmeans
 	}
 	else if(t==4){
 		url='/processedFile/corrected/?usr={{ user.get_username }}';
@@ -435,6 +452,7 @@ function getTopGenes(t){
 	else if(t==5){
 		url='/processedFile/correctedCluster/?usr={{ user.get_username }}';
 	}
+	url+='&label='+$('#eda-label-choose').val();
 	url+='&cID='+clientUniqueID;
 	$.ajax({
 			url:url,
@@ -544,7 +562,7 @@ function TGenePlotClick()
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				$('#vlnPlot').html('<label style="display:block;text-align: center;">Violin Plot for target genes</label><br><br><img class="imgvln" src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="800" height="auto"/>');
+				$('#vlnPlot').html('<label style="display:block;text-align: center;">Violin Plot for target genes</label><br><br><img class="imgvln" src="data:image/png;base64,'+response.fileName+'" width="800" height="auto"/>');
 				//wheelzoom(document.querySelectorAll('img.imgvln'));
 			},
 			error:function(response){
@@ -571,7 +589,7 @@ function TGenePlotClick()
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				$('#densityPlot').html('<label style="display:block;text-align: center;">Feature Plot for target genes</label><br><br><img class="feplot" src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="1000" height="auto"/>');
+				$('#densityPlot').html('<label style="display:block;text-align: center;">Feature Plot for target genes</label><br><br><img class="feplot" src="data:image/png;base64,'+response.fileName+'" width="1000" height="auto"/>');
 				//wheelzoom(document.querySelectorAll('img.feplot'));
 			},
 			error:function(response){
@@ -598,7 +616,7 @@ function TGenePlotClick()
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				$('#heatmapPlot').html('<label style="display:block;text-align: center;">Heatmap Plot for target genes(Scaled)</label><br><br><img class="heatplot" src="/static/temp/'+response.fileName+'?timestamp='+Math.random().toString(36).slice(-5)+'" width="1000" height="auto"/>');
+				$('#heatmapPlot').html('<label style="display:block;text-align: center;">Heatmap Plot for target genes(Scaled)</label><br><br><img class="heatplot" src="data:image/png;base64,'+response.fileName+'" width="1000" height="auto"/>');
 				//wheelzoom(document.querySelectorAll('img.heatplot'));
 			},
 			error:function(response){
@@ -643,12 +661,12 @@ function LookUpGeneID()
 	});
 }
 
-
+label_selected_value='';
 function metaAdvanced()
 {
 	txt=$('#metaAdvancedSettingClick').html();
 	flag=0;
-	if(integrated==0&&txt=='&gt;&gt;Enable Meta File Advanced Setting'){
+	if(integrated==0&&txt=='&gt;&gt;Enable Meta File Advanced Settings'){
 		url='/user/?cID='+clientUniqueID;
 		$.ajax({
 			url:url,
@@ -670,22 +688,22 @@ function metaAdvanced()
 		
 	}
 	if(flag==1)return;
-	if(txt=='&gt;&gt;Enable Meta File Advanced Setting')
+	if(txt=='&gt;&gt;Enable Meta File Advanced Settings')
 	{
-		$('#metaAdvancedSettingClick').html('&gt;&gt;Disable Meta File Advanced Setting');
+		$('#metaAdvancedSettingClick').html('&gt;&gt;Disable Meta File Advanced Settings');
 		$('#metaAdvancedSetting').slideToggle(300);
 		flag_open=1;
 	}
 	else
 	{
-		$('#metaAdvancedSettingClick').html('&gt;&gt;Enable Meta File Advanced Setting');
+		$('#metaAdvancedSettingClick').html('&gt;&gt;Enable Meta File Advanced Settings');
 		$('#metaAdvancedSetting').slideToggle(300);
 		flag_open=0;
 		return;
 	}
 
 	url='/meta/columns/?';
-	url+='&cID='+clientUniqueID;
+	url+='cID='+clientUniqueID;
 	$.ajax({
 			url:url,
 			datType:'text',
@@ -719,12 +737,13 @@ function metaAdvanced()
 						}
 						else
 						{
-							$('#my-select-label').append('<option value="'+colName+'" selected="" disabled="">'+colName+'</option>');
+							$('#my-select-label').append('<option value="batch2" selected="" disabled="" index="0">'+colName+'</option>');
 							
 						}
 					}
 				}
 				$('#my-select-label').multiSelect('refresh');
+				label_selected_value=$('#my-select-label').val();
 				
 			},
 			error:function(response){
@@ -737,6 +756,51 @@ function metaAdvanced()
 	
 }
 
+function labelAssignConfirm()
+{
+	if($('#my-select-label').val()==''&&label_selected_value=='')
+	{
+		if($('#my-select-label').val()=='')alert('Select at least one categorical field as a new label.');
+		else{
+			alert('Don\'t change anything.');
+		}
+		return;
+	}
+	url='/meta/columns/?';
+	url+='labels='+$('#my-select-label').val()+'&fr='+$('input[name="FR"]:checked').val();
+	url+='&cID='+clientUniqueID;
+	$.ajax({
+			url:url,
+			datType:'json',
+			headers: {'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val() },
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'put',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				alert('Update new label(s) successfully.')
+				
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+}
+
+function edaLabelChange()
+{
+	$('#next2EDA').trigger('click');
+}
   </script>
   
   <style>
@@ -865,7 +929,7 @@ function metaAdvanced()
   </tr>
   <tr>
 	<td>
-		<div id="metaAdvancedSettingClick" onclick="metaAdvanced();">&gt;&gt;Enable Meta File Advanced Setting</div>
+		<div id="metaAdvancedSettingClick" onclick="metaAdvanced();">&gt;&gt;Enable Meta File Advanced Settings</div>
 	</td>
   	<td style="text-align:right;" colspan='2'>
 		<button id="next2" class="btn btn-primary">&nbsp;&nbsp;Integrate&nbsp;&nbsp;</button>
@@ -882,6 +946,8 @@ function metaAdvanced()
 		<div id="tabs-label-1">
 			<select id="my-select-label" multiple="multiple">
 			</select>
+			<br>
+			<button id="label-assign-confirm" class="btn btn-primary" onclick="labelAssignConfirm();" style="margin-left:300px;">&nbsp;&nbsp;Modify&nbsp;&nbsp;</button>
 		</div>
 		<div id="tabs-label-2">
 			<label>12313131313133</label>
@@ -894,6 +960,12 @@ function metaAdvanced()
   <div id="tabs-3">
   	<p>Gene Data Explory Data Analyses</p>
 	<br>
+	<div  style="margin: 0 auto; display: table; background-color: rgb(184, 184, 224); border-radius: 5px;">
+		<label>&nbsp;&nbsp;Choose the created Label as target:&nbsp;&nbsp;</label>
+		<select id="eda-label-choose" onchange="edaLabelChange();">
+			<option value='batch2' selected='selected'>LABEL</option>
+		</select>&nbsp;&nbsp;
+	</div>
   	<div id='tab3div'>
 		<div id="tabs-eda" style='width:1250px;'>
 			<ul>
