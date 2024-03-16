@@ -11,3 +11,11 @@ ONTOLOGY = {
 BASE_UPLOAD = "uploaded/"
 BASE_STATIC = "IMID/static/temp/"
 GeneID_URL = "https://biotools.fr/human/ensembl_symbol_converter/"
+BUILT_IN_LABELS = {
+    "obs",
+    "FileName",
+    "LABEL",
+    "cluster",
+    "batch1",
+    "batch2",
+}

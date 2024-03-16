@@ -16,6 +16,8 @@ from sklearn.linear_model import LassoCV, Lasso
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 import math
+import io
+import base64
 
 # gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
 
@@ -27,7 +29,7 @@ import plotly.graph_objects as go
 
 import requests
 from bs4 import BeautifulSoup
-from .constants import ONTOLOGY, BASE_UPLOAD, BASE_STATIC
+from .constants import ONTOLOGY, BUILT_IN_LABELS
 from .utils import (
     zip_for_vis,
     fromPdtoSangkey,
@@ -96,10 +98,9 @@ def uploadExpression(request):
     new_exp_files = []
 
     for f in files:
-        new_exp_files.append(
-            UploadedFile(user=request.user, cID=cID, type1="exp", file=f)
-        )
-        fileNames.append(BASE_UPLOAD + username + "_" + f.name)
+        temp_file = UploadedFile(user=request.user, cID=cID, type1="exp", file=f)
+        new_exp_files.append(temp_file)
+        fileNames.append(temp_file.file.path)
         context[f.name] = {}
     UploadedFile.objects.bulk_create(new_exp_files)
 
@@ -173,11 +174,9 @@ def edaIntegrate(request):
     corrected = request.GET.get("correct", "Combat")
     log2 = request.GET.get("log2", "No")
     fr = request.GET.get("fr", "TSNE")
-    integrate = request.GET.get("integrate", "").split(",")
+    integrate = [i.strip() for i in request.GET.get("integrate", "").split(",")]
     if "" in integrate:
         integrate.remove("")
-    for file in glob.glob(BASE_STATIC + "/" + username + "*"):
-        os.remove(file)
 
     files = UploadedFile.objects.filter(user=request.user, type1="exp", cID=cID).all()
     if files:
@@ -217,7 +216,7 @@ def edaIntegrate(request):
         temp0 = temp0.dropna(axis=1)
     else:
         temp0 = pd.DataFrame()
-    if len(integrate) != 0 and integrate[0] != "null":  # jquery plugin compatible
+    if integrate[0] != "null" or integrate != [""]:  # jquery plugin compatible
         for i in files_meta:
             if temp0.shape == (0, 0):
                 temp0 = pd.concat(
@@ -326,15 +325,28 @@ def eda(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
+
     adata = usr.getAnndata()
-    color2 = adata.obs["batch2"]  # temp.LABEL, temp.FileName
-    print(color2)
+    targetLabel = request.GET.get("label", "batch2")
+    color2 = adata.obs[targetLabel]  # temp.LABEL, temp.FileName
     X2D = usr.getFRData()
     traces = zip_for_vis(
         X2D.tolist(), adata.obs["batch1"], adata.obs_names
     )  # temp.FileName, temp.obs
     traces1 = zip_for_vis(X2D.tolist(), color2, adata.obs_names)
-    context = {"dfs1": json.dumps(traces), "dfs2": json.dumps(traces1)}
+    labels = list(
+        MetaFileColumn.objects.filter(user=request.user, cID=usr.cID, label="1")
+        .all()
+        .values_list("colName", flat=True)
+    )
+    if "LABEL" in labels:
+        labels.remove("LABEL")
+        labels = ["LABEL"] + labels
+    context = {
+        "dfs1": traces,
+        "dfs2": traces1,
+        "labels": labels,
+    }
     return JsonResponse(context)
 
 
@@ -345,8 +357,7 @@ def dgea(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
-    username = request.user.username
-    clientID = request.GET.get("cID", None)
+    targetLabel = request.GET.get("label", "batch2")
     adata = usr.getAnndata()
 
     clusters = request.GET.get("clusters", "default")
@@ -354,6 +365,8 @@ def dgea(request):
 
     if clusters == "default":
         with plt.rc_context():
+            figure1 = io.BytesIO()
+            figure2 = io.BytesIO()
             if len(set(adata.obs["batch1"])) > 1:
                 sc.tl.rank_genes_groups(adata, groupby="batch1", method="t-test")
                 sc.tl.dendrogram(adata, groupby="batch1")
@@ -361,35 +374,33 @@ def dgea(request):
                     adata, n_genes=int(n_genes), show=False, color_map="bwr"
                 )
                 plt.savefig(
-                    BASE_STATIC + username + "_batch1_" + clientID + ".png",
+                    figure1,
+                    format="png",
                     bbox_inches="tight",
                 )
+                figure1 = base64.b64encode(figure1.getvalue()).decode("utf-8")
             else:
-                pass
-            if len(set(adata.obs["batch2"])) > 1:
-                sc.tl.rank_genes_groups(adata, groupby="batch2", method="t-test")
-                sc.tl.dendrogram(adata, groupby="batch2")
+                figure1 = ""
+            if len(set(adata.obs[targetLabel])) > 1:
+                sc.tl.rank_genes_groups(adata, groupby=targetLabel, method="t-test")
+                sc.tl.dendrogram(adata, groupby=targetLabel)
                 sc.pl.rank_genes_groups_dotplot(
                     adata, n_genes=int(n_genes), show=False, color_map="bwr"
                 )
                 plt.savefig(
-                    BASE_STATIC + username + "_batch2_" + clientID + ".png",
+                    figure2,
+                    format="png",
                     bbox_inches="tight",
                 )
+                figure2 = base64.b64encode(figure2.getvalue()).decode("utf-8")
             else:
-                pass
-        return JsonResponse(
-            [
-                username + "_batch1_" + clientID + ".png",
-                username + "_batch2_" + clientID + ".png",
-            ],
-            safe=False,
-        )
+                figure2 = ""
+            return JsonResponse([figure1, figure2], safe=False)
     elif clusters == "fileName":
         # show top gene for specific group
         return getTopGeneCSV(adata, "batch1", n_genes)
     elif clusters == "label":
-        return getTopGeneCSV(adata, "batch2", n_genes)
+        return getTopGeneCSV(adata, targetLabel, n_genes)
     elif clusters in ("LEIDEN", "HDBSCAN", "KMeans"):
         return getTopGeneCSV(adata, "cluster", n_genes)
 
@@ -422,9 +433,7 @@ def clustering(request):
             return HttpResponse("Resolution should be a float", status=400)
         sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
         sc.tl.leiden(adata, resolution=param)
-        Resp = clusteringPostProcess(
-            X2D, adata, "leiden", BASE_STATIC, username, clientID, usr
-        )
+        Resp = clusteringPostProcess(X2D, adata, "leiden", usr)
         return Resp
     elif cluster == "HDBSCAN":
         if param is None:
@@ -445,9 +454,7 @@ def clustering(request):
 
         adata.obs["hdbscan"] = labels
         adata.obs["hdbscan"] = adata.obs["hdbscan"].astype("category")
-        Resp = clusteringPostProcess(
-            X2D, adata, "hdbscan", BASE_STATIC, username, clientID, usr
-        )
+        Resp = clusteringPostProcess(X2D, adata, "hdbscan", usr)
         return Resp
     elif cluster == "Kmeans":
         try:
@@ -463,9 +470,7 @@ def clustering(request):
         labels = [str(i) for i in km.labels_]
         adata.obs["kmeans"] = labels
         adata.obs["kmeans"] = adata.obs["kmeans"].astype("category")
-        Resp = clusteringPostProcess(
-            X2D, adata, "kmeans", BASE_STATIC, username, clientID, usr
-        )
+        Resp = clusteringPostProcess(X2D, adata, "kmeans", usr)
         return Resp
 
 
@@ -578,9 +583,7 @@ def advancedSearch(request):
 
 @login_required()
 def goenrich(request):
-    username = request.user.username
     cluster_n = request.GET.get("cluster_n", 0)
-    clientID = request.GET.get("cID", None)
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
         return HttpResponse(checkRes["message"], status=400)
@@ -637,15 +640,13 @@ def goenrich(request):
         uniformtext_mode="hide",
         xaxis=dict(title="Gene Ratio"),
     )
-
-    fig.write_image(BASE_STATIC + username + "_goenrich_" + clientID + ".png")
-    return JsonResponse({"fileName": username + "_goenrich_" + clientID + ".png"})
+    return HttpResponse(
+        base64.b64encode(fig.to_image(format="png")), content_type="image/png"
+    )
 
 
 @login_required()
 def lasso(request):
-    username = request.user.username
-    clientID = request.GET.get("cID", None)
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
         return HttpResponse(checkRes["message"], status=400)
@@ -675,12 +676,14 @@ def lasso(request):
         model.coef_, df.drop(["cluster"], axis=1, inplace=False).columns
     ).sort_values(key=abs, ascending=False)
 
-    matplotlib.pyplot.clf()  # in order to save a picture
-    coef[coef != 0][:50].plot.bar(x="Features", y="Coef")
-    plt.savefig(
-        BASE_STATIC + username + "_" + clientID + "_lasso.png", bbox_inches="tight"
+    coef[coef != 0][:50].plot.bar(
+        x="Features", y="Coef", figure=plt.figure(), fontsize=8
     )
-    return JsonResponse({"fileName": username + "_" + clientID + "_lasso.png"})
+    with io.BytesIO() as buffer:
+        plt.savefig(buffer, format="png", bbox_inches="tight")
+        buffer.seek(0)
+        image = buffer.getvalue()
+    return HttpResponse(base64.b64encode(image), content_type="image/png")
 
 
 @login_required()
@@ -765,8 +768,6 @@ def genePlot(request):
     except:
         return HttpResponse("geneList is illigal", status=400)
 
-    username = request.user.username
-    clientID = request.GET.get("cID", None)
     adata = usr.getAnndata()
     if adata is None:
         return HttpResponse("No data is in use for the account", status=400)
@@ -779,12 +780,14 @@ def genePlot(request):
     X2D = usr.getFRData()
     if X2D is None:
         return HttpResponse("Please run feature reduction first.", status=400)
+    if len(geneList1) > 12:
+        geneList1 = geneList1[:12]
     if type == "vln":
-        return vlnPlot(geneList1, adata, clientID, username)
+        return vlnPlot(geneList1, adata)
     elif type == "density":
-        return densiPlot(geneList1, adata, clientID, username)
+        return densiPlot(geneList1, adata)
     else:  # type=='heatmap'
-        return heatmapPlot(geneList1, adata, clientID, username)
+        return heatmapPlot(geneList1, adata)
 
 
 @login_required()
@@ -819,10 +822,66 @@ def meta_columns(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
-    result = [
-        [i[0], i[1]]
-        for i in MetaFileColumn.objects.filter(user=request.user, cID=usr.cID)
-        .all()
-        .values_list("colName", "label")
-    ]
-    return JsonResponse(result, safe=False)
+    cID = request.GET.get("cID", None)
+    if request.method == "GET":
+        result = [
+            [i[0], i[1]]
+            for i in MetaFileColumn.objects.filter(user=request.user, cID=usr.cID)
+            .all()
+            .values_list("colName", "label")
+        ]
+        return JsonResponse(result, safe=False)
+    if request.method == "PUT":
+        labels = request.GET.get("labels", None)
+        fr = request.GET.get("fr", "TSNE")
+        if labels is None:
+            return HttpResponse("Labels illegal.", status=400)
+        labels = [i.strip() for i in labels.split(",")]
+        error_labels = BUILT_IN_LABELS.intersection(set(labels))
+        if len(error_labels) != 0:
+            return HttpResponse(
+                "Labels creating Problem, can't use retained words as an label:"
+                + str(error_labels),
+                status=400,
+            )
+        try:
+            with transaction.atomic():
+                df = usr.getIntegrationData().copy()
+                if labels != [""]:
+                    df1 = df.drop(labels, axis=1, inplace=False)
+                    usr.setAnndata(df1)
+                    adata = usr.getAnndata()
+                    for label in labels:
+                        if not np.issubdtype(df[label].dtype, np.number):
+                            adata.obs[label] = df[label]
+                        else:
+                            raise Exception(
+                                "Can't auto convert numerical value for label."
+                            )
+                    MetaFileColumn.objects.exclude(colName="LABEL").exclude(
+                        user=request.user, cID=cID, colName__in=labels
+                    ).update(label="0")
+                    MetaFileColumn.objects.filter(
+                        user=request.user, cID=cID, colName__in=labels
+                    ).update(label="1")
+                else:
+                    usr.setIntegrationData(df)
+                    MetaFileColumn.objects.exclude(colName="LABEL").filter(
+                        user=request.user, cID=cID
+                    ).update(label="0")
+
+                pca_temp = usr.getAnndata().obsm["X_pca"]
+                if fr == "TSNE":
+                    tsne = TSNE(n_components=2, random_state=42, n_jobs=2)
+                    X2D = tsne.fit_transform(pca_temp)
+                else:
+                    umap1 = umap.UMAP(
+                        n_components=2, random_state=42, n_neighbors=30, n_jobs=2
+                    )
+                    X2D = umap1.fit_transform(pca_temp)
+                usr.setFRData(X2D)
+        except Exception as e:
+            return HttpResponse("Labels creating Problem. " + str(e), status=400)
+        finally:
+            usr.save()
+        return HttpResponse("Labels updated successfully.", status=200)

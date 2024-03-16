@@ -10,7 +10,7 @@ from genes_ncbi_proteincoding import GENEID2NT
 
 import random
 import string
-from .constants import BASE_UPLOAD, BASE_STATIC, GeneID_URL
+from .constants import GeneID_URL
 from .models import Gene, GOTerm, userData, MetaFileColumn
 from harmony import harmonize
 import pandas as pd
@@ -24,6 +24,8 @@ from collections import Counter
 import math
 import requests
 import json
+import io
+import base64
 
 
 @lru_cache(maxsize=None)
@@ -174,7 +176,7 @@ def bbknn(dfs):
     return dfs
 
 
-def clusteringPostProcess(X2D, adata, method, BASE_STATIC, username, random_str, usr):
+def clusteringPostProcess(X2D, adata, method, usr):
     if method != "kmeans" and len(set(adata.obs[method])) == 1:
         # throw error for just 1 cluster
         return HttpResponse("Only 1 Cluster after clustering", status=400)
@@ -192,7 +194,6 @@ def clusteringPostProcess(X2D, adata, method, BASE_STATIC, username, random_str,
 
     traces = zip_for_vis(X2D, list(adata.obs[method]), adata.obs_names.tolist())
 
-    # adata.write(BASE_STATIC + username + "_adata.h5ad")
     adata.obs["cluster"] = li
     usr.setAnndata(adata)
 
@@ -200,68 +201,63 @@ def clusteringPostProcess(X2D, adata, method, BASE_STATIC, username, random_str,
     barChart2 = []
 
     with plt.rc_context():
+        figure1 = io.BytesIO()
         sc.tl.rank_genes_groups(adata, groupby=method, method="t-test")
         sc.tl.dendrogram(adata, groupby=method)
         sc.pl.rank_genes_groups_dotplot(adata, n_genes=4, show=False, color_map="bwr")
-        plt.savefig(
-            BASE_STATIC + username + "_cluster_" + random_str + "_1.png",
-            bbox_inches="tight",
-        )
+        plt.savefig(figure1, format="png", bbox_inches="tight")
+        figure2 = io.BytesIO()
         sc.pl.rank_genes_groups(adata, n_genes=20, sharey=False)
-        plt.savefig(
-            BASE_STATIC + username + "_cluster_" + random_str + "_2.png",
-            bbox_inches="tight",
-        )
-        markers = sc.get.rank_genes_groups_df(adata, None)
-        usr.setMarkers(markers)
-        b = (
-            adata.obs.sort_values(["batch1", method])
-            .groupby(["batch1", method])
-            .count()
-            .reset_index()
-        )
+        plt.savefig(figure2, format="png", bbox_inches="tight")
+    markers = sc.get.rank_genes_groups_df(adata, None)
+    usr.setMarkers(markers)
+    usr.save()
+    b = (
+        adata.obs.sort_values(["batch1", method])
+        .groupby(["batch1", method])
+        .count()
+        .reset_index()
+    )
 
-        b = b[["batch1", method, "batch2"]]
-        b.columns = ["batch", method, "count"]
-        barChart1 = [
-            {
-                "x": sorted(list(set(b[method].tolist()))),
-                "y": b[b["batch"] == i]["count"].tolist(),
-                "name": i,
-                "type": "bar",
-            }
-            for i in set(b["batch"].tolist())
-        ]
+    b = b[["batch1", method, "batch2"]]
+    b.columns = ["batch", method, "count"]
+    barChart1 = [
+        {
+            "x": sorted(list(set(b[method].tolist()))),
+            "y": b[b["batch"] == i]["count"].tolist(),
+            "name": i,
+            "type": "bar",
+        }
+        for i in set(b["batch"].tolist())
+    ]
 
-        b = (
-            adata.obs.sort_values(["batch2", method])
-            .groupby(["batch2", method])
-            .count()
-            .reset_index()
-        )
-        b = b[["batch2", method, "batch1"]]
-        b.columns = ["batch", "cluster", "count"]
-        barChart2 = [
-            {
-                "x": sorted(list(set(b["cluster"].tolist()))),
-                "y": b[b["batch"] == i]["count"].tolist(),
-                "name": i,
-                "type": "bar",
-            }
-            for i in set(b["batch"].tolist())
-        ]
+    b = (
+        adata.obs.sort_values(["batch2", method])
+        .groupby(["batch2", method])
+        .count()
+        .reset_index()
+    )
+    b = b[["batch2", method, "batch1"]]
+    b.columns = ["batch", "cluster", "count"]
+    barChart2 = [
+        {
+            "x": sorted(list(set(b["cluster"].tolist()))),
+            "y": b[b["batch"] == i]["count"].tolist(),
+            "name": i,
+            "type": "bar",
+        }
+        for i in set(b["batch"].tolist())
+    ]
 
-        usr.save()
-
-        return JsonResponse(
-            {
-                "traces": traces,
-                "fileName": username + "_cluster_" + random_str + "_1.png",
-                "fileName1": username + "_cluster_" + random_str + "_2.png",
-                "bc1": barChart1,
-                "bc2": barChart2,
-            }
-        )
+    return JsonResponse(
+        {
+            "traces": traces,
+            "fileName": base64.b64encode(figure1.getvalue()).decode("utf-8"),
+            "fileName1": base64.b64encode(figure2.getvalue()).decode("utf-8"),
+            "bc1": barChart1,
+            "bc2": barChart2,
+        }
+    )
 
 
 def getTopGeneCSV(adata, groupby, n_genes):
@@ -284,7 +280,7 @@ def getTopGeneCSV(adata, groupby, n_genes):
         return HttpResponse("Only one cluster", status=500)
 
 
-def vlnPlot(geneList, adata, clientID, username):
+def vlnPlot(geneList, adata):
     sc.set_figure_params(dpi=100)
     sc.settings.verbosity = 0
     num_genes = len(geneList)
@@ -301,6 +297,7 @@ def vlnPlot(geneList, adata, clientID, username):
     axes = axes.flatten()
     # Iterate over genes and plot
     with plt.rc_context():
+        figure1 = io.BytesIO()
         for i, gene in enumerate(geneList):
             if i < num_genes:
                 sc.pl.violin(adata, [gene], groupby="cluster", ax=axes[i])
@@ -311,17 +308,18 @@ def vlnPlot(geneList, adata, clientID, username):
 
         # Adjust layout
         plt.tight_layout()
-        plt.savefig(
-            BASE_STATIC + username + "_" + clientID + "_violin.png", bbox_inches="tight"
-        )
-    return JsonResponse({"fileName": username + "_" + clientID + "_violin.png"})
+        plt.savefig(figure1, format="png", bbox_inches="tight")
+    return JsonResponse(
+        {"fileName": base64.b64encode(figure1.getvalue()).decode("utf-8")}
+    )
 
 
-def densiPlot(geneList, adata, clientID, username):
+def densiPlot(geneList, adata):
     sc.set_figure_params(dpi=100)
     sc.settings.verbosity = 0
     # Iterate over genes and plot
     with plt.rc_context({"figure.figsize": (4, 4)}):
+        figure1 = io.BytesIO()
         sc.pl.umap(
             adata,
             color=geneList,
@@ -331,16 +329,16 @@ def densiPlot(geneList, adata, clientID, username):
             vmax="p99",
             cmap="coolwarm",
         )
-        plt.savefig(
-            BASE_STATIC + username + "_" + clientID + "_featurePlot.png",
-            bbox_inches="tight",
-        )
+        plt.savefig(figure1, format="png", bbox_inches="tight")
 
-    return JsonResponse({"fileName": username + "_" + clientID + "_featurePlot.png"})
+    return JsonResponse(
+        {"fileName": base64.b64encode(figure1.getvalue()).decode("utf-8")}
+    )
 
 
-def heatmapPlot(geneList, adata, clientID, username):
+def heatmapPlot(geneList, adata):
     # scale and store results in layer
+    figure1 = io.BytesIO()
     adata.layers["scaled"] = sc.pp.scale(adata, copy=True).X
     sc.pl.heatmap(
         adata,
@@ -354,11 +352,10 @@ def heatmapPlot(geneList, adata, clientID, username):
         swap_axes=True,
         figsize=(11, 4),
     )
-    plt.savefig(
-        BASE_STATIC + username + "_" + clientID + "_heatmapPlot.png",
-        bbox_inches="tight",
+    plt.savefig(figure1, format="png", bbox_inches="tight")
+    return JsonResponse(
+        {"fileName": base64.b64encode(figure1.getvalue()).decode("utf-8")}
     )
-    return JsonResponse({"fileName": username + "_" + clientID + "_heatmapPlot.png"})
 
 
 def GeneID2SymID(geneList):
