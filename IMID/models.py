@@ -1,6 +1,6 @@
 from django.db import models
 import pandas as pd
-from .constants import ONTOLOGY, BASE_UPLOAD, BASE_STATIC, BUILT_IN_LABELS
+from .constants import ONTOLOGY, NUMBER_CPU_LIMITS, BUILT_IN_LABELS
 from threadpoolctl import threadpool_limits
 import pickle
 import scanpy as sc
@@ -125,15 +125,21 @@ class MetaFileColumn(models.Model):
     )
     cID = models.CharField(max_length=10, blank=False, null=False)
     colName = models.CharField(max_length=50, blank=False, null=False)
-    label = models.CharField(max_length=1, blank=False, null=False)
-
-    @classmethod
-    def create(cls, user, cID, colName, label=0):
-        if user is not None and cID is not None and colName is not None:
-            f = cls(user=user, cID=cID, colName=colName, label=label)
-            return f
-        else:
-            return None
+    label = models.CharField(
+        max_length=1,
+        choices=(("0", "Not Label"), ("1", "Label")),
+        blank=False,
+        null=False,
+    )
+    numeric = models.CharField(
+        max_length=1,
+        choices=(
+            ("0", "String type for the field"),
+            ("1", "Numeric type for the field"),
+        ),
+        blank=False,
+        null=False,
+    )
 
 
 class userData:
@@ -164,7 +170,7 @@ class userData:
         adata.obs["obs"] = df.LABEL.tolist()
         n_comps = 100
 
-        with threadpool_limits(limits=2, user_api="blas"):
+        with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
             sc.tl.pca(
                 adata,
                 svd_solver="arpack",
@@ -182,11 +188,16 @@ class userData:
     def setMarkers(self, markers):
         self.anndata.uns["markers"] = markers
 
-    def getMarkers(self):
-        if "markers" in self.anndata.uns_keys():
+    def getMarkers(self, colName="cluster"):
+        if "markers" in self.anndata.uns_keys() and colName == "cluster":
             return self.anndata.uns["markers"]
-        else:
-            return None
+        elif colName in self.anndata.obs_keys():
+            adata = self.anndata.copy()
+            with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
+                sc.tl.rank_genes_groups(adata, groupby=colName, method="t-test")
+                markers = sc.get.rank_genes_groups_df(adata, None)
+            return markers
+        return None
 
     def getIntegrationData(self) -> "pd.DataFrame":
         return self.integrationData
@@ -195,7 +206,7 @@ class userData:
         return self.anndata
 
     def getCorrectedCSV(self) -> "pd.DataFrame":
-        t = self.anndata.to_df()
+        t = self.anndata.to_df().round(12)
         t["FileName"] = self.anndata.obs["batch1"]
         t["obs"] = self.anndata.obs["obs"]
         t["LABEL"] = t["obs"]

@@ -18,6 +18,7 @@ urlpatterns = [
     path(r"tab/", views.tab, name="tab"),
     path(r"advancedSearch/", views.advancedSearch, name="advancedSearch"),
     path(r"meta/columns/", views.meta_columns, name="meta_columns"),
+    path(r"meta/<slug:colName>/", views.meta_column_values, name="meta_columns_values"),
     path(
         r"processedFile/corrected/", views.downloadCorrected, name="downloadCorrected"
     ),

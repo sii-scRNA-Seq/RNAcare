@@ -3,7 +3,6 @@ from django.http import HttpResponse, JsonResponse
 from django.contrib.auth.decorators import login_required
 import pandas as pd
 import json
-import os, glob
 from sklearn.manifold import TSNE
 import umap.umap_ as umap
 import scanpy as sc
@@ -18,6 +17,7 @@ from sklearn.cluster import KMeans
 import math
 import io
 import base64
+from django.db.models import Q
 
 # gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
 
@@ -29,7 +29,7 @@ import plotly.graph_objects as go
 
 import requests
 from bs4 import BeautifulSoup
-from .constants import ONTOLOGY, BUILT_IN_LABELS
+from .constants import ONTOLOGY, BUILT_IN_LABELS, NUMBER_CPU_LIMITS
 from .utils import (
     zip_for_vis,
     fromPdtoSangkey,
@@ -87,7 +87,6 @@ def tab(request):
 def uploadExpression(request):
     if request.method != "POST":
         return HttpResponse("Method not allowed", status=405)
-    username = request.user.username
     cID = request.POST.get("cID", None)
     if cID is None:
         return HttpResponse("cID not provided.", status=400)
@@ -304,8 +303,16 @@ def edaIntegrate(request):
                     label = "1"
                 else:
                     label = "0"
+                if np.issubdtype(temp0[cn].dtype, np.number):
+                    num_flag = "1"
+                else:
+                    num_flag = "0"
                 temp_meta = MetaFileColumn(
-                    user=request.user, cID=cID, colName=cn, label=label
+                    user=request.user,
+                    cID=cID,
+                    colName=cn,
+                    label=label,
+                    numeric=num_flag,
                 )
                 if temp_meta is None:
                     raise Exception("MetaFileColumn create Failed.")
@@ -367,34 +374,35 @@ def dgea(request):
         with plt.rc_context():
             figure1 = io.BytesIO()
             figure2 = io.BytesIO()
-            if len(set(adata.obs["batch1"])) > 1:
-                sc.tl.rank_genes_groups(adata, groupby="batch1", method="t-test")
-                sc.tl.dendrogram(adata, groupby="batch1")
-                sc.pl.rank_genes_groups_dotplot(
-                    adata, n_genes=int(n_genes), show=False, color_map="bwr"
-                )
-                plt.savefig(
-                    figure1,
-                    format="png",
-                    bbox_inches="tight",
-                )
-                figure1 = base64.b64encode(figure1.getvalue()).decode("utf-8")
-            else:
-                figure1 = ""
-            if len(set(adata.obs[targetLabel])) > 1:
-                sc.tl.rank_genes_groups(adata, groupby=targetLabel, method="t-test")
-                sc.tl.dendrogram(adata, groupby=targetLabel)
-                sc.pl.rank_genes_groups_dotplot(
-                    adata, n_genes=int(n_genes), show=False, color_map="bwr"
-                )
-                plt.savefig(
-                    figure2,
-                    format="png",
-                    bbox_inches="tight",
-                )
-                figure2 = base64.b64encode(figure2.getvalue()).decode("utf-8")
-            else:
-                figure2 = ""
+            with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
+                if len(set(adata.obs["batch1"])) > 1:
+                    sc.tl.rank_genes_groups(adata, groupby="batch1", method="t-test")
+                    sc.tl.dendrogram(adata, groupby="batch1")
+                    sc.pl.rank_genes_groups_dotplot(
+                        adata, n_genes=int(n_genes), show=False, color_map="bwr"
+                    )
+                    plt.savefig(
+                        figure1,
+                        format="png",
+                        bbox_inches="tight",
+                    )
+                    figure1 = base64.b64encode(figure1.getvalue()).decode("utf-8")
+                else:
+                    figure1 = ""
+                if len(set(adata.obs[targetLabel])) > 1:
+                    sc.tl.rank_genes_groups(adata, groupby=targetLabel, method="t-test")
+                    sc.tl.dendrogram(adata, groupby=targetLabel)
+                    sc.pl.rank_genes_groups_dotplot(
+                        adata, n_genes=int(n_genes), show=False, color_map="bwr"
+                    )
+                    plt.savefig(
+                        figure2,
+                        format="png",
+                        bbox_inches="tight",
+                    )
+                    figure2 = base64.b64encode(figure2.getvalue()).decode("utf-8")
+                else:
+                    figure2 = ""
             return JsonResponse([figure1, figure2], safe=False)
     elif clusters == "fileName":
         # show top gene for specific group
@@ -412,8 +420,6 @@ def clustering(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
-    username = request.user.username
-    clientID = request.GET.get("cID", None)
 
     cluster = request.GET.get("cluster", "LEIDEN")
     param = request.GET.get("param", None)
@@ -431,8 +437,9 @@ def clustering(request):
             param = float(param)
         except:
             return HttpResponse("Resolution should be a float", status=400)
-        sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
-        sc.tl.leiden(adata, resolution=param)
+        with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
+            sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
+            sc.tl.leiden(adata, resolution=param)
         Resp = clusteringPostProcess(X2D, adata, "leiden", usr)
         return Resp
     elif cluster == "HDBSCAN":
@@ -501,8 +508,9 @@ def clusteringAdvanced(request):
             if maxValue >= 2:
                 maxValue = 2
             for i, parami in enumerate(np.linspace(minValue, maxValue, level)):
-                sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
-                sc.tl.leiden(adata, resolution=float(parami))
+                with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
+                    sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
+                    sc.tl.leiden(adata, resolution=float(parami))
                 df["level" + str(i + 1)] = [
                     "level" + str(i + 1) + "_" + str(j) for j in adata.obs["leiden"]
                 ]
@@ -583,25 +591,30 @@ def advancedSearch(request):
 
 @login_required()
 def goenrich(request):
-    cluster_n = request.GET.get("cluster_n", 0)
+    cluster_n = request.GET.get("cluster_n", None)
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
+
+    colName = request.GET.get("colName", None)
+    if cluster_n is None or colName is None:
+        return HttpResponse("Illegal colName/value for the Label.", status=400)
+
     df = usr.getCorrectedCSV()
     if (
         any(df.columns.str.startswith("c_")) is True
         or len(set(df.columns).intersection({"age", "crp", "bmi", "esr", "BMI"})) > 0
     ):
         return HttpResponse("Not Allowed Clinic Data", status=400)
-    markers = usr.getMarkers()
+    markers = usr.getMarkers(colName)
     if markers is None:
         return HttpResponse("Please run clustering method first.", status=400)
     markers = markers[
         (markers.pvals_adj < 0.05)
         & (markers.logfoldchanges > 0.5)
-        & (markers.group.astype(int) == int(cluster_n))
+        & (markers.group.astype(str) == str(cluster_n))
     ]
     if len(markers.index) == 0:
         return HttpResponse("No marker genes", status=400)
@@ -653,27 +666,30 @@ def lasso(request):
     else:
         usr = checkRes["usrData"]
 
-    cluster = int(request.GET.get("cluster_n", 0))  # +1 for R
+    cluster = request.GET.get("cluster_n", None)  # +1 for R
+    colName = request.GET.get("colName", None)
+    if cluster is None or colName is None:
+        return HttpResponse("Illegal colName/value for the Label.", status=400)
     adata = usr.getAnndata()
+    if colName not in adata.obs.columns:
+        return HttpResponse("Illegal colName for the Label.", status=400)
     df = adata.to_df().round(12)
-    if "cluster" not in adata.obs.columns:
-        return HttpResponse("Please run clustering method first.", status=400)
-    df["cluster"] = adata.obs["cluster"].astype(int)
-    x = df.drop(["cluster"], axis=1, inplace=False)
+    df[colName] = adata.obs[colName].astype(str)
+    x = df.drop([colName], axis=1, inplace=False)
 
     scaler = StandardScaler().fit(x)
     x = scaler.transform(x)
 
-    index = df["cluster"] == cluster
-    index1 = df["cluster"] != cluster
-    df.loc[index, "cluster"] = 1
-    df.loc[index1, "cluster"] = 0
-    y = pd.Categorical(df.cluster)
+    index = df[colName] == cluster
+    index1 = df[colName] != cluster
+    df.loc[index, colName] = 1
+    df.loc[index1, colName] = 0
+    y = pd.Categorical(df[colName])
     model = LassoCV(cv=5, random_state=42, n_jobs=-1, max_iter=10000, tol=0.01)
     model.fit(x, y)
 
     coef = pd.Series(
-        model.coef_, df.drop(["cluster"], axis=1, inplace=False).columns
+        model.coef_, df.drop([colName], axis=1, inplace=False).columns
     ).sort_values(key=abs, ascending=False)
 
     coef[coef != 0][:50].plot.bar(
@@ -824,14 +840,25 @@ def meta_columns(request):
         usr = checkRes["usrData"]
     cID = request.GET.get("cID", None)
     if request.method == "GET":
-        result = [
-            [i[0], i[1]]
-            for i in MetaFileColumn.objects.filter(user=request.user, cID=usr.cID)
-            .all()
-            .values_list("colName", "label")
-        ]
+        numeric = request.GET.get("numeric", None)
+        if numeric is None:
+            result = [
+                [i[0], i[1], i[2]]
+                for i in MetaFileColumn.objects.filter(user=request.user, cID=usr.cID)
+                .all()
+                .values_list("colName", "label", "numeric")
+            ]
+        else:
+            result = [
+                [i[0], i[1], i[2]]
+                for i in MetaFileColumn.objects.filter(
+                    user=request.user, cID=usr.cID, numeric=numeric
+                )
+                .all()
+                .values_list("colName", "label", "numeric")
+            ]
         return JsonResponse(result, safe=False)
-    if request.method == "PUT":
+    elif request.method == "PUT":
         labels = request.GET.get("labels", None)
         fr = request.GET.get("fr", "TSNE")
         if labels is None:
@@ -885,3 +912,93 @@ def meta_columns(request):
         finally:
             usr.save()
         return HttpResponse("Labels updated successfully.", status=200)
+    elif request.method == "POST":
+        post_data = json.loads(request.body)
+        colName = post_data.get("colName")
+        threshold = post_data.get("thredshold")
+        threshold_labels = post_data.get("thredshold_labels")
+        if (
+            colName is None
+            or threshold is None
+            or threshold_labels is None
+            or len(threshold) != len(threshold_labels) - 1
+        ):
+            return HttpResponse("Illegal Param Input. ", status=400)
+
+        threshold = [float(i) for i in threshold]
+        count = MetaFileColumn.objects.filter(
+            Q(colName=colName) | Q(colName__startswith=colName + "__crted")
+        ).count()
+        if count == 0:
+            HttpResponse(
+                "No such colName: " + str(colName) + " in meta file.", status=400
+            )
+        colName1 = colName + "__crted" + str(count)
+        df, adata = usr.getIntegrationData(), usr.getAnndata()
+        conditions = [df[colName] <= threshold[0]]
+        for i in range(len(threshold_labels) - 2):
+            conditions.append(
+                (df[colName] > threshold[i]) & (df[colName] <= threshold[i + 1])
+            )
+        conditions.append(df[colName] >= threshold[-1])
+
+        try:
+            with transaction.atomic():
+                df[colName1] = np.select(conditions, threshold_labels)
+                adata.obs[colName1] = df[colName1].copy()
+                MetaFileColumn.objects.create(
+                    user=request.user, cID=cID, colName=colName1, label="1", numeric="0"
+                )
+        except Exception as e:
+            return HttpResponse("Labels creating Problem. " + str(e), status=400)
+        finally:
+            usr.save()
+        return HttpResponse("Label created Successfully. ", status=200)
+
+
+@login_required()
+def meta_column_values(request, colName):
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
+    adata = usr.getAnndata()
+    if colName.lower() == "Cluster".lower():
+        colName = "cluster"
+    if colName in adata.obs_keys() and not np.issubdtype(
+        adata.obs[colName].dtype, np.number
+    ):
+        temp = list(set(adata.obs[colName]))
+        if len(temp) == 1:
+            return HttpResponse(
+                "Only 1-type value found in the colName: " + colName, status=400
+            )
+        elif len(temp) > 30:
+            return HttpResponse(
+                "More than 30-type values found in the colName: " + colName, status=400
+            )
+        temp.sort()
+        return JsonResponse(temp, safe=False)
+    elif colName in adata.var_names:
+        histogram_trace = go.Histogram(
+            x=adata.to_df()[colName],
+            histnorm="probability density",  # Set histogram normalization to density
+            marker_color="rgba(0, 0, 255, 0.7)",  # Set marker color
+        )
+
+        # Configure the layout
+        layout = go.Layout(
+            title="Density Plot for " + colName,  # Set plot title
+            xaxis=dict(title=colName),  # Set x-axis label
+            yaxis=dict(title="Density"),  # Set y-axis label
+        )
+
+        # Create figure
+        fig = go.Figure(data=[histogram_trace], layout=layout)
+
+        return HttpResponse(
+            base64.b64encode(fig.to_image(format="png")), content_type="image/png"
+        )
+    else:
+        HttpResponse("Can't find the colName: " + colName, status=400)

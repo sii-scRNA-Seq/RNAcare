@@ -10,7 +10,7 @@ from genes_ncbi_proteincoding import GENEID2NT
 
 import random
 import string
-from .constants import GeneID_URL
+from .constants import GeneID_URL, NUMBER_CPU_LIMITS
 from .models import Gene, GOTerm, userData, MetaFileColumn
 from harmony import harmonize
 import pandas as pd
@@ -26,6 +26,7 @@ import requests
 import json
 import io
 import base64
+from threadpoolctl import threadpool_limits
 
 
 @lru_cache(maxsize=None)
@@ -202,13 +203,16 @@ def clusteringPostProcess(X2D, adata, method, usr):
 
     with plt.rc_context():
         figure1 = io.BytesIO()
-        sc.tl.rank_genes_groups(adata, groupby=method, method="t-test")
-        sc.tl.dendrogram(adata, groupby=method)
-        sc.pl.rank_genes_groups_dotplot(adata, n_genes=4, show=False, color_map="bwr")
-        plt.savefig(figure1, format="png", bbox_inches="tight")
-        figure2 = io.BytesIO()
-        sc.pl.rank_genes_groups(adata, n_genes=20, sharey=False)
-        plt.savefig(figure2, format="png", bbox_inches="tight")
+        with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
+            sc.tl.rank_genes_groups(adata, groupby=method, method="t-test")
+            sc.tl.dendrogram(adata, groupby=method)
+            sc.pl.rank_genes_groups_dotplot(
+                adata, n_genes=4, show=False, color_map="bwr"
+            )
+            plt.savefig(figure1, format="png", bbox_inches="tight")
+            figure2 = io.BytesIO()
+            sc.pl.rank_genes_groups(adata, n_genes=20, sharey=False)
+            plt.savefig(figure2, format="png", bbox_inches="tight")
     markers = sc.get.rank_genes_groups_df(adata, None)
     usr.setMarkers(markers)
     usr.save()
@@ -262,7 +266,8 @@ def clusteringPostProcess(X2D, adata, method, usr):
 
 def getTopGeneCSV(adata, groupby, n_genes):
     if len(set(adata.obs[groupby])) > 1:
-        sc.tl.rank_genes_groups(adata, groupby=groupby, method="t-test")
+        with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
+            sc.tl.rank_genes_groups(adata, groupby=groupby, method="t-test")
         result = adata.uns["rank_genes_groups"]
         groups = result["names"].dtype.names
         result_df = pd.DataFrame()

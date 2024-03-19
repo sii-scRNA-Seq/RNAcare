@@ -6,21 +6,28 @@
   clientUniqueID='12345';//for one user open multi-browsers
   flag_open=0;
   integrated=0;
+  label_selected_value='';
   $( function() {
     $(document).tooltip();
 	$('#metaAdvancedSetting').fadeOut();
     $('#FR_processed').prop('checked',false);
-	$('#my-select-label').multiSelect({ keepOrder: true,selectableHeader:'<div class="custom-header">Select for coloring</div>',selectionHeader:'<div class="custom-header">Established Labels</div>'});
+	$('#my-select-label').multiSelect({ 
+		keepOrder: true,selectableHeader:'<div class="custom-header">Select for coloring</div>',
+		selectionHeader:'<div class="custom-header">Established Labels</div>'
+	});
     tabs=$('#tabs');
 	tabs.tabs();
-	$('#tabs-label').tabs();
+	tabs_label=$('#tabs-label');
+	tabs_label.tabs();
 	$('#tabs-eda').tabs();
 	$('#tabs-dega').tabs();
     $('#HPara').hide();
     $('#KPara').hide();
     $('#tab3div').hide();$('#tab4div').hide();
     $('#my-select').multiSelect({ keepOrder: true });
-    $('.downloadData1').hide();  
+    $('.downloadData1').hide();
+	$('#menu_lasso').menu();
+
     $('#upload1').on('click',function(){
 		form_data=new FormData();
 		ins=document.getElementById('multiFiles').files.length;
@@ -229,6 +236,38 @@
 				return;
 			}
 		});
+		//lasso_label_name
+		url='/meta/columns/?numeric=0';
+		url+='&cID='+clientUniqueID;
+		$('#lasso_label_name').html("<option value='' selected='selected'>----SELECT----</option>");
+		$('#go_label_name').html("<option value='' selected='selected'>----SELECT----</option>");
+		$.ajax({
+			url: url,
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			success:function(response){
+				for(i=0;i<response.length;i++){
+					if(response[i][1]=='1'){
+						if(response[i][0]!='LABEL'){
+							$('#lasso_label_name').append('<option value="'+response[i][0]+'">'+response[i][0]+'</option>');
+							$('#go_label_name').append('<option value="'+response[i][0]+'">'+response[i][0]+'</option>');
+						}
+						else{
+							$('#lasso_label_name').append('<option value="batch2">LABEL</option>');
+							$('#go_label_name').append('<option value="batch2">LABEL</option>');
+						}
+					}
+				}
+			},
+			error:function(response){
+				return;
+			}
+		});
+
 		$('.btn').attr('disabled',false);
 	});
 
@@ -257,7 +296,8 @@
             	$('#HPara').hide();
             	$('#KPara').show();
             }
-        }); 
+    });
+
   });
   
   
@@ -343,20 +383,21 @@ function clusterBtnClick(){
 				$('#graphDiv1-cluster-top-gene').html('<img class="img2" src="data:image/png;base64,'+response.fileName1+'" width="1000" height="auto"/>');
 				alert('Calculation Succeed!');
 				wheelzoom(document.querySelectorAll('img.img2'));
-				alert('Calculation Succeed!');
 				$('.downloadData1').show();
 				$('#cluster_num').html("<option value='' selected='selected'>----SELECT----</option>");
 				$('#cluster_num1').html("<option value='' selected='selected'>----SELECT----</option>");
-				for (let key in response.traces){
-					$('#cluster_num').append(new Option(key,key));
-					$('#cluster_num1').append(new Option(key,key));
-				}
 				$('.btn').attr('disabled',false);
 				$('#targetGene').val('')
 				$('#candidateGeneList').val('');
 				$('#vlnPlot').html('');
 				$('#densityPlot').html('');
 				$('#heatmapPlot').html('');
+
+				if(!$('#lasso_label_name').html().includes('Cluster'))
+				{
+					$('#lasso_label_name').append('<option value="cluster">Cluster</option>');
+					$('#go_label_name').append('<option value="cluster">Cluster</option>');
+				}
 			},
 			error:function(response){
 				alert(response.responseText);
@@ -375,8 +416,10 @@ function clusterBtnClick(){
 
 function goEnrich(){
 	$('.btn').attr('disabled',true);
+	url='/goenrich/?colName='+$('#go_label_name').val()+'&cluster_n='+$('#cluster_num').val();
+	url+='&cID='+clientUniqueID;
 	$.ajax({
-			url:'/goenrich/?cluster_n='+$('#cluster_num').val()+'&cID='+clientUniqueID,
+			url:url,
 			datType:'json',
 			cache:false,
 			contentType:false,
@@ -406,8 +449,10 @@ function goEnrich(){
 
 function golasso(){
 	$('.btn').attr('disabled',true);
+	url='/lasso/?colName='+$('#lasso_label_name').val()+'&cluster_n='+$('#cluster_num1').val();
+	url+='&cID='+clientUniqueID;
 	$.ajax({
-			url:'/lasso/?cluster_n='+$('#cluster_num1').val()+'&cID='+clientUniqueID,
+			url:url,
 			datType:'json',
 			cache:false,
 			contentType:false,
@@ -454,6 +499,7 @@ function getTopGenes(t){
 	}
 	url+='&label='+$('#eda-label-choose').val();
 	url+='&cID='+clientUniqueID;
+	$('.btn').attr('disabled',true);
 	$.ajax({
 			url:url,
 			datType:'text',
@@ -509,6 +555,7 @@ function loadCandiGenes()
 	if(tempValue=='')return;
 	url='/dega/candiGenes/?method='+tempValue;
 	url+='&cID='+clientUniqueID;
+	$('.btn').attr('disabled',true);
 	$.ajax({
 			url:url,
 			datType:'json',
@@ -543,6 +590,7 @@ function TGenePlotClick()
 	if(tempValue=='')return;
 	url='/dega/plot/?type=vln&geneList='+tempValue;
 	url+='&cID='+clientUniqueID;
+	$('.btn').attr('disabled',true);
 	$.ajax({
 			url:url,
 			datType:'json',
@@ -573,6 +621,7 @@ function TGenePlotClick()
 	});
 	url='/dega/plot/?type=density&geneList='+tempValue;
 	url+='&cID='+clientUniqueID;
+	$('.btn').attr('disabled',true);
 	$.ajax({
 			url:url,
 			datType:'json',
@@ -600,6 +649,7 @@ function TGenePlotClick()
 	});
 	url='/dega/plot/?type=heatmap&geneList='+tempValue;
 	url+='&cID='+clientUniqueID;
+	$('.btn').attr('disabled',true);
 	$.ajax({
 			url:url,
 			datType:'json',
@@ -635,6 +685,7 @@ function LookUpGeneID()
 	if(tempValue=='')return;
 	url='/GeneLookup/?geneList='+tempValue;
 	url+='&cID='+clientUniqueID;
+	$('.btn').attr('disabled',true);
 	$.ajax({
 			url:url,
 			datType:'text',
@@ -661,11 +712,12 @@ function LookUpGeneID()
 	});
 }
 
-label_selected_value='';
+//label_selected_value='';
 function metaAdvanced()
 {
 	txt=$('#metaAdvancedSettingClick').html();
 	flag=0;
+	$('.btn').attr('disabled',true);
 	if(integrated==0&&txt=='&gt;&gt;Enable Meta File Advanced Settings'){
 		url='/user/?cID='+clientUniqueID;
 		$.ajax({
@@ -690,7 +742,7 @@ function metaAdvanced()
 	if(flag==1)return;
 	if(txt=='&gt;&gt;Enable Meta File Advanced Settings')
 	{
-		$('#metaAdvancedSettingClick').html('&gt;&gt;Disable Meta File Advanced Settings');
+		$('#metaAdvancedSettingClick').html('&gt;&gt;Close Meta File Advanced Settings');
 		$('#metaAdvancedSetting').slideToggle(300);
 		flag_open=1;
 	}
@@ -701,7 +753,12 @@ function metaAdvanced()
 		flag_open=0;
 		return;
 	}
+	refreshMySelectLabel();
+	
+}
 
+function refreshMySelectLabel()
+{
 	url='/meta/columns/?';
 	url+='cID='+clientUniqueID;
 	$.ajax({
@@ -714,6 +771,7 @@ function metaAdvanced()
 			async:true,
 			beforeSend:function(){
 			$('#loader').show();
+			$('.btn').attr('disabled',true);
 			},
 			complete:function(){
 			$('#loader').hide();
@@ -721,25 +779,29 @@ function metaAdvanced()
 			success:function(response){
 				$('.btn').attr('disabled',false);
 				$('#my-select-label').html('');
+				$('#my-select-label-numeric').html("<option value='' selected='selected'>----SELECT----</option>");
 				for (i=0;i<response.length;i++)
 				{
 					colName=response[i][0];
 					labeled=response[i][1];
-					if(labeled=='0')
-					{
-						if(colName!='ID_REF') $('#my-select-label').append('<option value="'+colName+'">'+response[i][0]+'</option>');
-						else $('#my-select-label').append('<option value="'+colName+'" disabled="">'+response[i][0]+'</option>');
+					numeric=response[i][2];
+					if(numeric=='0'){
+						if(labeled=='0'){
+							if(colName!='ID_REF') $('#my-select-label').append('<option value="'+colName+'">'+colName+'</option>');
+							else $('#my-select-label').append('<option value="'+colName+'" disabled="">'+colName+'</option>');
+						}
+						else{
+							if(colName!='LABEL'){
+								$('#my-select-label').append('<option value="'+colName+'" selected="">'+colName+'</option>');
+							}
+							else{
+								$('#my-select-label').append('<option value="batch2" selected="" disabled="" index="0">'+colName+'</option>');
+								
+							}
+						}
 					}
 					else{
-						if(colName!='LABEL')
-						{
-							$('#my-select-label').append('<option value="'+colName+'" selected="">'+colName+'</option>');
-						}
-						else
-						{
-							$('#my-select-label').append('<option value="batch2" selected="" disabled="" index="0">'+colName+'</option>');
-							
-						}
+						$('#my-select-label-numeric').append('<option value="'+colName+'">'+colName+'</option>');
 					}
 				}
 				$('#my-select-label').multiSelect('refresh');
@@ -752,18 +814,16 @@ function metaAdvanced()
 				return;
 			}
 	});
-
-	
 }
 
 function labelAssignConfirm()
 {
-	if($('#my-select-label').val()==''&&label_selected_value=='')
-	{
-		if($('#my-select-label').val()=='')alert('Select at least one categorical field as a new label.');
-		else{
-			alert('Don\'t change anything.');
-		}
+	if($('#my-select-label').val()==''&&label_selected_value==''){
+		alert('Select at least one categorical field as a new label.');
+		return;
+	}
+	if($('#my-select-label').val()==label_selected_value){
+		alert('Didn\'t change anything.');
 		return;
 	}
 	url='/meta/columns/?';
@@ -780,14 +840,118 @@ function labelAssignConfirm()
 			async:true,
 			beforeSend:function(){
 			$('#loader').show();
+			$('.btn').attr('disabled',true);
 			},
 			complete:function(){
 			$('#loader').hide();
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				alert('Update new label(s) successfully.')
+				alert('Update new label(s) successfully.');
+				label_selected_value=$('#my-select-label').val();
 				
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+}
+
+function numLabelChange()
+{
+	colName=$('#my-select-label-numeric').val();
+	if(colName=='')return;
+	url='/meta/'+colName+'/?';
+	url+='cID='+clientUniqueID;
+	$.ajax({
+			url:url,
+			datType:'text',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			$('.btn').attr('disabled',true);
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				$('#numLabelPlot').html('<img src="data:image/png;base64,'+response+'" width="auto" height="600px"/>');
+				
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+}
+
+function labelNumericConfirm()
+{
+	inp=$('#label-numeric-input').val();
+	text=$('#label-numeric-input-texts').val();
+	colName=$('#my-select-label-numeric').val();
+	if(colName==''){
+		alert('Please choose a field.');
+		return;
+	}
+	pattern = /^(\d+(\.\d+)?)(,\d+(\.\d+)?)*$/;
+	if(!pattern.test(inp))
+	{
+		alert('Illegal input for thredhold(s). Correct format case: 3.5,4.75');
+		return;
+	}
+	pattern =/^[^,]+(?:,[^,]+)*$/;
+	if(!pattern.test(text))
+	{
+		alert('Illegal input for values for thredhold(s). Correct format case: A,B,C');
+		return;
+	}
+	inp=inp.split(',');
+	text=text.split(',');
+	if(text.length!=inp.length+1)
+	{
+		alert('Two inputs don\'t match.');
+		return;
+	}
+	url='/meta/columns/?';
+	url+='cID='+clientUniqueID;
+	$.ajax({
+			url:url,
+			dataType:'text',
+			cache:false,
+			data:JSON.stringify({
+				'colName':colName,
+				'thredshold':inp,
+				'thredshold_labels':text
+			}),
+			headers: {'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val() },
+			contentType:'application/json',
+			processData:false,
+			type:'post',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			$('.btn').attr('disabled',true);
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				alert('Label Created Successfully.');
+				$('#numLabelPlot').html('');
+				$('#label-numeric-input').val('');
+				$('#label-numeric-input-texts').val('');
+				$('#my-select-label-numeric').val('');
+				refreshMySelectLabel();			
 			},
 			error:function(response){
 				alert(response.responseText);
@@ -800,6 +964,34 @@ function labelAssignConfirm()
 function edaLabelChange()
 {
 	$('#next2EDA').trigger('click');
+}
+
+function label_name_change(targetLabel,targetClusterNum)
+{
+	url='/meta/'+$('#'+targetLabel).val()+'/';
+	url+='?cID='+clientUniqueID;
+	$.ajax({
+			url:url,
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				$('#'+targetClusterNum).html('');
+				for (i=0;i<response.length;i++){
+					$('#'+targetClusterNum).append(new Option(response[i],response[i]));
+				}
+				
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
 }
   </script>
   
@@ -938,20 +1130,54 @@ function edaLabelChange()
   </tr>
   </table>
   <div id="metaAdvancedSetting">
+	
 	<div id="tabs-label" style='width:1250px;'>
 		<ul>
 		  <li><a href="#tabs-label-1">Label Assignment</a></li>
 		  <li><a href="#tabs-label-2">Label Generation</a></li>
 		</ul>
 		<div id="tabs-label-1">
-			<select id="my-select-label" multiple="multiple">
-			</select>
+			<label>Create New Label from numerical fields:</label>
 			<br>
-			<button id="label-assign-confirm" class="btn btn-primary" onclick="labelAssignConfirm();" style="margin-left:300px;">&nbsp;&nbsp;Modify&nbsp;&nbsp;</button>
+			<select id="my-select-label-numeric" onchange="numLabelChange();">
+				<option value='' selected='selected'>----SELECT----</option>
+			</select>
+			<br><br><br>
+			<div>
+				<ul>
+					<li>
+						Input the numeric thredshold(s) and separate each by Comma.
+						<br>
+						<input id="label-numeric-input" style="width:600px"/>
+					</li>
+					<br>
+					<li>
+						Input the Labels corresponding to the intervals and separate each by Comma.
+						<br>
+						<input id="label-numeric-input-texts" style="width:600px"/>
+						&nbsp;&nbsp;<button id="label-numeric-confirm" class="btn btn-primary" onclick="labelNumericConfirm();">&nbsp;&nbsp;Add New Label&nbsp;&nbsp;</button>
+					</li>
+				</ul>
+			</div>
+			<br><br>
+			<div id='numLabelPlot' style="width:auto; height:600px; float:left;"></div>
 		</div>
 		<div id="tabs-label-2">
-			<label>12313131313133</label>
+			<div style="text-align: center;">
+				<div style="display: inline-block;">
+					<br><br>
+					<select id="my-select-label" multiple="multiple">
+					</select>
+					<br>
+				</div>
+			</div>
+			<ul>
+				<li>Press 'Modify' to make the above selected categorical fields as Labels:</li>
+			</ul>
+			<button id="label-assign-confirm" class="btn btn-primary" onclick="labelAssignConfirm();"; style="margin-left:800px;" style="margin-left:300px;">&nbsp;&nbsp;Modify&nbsp;&nbsp;</button>
+			
 		</div>
+		
 	</div>
   </div>
   </div>
@@ -1138,16 +1364,22 @@ function edaLabelChange()
   </div>
   
   <div id='tabs-5'>
-  	<p>Select one interesting cluster for Feature Selection by Lasso:&nbsp;<img class='question' style="max-width:0.8%;" title="<p>LASSO regression, also known as L1 regularization, is a popular technique used in statistical modeling and machine learning to estimate the relationships between variables and make predictions. LASSO stands for Least Absolute Shrinkage and Selection Operator.</p><p>The primary goal of LASSO regression is to find a balance between model simplicity and accuracy. It achieves this by adding a penalty term to the traditional linear regression model, which encourages sparse solutions where some coefficients are forced to be exactly zero. This feature makes LASSO particularly useful for feature selection, as it can automatically identify and discard irrelevant or redundant variables.</p>"/></p>
-  	<table>
+  	<p>Select one interesting Label/Cluster for Feature Selection by Lasso:&nbsp;<img class='question' style="max-width:0.8%;" title="<p>LASSO regression, also known as L1 regularization, is a popular technique used in statistical modeling and machine learning to estimate the relationships between variables and make predictions. LASSO stands for Least Absolute Shrinkage and Selection Operator.</p><p>The primary goal of LASSO regression is to find a balance between model simplicity and accuracy. It achieves this by adding a penalty term to the traditional linear regression model, which encourages sparse solutions where some coefficients are forced to be exactly zero. This feature makes LASSO particularly useful for feature selection, as it can automatically identify and discard irrelevant or redundant variables.</p>"/></p>
+	<table>
   		<tr>
-			<td style="text-align:right;width:50%;">
-			<select id='cluster_num1'>
-			<option value='' selected='selected'>----SELECT----</option>
-			</select>
+			<td style="text-align:left;width:50%">
+				<label>Select Label/Cluster:</label>
+				<select id='lasso_label_name' onchange="label_name_change('lasso_label_name','cluster_num1');">
+					<option value='' selected='selected'>----SELECT----</option>
+				</select>
+				<br><br>
+				<label>Select interesting group of the Label/Cluster:</label>
+				<select id='cluster_num1'>
+					<option value='' selected='selected'>----SELECT----</option>
+				</select>
 			</td>
-			<td style="text-align:left;width:50%;">
-			<button id="cluster_btn" class="btn btn-primary" onclick="golasso();">Lasso</button>
+			<td style="text-align:left;width:50%">
+				<button id="cluster_btn" class="btn btn-primary" onclick="golasso();">Lasso</button>
 			</td>
 		</tr>
 		<tr>
@@ -1159,13 +1391,19 @@ function edaLabelChange()
   </div>
   
   <div id='tabs-6'>
-  	<p>Select one interesting cluster for Go Enrichment Analysis:&nbsp;<img class='question' style="max-width:0.8%;" title="<p>GO (Gene Ontology) enrichment analysis is a computational method used in bioinformatics to identify overrepresented gene ontology terms associated with a set of genes. Gene Ontology provides a standardized vocabulary for annotating the molecular functions, biological processes, and cellular components of genes and gene products.</p>"/></p>
+  	<p>Select one interesting Label/Cluster for Go Enrichment Analysis:&nbsp;<img class='question' style="max-width:0.8%;" title="<p>GO (Gene Ontology) enrichment analysis is a computational method used in bioinformatics to identify overrepresented gene ontology terms associated with a set of genes. Gene Ontology provides a standardized vocabulary for annotating the molecular functions, biological processes, and cellular components of genes and gene products.</p>"/></p>
   	<table>
   		<tr>
-			<td style="text-align:right;width:50%;">
-			<select id='cluster_num'>
-			<option value='' selected='selected'>----SELECT----</option>
-			</select>
+			<td style="text-align:left;width:50%">
+				<label>Select Label/Cluster:</label>
+				<select id='go_label_name' onchange="label_name_change('go_label_name','cluster_num');">
+					<option value='' selected='selected'>----SELECT----</option>
+				</select>
+				<br><br>
+				<label>Select interesting Class of Cluster:</label>
+				<select id='cluster_num'>
+					<option value='' selected='selected'>----SELECT----</option>
+				</select>
 			</td>
 			<td style="text-align:left;width:50%;">
 			<button id="cluster_btn" class="btn btn-primary" onclick="goEnrich();">Go Enrichment</button>
