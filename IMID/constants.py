@@ -8,8 +8,6 @@ ONTOLOGY = {
     "MF": Ontology(name="molecular_function", color="oranges_r"),
 }
 
-BASE_UPLOAD = "uploaded/"
-BASE_STATIC = "IMID/static/temp/"
 GeneID_URL = "https://biotools.fr/human/ensembl_symbol_converter/"
 BUILT_IN_LABELS = {
     "obs",
@@ -19,3 +17,4 @@ BUILT_IN_LABELS = {
     "batch1",
     "batch2",
 }
+NUMBER_CPU_LIMITS = 2

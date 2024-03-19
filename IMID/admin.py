@@ -14,7 +14,7 @@ from .models import (
 
 @admin.register(MetaFileColumn)
 class FileColumnAdmin(admin.ModelAdmin):
-    list_display = ("user", "cID", "colName", "label")
+    list_display = ("user", "cID", "colName", "label", "numeric")
 
 
 @admin.register(CustomUser)
