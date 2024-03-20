@@ -12,4 +12,6 @@ scikit-learn
 matplotlib
 umap-learn==0.5.3
 bs4
+celery
+redis
 

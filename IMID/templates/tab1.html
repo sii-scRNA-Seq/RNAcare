@@ -596,6 +596,9 @@ function TGenePlotClick()
 	url='/dega/plot/?type=vln&geneList='+tempValue;
 	url+='&cID='+clientUniqueID;
 	$('.btn').attr('disabled',true);
+	$('#vlnPlot').html('');
+	$('#densityPlot').html('');
+	$('#heatmapPlot').html('');
 	$.ajax({
 			url:url,
 			datType:'json',
@@ -603,12 +606,9 @@ function TGenePlotClick()
 			contentType:false,
 			processData:false,
 			type:'get',
-			async:false,
+			async:true,
 			beforeSend:function(){
 			$('#loader').show();
-			$('#vlnPlot').html('');
-			$('#densityPlot').html('');
-			$('#heatmapPlot').html('');
 			},
 			complete:function(){
 			$('#loader').hide();
@@ -634,7 +634,7 @@ function TGenePlotClick()
 			contentType:false,
 			processData:false,
 			type:'get',
-			async:false,
+			async:true,
 			beforeSend:function(){
 			$('#loader').show();
 			},
@@ -662,7 +662,7 @@ function TGenePlotClick()
 			contentType:false,
 			processData:false,
 			type:'get',
-			async:false,
+			async:true,
 			beforeSend:function(){
 			$('#loader').show();
 			},

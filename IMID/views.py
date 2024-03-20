@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 import hdbscan
 from threadpoolctl import threadpool_limits
 
-from sklearn.linear_model import LassoCV, Lasso
+from sklearn.linear_model import LassoCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 import math
@@ -40,17 +40,14 @@ from .utils import (
     bbknn,
     clusteringPostProcess,
     getTopGeneCSV,
-    vlnPlot,
-    densiPlot,
-    heatmapPlot,
     GeneID2SymID,
     usrCheck,
     UploadFileColumnCheck,
 )
 
-from .models import userData, MetaFileColumn, CustomUser, UploadedFile, SharedFile
+from .models import MetaFileColumn, UploadedFile, SharedFile
 from django.db import transaction
-
+from IMID.tasks import vlnPlot, densiPlot, heatmapPlot
 
 # lasso.R for data visualization
 # sys.path.append('/home/mt229a/Downloads/')#gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
@@ -694,7 +691,7 @@ def lasso(request):
     ).sort_values(key=abs, ascending=False)
 
     coef[coef != 0][:50].plot.bar(
-        x="Features", y="Coef", figure=plt.figure(), fontsize=8
+        x="Features", y="Coef", figure=plt.figure(), fontsize=6
     )
     with io.BytesIO() as buffer:
         plt.savefig(buffer, format="png", bbox_inches="tight")
@@ -800,11 +797,12 @@ def genePlot(request):
     if len(geneList1) > 12:
         geneList1 = geneList1[:12]
     if type == "vln":
-        return vlnPlot(geneList1, adata)
+        image_data = vlnPlot.apply_async((geneList1, adata), serializer="pickle")
     elif type == "density":
-        return densiPlot(geneList1, adata)
+        image_data = densiPlot.apply_async((geneList1, adata), serializer="pickle")
     else:  # type=='heatmap'
-        return heatmapPlot(geneList1, adata)
+        image_data = heatmapPlot.apply_async((geneList1, adata), serializer="pickle")
+    return JsonResponse({"fileName": image_data.get()})
 
 
 @login_required()
