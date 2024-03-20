@@ -150,6 +150,9 @@
 			success:function(response){
 				$('.btn').attr('disabled',false);
 				alert('Data Process successful.');
+				$('#my-select-label-numeric').val('');
+				$('#label-numeric-input').val('');
+				$('#label-numeric-input-texts').val('');
 				integrated=1;
 				if(flag_open==1){
 					metaAdvanced();
@@ -849,6 +852,7 @@ function labelAssignConfirm()
 				$('.btn').attr('disabled',false);
 				alert('Update new label(s) successfully.');
 				label_selected_value=$('#my-select-label').val();
+				$('#eda-label-choose').val('batch2');
 				
 			},
 			error:function(response){
@@ -968,6 +972,7 @@ function edaLabelChange()
 
 function label_name_change(targetLabel,targetClusterNum)
 {
+	if($('#'+targetLabel).val()=='')return;
 	url='/meta/'+$('#'+targetLabel).val()+'/';
 	url+='?cID='+clientUniqueID;
 	$.ajax({
@@ -980,7 +985,7 @@ function label_name_change(targetLabel,targetClusterNum)
 			async:true,
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				$('#'+targetClusterNum).html('');
+				$('#'+targetClusterNum).html("<option value='' selected='selected'>----SELECT----</option>");
 				for (i=0;i<response.length;i++){
 					$('#'+targetClusterNum).append(new Option(response[i],response[i]));
 				}
@@ -1133,8 +1138,8 @@ function label_name_change(targetLabel,targetClusterNum)
 	
 	<div id="tabs-label" style='width:1250px;'>
 		<ul>
-		  <li><a href="#tabs-label-1">Label Assignment</a></li>
-		  <li><a href="#tabs-label-2">Label Generation</a></li>
+		  <li><a href="#tabs-label-1">Label Generation</a></li>
+		  <li><a href="#tabs-label-2">Label Assignment</a></li>
 		</ul>
 		<div id="tabs-label-1">
 			<label>Create New Label from numerical fields:</label>
@@ -1369,11 +1374,13 @@ function label_name_change(targetLabel,targetClusterNum)
   		<tr>
 			<td style="text-align:left;width:50%">
 				<label>Select Label/Cluster:</label>
+				<br>
 				<select id='lasso_label_name' onchange="label_name_change('lasso_label_name','cluster_num1');">
 					<option value='' selected='selected'>----SELECT----</option>
 				</select>
 				<br><br>
 				<label>Select interesting group of the Label/Cluster:</label>
+				<br>
 				<select id='cluster_num1'>
 					<option value='' selected='selected'>----SELECT----</option>
 				</select>
@@ -1396,11 +1403,13 @@ function label_name_change(targetLabel,targetClusterNum)
   		<tr>
 			<td style="text-align:left;width:50%">
 				<label>Select Label/Cluster:</label>
+				<br>
 				<select id='go_label_name' onchange="label_name_change('go_label_name','cluster_num');">
 					<option value='' selected='selected'>----SELECT----</option>
 				</select>
 				<br><br>
 				<label>Select interesting Class of Cluster:</label>
+				<br>
 				<select id='cluster_num'>
 					<option value='' selected='selected'>----SELECT----</option>
 				</select>

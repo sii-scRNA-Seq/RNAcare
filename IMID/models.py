@@ -237,14 +237,13 @@ class userData:
         if not user_instance:
             return False
         ProcessFile.objects.filter(user=user_instance, cID=self.cID).delete()
-        custom_user = ProcessFile.objects.create(
+        ProcessFile.objects.create(
             user=user_instance,
             cID=self.cID,
             pickle_file=ContentFile(
                 pickle.dumps(self), self.uID + "_" + self.cID + ".pkl"
             ),
         )
-        custom_user.save()
         return True
 
     @classmethod
