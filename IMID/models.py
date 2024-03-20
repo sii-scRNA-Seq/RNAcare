@@ -9,6 +9,7 @@ import os
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.core.files.base import ContentFile
 import uuid
+from multiprocessing import Process
 
 
 def get_file_path(instance, filename):

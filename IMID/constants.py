@@ -18,3 +18,4 @@ BUILT_IN_LABELS = {
     "batch2",
 }
 NUMBER_CPU_LIMITS = 2
+BASE_STATIC = "IMID/static/temp/"
