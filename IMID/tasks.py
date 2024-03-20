@@ -3,6 +3,7 @@ import scanpy as sc
 import math
 from matplotlib import pyplot as plt
 from threadpoolctl import threadpool_limits
+from sklearn.linear_model import LassoCV
 import base64
 import io
 
@@ -92,6 +93,13 @@ def heatmapPlot(geneList, adata):
 
     image_data = base64.b64encode(figure1.getvalue()).decode("utf-8")
     return image_data
-    # return JsonResponse(
-    #     {"fileName": base64.b64encode(figure1.getvalue()).decode("utf-8")}
-    # )
+
+
+@shared_task(time_limit=180, soft_time_limit=150)
+def runLasso(x, y):
+    try:
+        model = LassoCV(cv=5, random_state=42, n_jobs=-1, max_iter=10000, tol=0.01)
+        model.fit(x, y)
+    except Exception as e:
+        raise e
+    return model.coef_
