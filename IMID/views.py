@@ -18,6 +18,7 @@ import math
 import io
 import base64
 from django.db.models import Q
+from collections import defaultdict
 
 # gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
 
@@ -874,22 +875,44 @@ def meta_columns(request):
         try:
             with transaction.atomic():
                 df = usr.getIntegrationData().copy()
+                crtedDic = defaultdict(list)
+                for i in df.columns:
+                    if "__crted" in i:
+                        crtedDic[i.split("__crted")[0] + "__crted"].append(i)
                 if labels != [""]:
+                    labels_t = labels.copy()
+                    labels1 = set(
+                        [
+                            i.split("__crted")[0] + "__crted"
+                            for i in labels
+                            if "__crted" in i
+                        ]
+                    )
+                    labels2 = [i for i in labels if "__crted" not in i]
+                    labels = set()
+                    for i in crtedDic:
+                        if i in labels1:
+                            labels.update(crtedDic[i])  # add age__crted1-N
+                            labels.add(i.split("__crted")[0])  # add age
+                        else:
+                            labels.update(crtedDic[i])  # add agg_crted1-N
+                    labels.update(labels2)
                     df1 = df.drop(labels, axis=1, inplace=False)
                     usr.setAnndata(df1)
                     adata = usr.getAnndata()
-                    for label in labels:
+                    for label in labels_t:
                         if not np.issubdtype(df[label].dtype, np.number):
                             adata.obs[label] = df[label]
                         else:
                             raise Exception(
                                 "Can't auto convert numerical value for label."
                             )
+
                     MetaFileColumn.objects.exclude(colName="LABEL").exclude(
-                        user=request.user, cID=cID, colName__in=labels
+                        user=request.user, cID=cID, colName__in=labels_t
                     ).update(label="0")
                     MetaFileColumn.objects.filter(
-                        user=request.user, cID=cID, colName__in=labels
+                        user=request.user, cID=cID, colName__in=labels_t
                     ).update(label="1")
                 else:
                     usr.setIntegrationData(df)
@@ -947,7 +970,7 @@ def meta_columns(request):
                 df[colName1] = np.select(conditions, threshold_labels)
                 adata.obs[colName1] = df[colName1].copy()
                 MetaFileColumn.objects.create(
-                    user=request.user, cID=cID, colName=colName1, label="1", numeric="0"
+                    user=request.user, cID=cID, colName=colName1, label="0", numeric="0"
                 )
         except Exception as e:
             return HttpResponse("Labels creating Problem. " + str(e), status=400)
