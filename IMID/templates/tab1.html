@@ -243,7 +243,9 @@
 		url='/meta/columns/?numeric=0';
 		url+='&cID='+clientUniqueID;
 		$('#lasso_label_name').html("<option value='' selected='selected'>----SELECT----</option>");
+		$('#cluster_num1').html("<option value='' selected='selected'>----SELECT----</option>");
 		$('#go_label_name').html("<option value='' selected='selected'>----SELECT----</option>");
+		$('#cluster_num').html("<option value='' selected='selected'>----SELECT----</option>");
 		$.ajax({
 			url: url,
 			datType:'json',
