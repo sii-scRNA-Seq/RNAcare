@@ -685,7 +685,7 @@ def lasso(request):
     try:
         coef = runLasso.apply_async((x, y), serializer="pickle")
     except Exception as e:
-        return HttpResponse("Lasso Failed:" + str(e), status=400)
+        return HttpResponse("Lasso Failed:" + str(e), status=500)
 
     coef = pd.Series(
         coef.get(), df.drop([colName], axis=1, inplace=False).columns
