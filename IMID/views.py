@@ -10,8 +10,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 import hdbscan
 from threadpoolctl import threadpool_limits
-
-from sklearn.linear_model import LassoCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 import math
@@ -47,7 +45,7 @@ from .utils import (
 
 from .models import MetaFileColumn, UploadedFile, SharedFile
 from django.db import transaction
-from IMID.tasks import vlnPlot, densiPlot, heatmapPlot
+from IMID.tasks import vlnPlot, densiPlot, heatmapPlot, runLasso
 
 # lasso.R for data visualization
 # sys.path.append('/home/mt229a/Downloads/')#gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
@@ -683,11 +681,14 @@ def lasso(request):
     df.loc[index, colName] = 1
     df.loc[index1, colName] = 0
     y = pd.Categorical(df[colName])
-    model = LassoCV(cv=5, random_state=42, n_jobs=-1, max_iter=10000, tol=0.01)
-    model.fit(x, y)
+
+    try:
+        coef = runLasso.apply_async((x, y), serializer="pickle")
+    except Exception as e:
+        return HttpResponse("Lasso Failed:" + str(e), status=400)
 
     coef = pd.Series(
-        model.coef_, df.drop([colName], axis=1, inplace=False).columns
+        coef.get(), df.drop([colName], axis=1, inplace=False).columns
     ).sort_values(key=abs, ascending=False)
 
     coef[coef != 0][:50].plot.bar(
@@ -985,6 +986,7 @@ def meta_column_values(request, colName):
     else:
         usr = checkRes["usrData"]
     adata = usr.getAnndata()
+    df = usr.getIntegrationData()
     if colName.lower() == "Cluster".lower():
         colName = "cluster"
     if colName in adata.obs_keys() and not np.issubdtype(
@@ -1001,9 +1003,9 @@ def meta_column_values(request, colName):
             )
         temp.sort()
         return JsonResponse(temp, safe=False)
-    elif colName in adata.var_names:
+    elif colName in df.columns:
         histogram_trace = go.Histogram(
-            x=adata.to_df()[colName],
+            x=df[colName],
             histnorm="probability density",  # Set histogram normalization to density
             marker_color="rgba(0, 0, 255, 0.7)",  # Set marker color
         )
@@ -1022,4 +1024,4 @@ def meta_column_values(request, colName):
             base64.b64encode(fig.to_image(format="png")), content_type="image/png"
         )
     else:
-        HttpResponse("Can't find the colName: " + colName, status=400)
+        return HttpResponse("Can't find the colName: " + colName, status=400)
