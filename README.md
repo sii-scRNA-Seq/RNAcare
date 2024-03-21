@@ -14,8 +14,32 @@ For GSE 130955, RNA from skin biopsies from 58 patients in the Prospective Regis
 After clicking the ‘Analyse’ button in the sidebar, information about the study and experiment is displayed in the panel. It shows the first 5 rows for dataset with column names. User will have option to select log2 to transform the dataset.  
 ## Evaluating the results of EDA 
 Several plots are produced as a result of EDA. For example, it displays an interactive corrected 3d plot for the batches after user’s choice of dimension reduction tech such as tsne or umap). User can directly download the corrected data to their own process.  
-##Generating and exploring the results of DGEA 
+## Generating and exploring the results of DGEA 
 Apart from visualizing the data by batches, users then have option to cluster the dataset by hierarchy clustering, Leiden and HDBSCAN with some parameter tuning. Then top N genes for the clustering method will be generated. Then, LASSO method will be adopted demonstrating the feature importance for the batches and clusters separately.  At the same time, user can select top N(default=20) differential genes in each group. All figures generated and displayed in the user interface, many of which can be explored interactively on the webserver, are publication-ready quality and can be downloaded with a mouse click in PNG format. 
 Specifically, users can also select one group in a group clustered by algorithm to find the similarities in that group among different batches. 
 ## Go enrichment Analysis. 
 Users have options to have Go enrichment Analysis. Users can select their interested clustered group and have an analysis. All figures generated and displayed in the user interface, many of which can be explored interactively on the webserver, are publication-ready quality and can be downloaded with a mouse click in PNG format. 
+
+
+# System Implementation and Package dependence
+1. The sys is built based on django+Celery+Redis to avoid some issue of fig.save for matplot.
+2. In order to use the Celery and Redis, please have a reference about how to set up it. https://realpython.com/asynchronous-tasks-with-django-and-celery/
+To install django:
+pip install django
+python manage.py migrate
+python manage.py runserver
+
+To install celery:
+pip install celery
+
+To install redis and start the server:
+sudo apt install redis
+redis-server port 8001
+
+Then open another terminal for test:
+redis-cli -p 8001
+
+Note: the reids settings is set up in djangoproject/settings.py with the corresponding port number and serialization method.
+
+Then start the cerlery: celery -A djangoproject worker -l info
+

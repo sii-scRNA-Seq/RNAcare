@@ -8,6 +8,7 @@ import base64
 import io
 
 from celery import shared_task
+import pandas as pd
 
 
 @shared_task
@@ -102,4 +103,15 @@ def runLasso(x, y):
         model.fit(x, y)
     except Exception as e:
         raise e
-    return model.coef_
+    coef = pd.Series(
+        model.coef_, df.drop([colName], axis=1, inplace=False).columns
+    ).sort_values(key=abs, ascending=False)
+
+    coef[coef != 0][:50].plot.bar(
+        x="Features", y="Coef", figure=plt.figure(), fontsize=6
+    )
+    with io.BytesIO() as buffer:
+        plt.savefig(buffer, format="png", bbox_inches="tight")
+        buffer.seek(0)
+        image = buffer.getvalue()
+    return image

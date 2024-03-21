@@ -683,22 +683,10 @@ def lasso(request):
     y = pd.Categorical(df[colName])
 
     try:
-        coef = runLasso.apply_async((x, y), serializer="pickle")
+        image = runLasso.apply_async((x, y), serializer="pickle")
     except Exception as e:
         return HttpResponse("Lasso Failed:" + str(e), status=500)
-
-    coef = pd.Series(
-        coef.get(), df.drop([colName], axis=1, inplace=False).columns
-    ).sort_values(key=abs, ascending=False)
-
-    coef[coef != 0][:50].plot.bar(
-        x="Features", y="Coef", figure=plt.figure(), fontsize=6
-    )
-    with io.BytesIO() as buffer:
-        plt.savefig(buffer, format="png", bbox_inches="tight")
-        buffer.seek(0)
-        image = buffer.getvalue()
-    return HttpResponse(base64.b64encode(image), content_type="image/png")
+    return HttpResponse(base64.b64encode(image.get()), content_type="image/png")
 
 
 @login_required()
