@@ -24,24 +24,23 @@ Users have options to have Go enrichment Analysis. Users can select their intere
 # System Implementation and Package dependence
 1. The sys is built based on django+Celery+Redis to avoid some issue of fig.save for matplot.
 2. In order to use the Celery and Redis, please have a reference about how to set up it. https://realpython.com/asynchronous-tasks-with-django-and-celery/
-<sup>
-#To install django:
+```
+To install django:
 pip install django
 python manage.py migrate
 python manage.py runserver
 
-#To install celery:
+To install celery:
 pip install celery
 
-#To install redis and start the server:
+To install redis and start the server:
 sudo apt install redis
 redis-server port 8001
 
-#Then open another terminal for test:
+Then open another terminal for test:
 redis-cli -p 8001
 
-#Note: the reids settings is set up in djangoproject/settings.py with the corresponding port number and serialization method.
-#Then start the cerlery: 
+Note: the reids settings is set up in djangoproject/settings.py with the corresponding port number and serialization method.
+Then start the cerlery: 
 celery -A djangoproject worker -l info
-</sup>
-
+```
