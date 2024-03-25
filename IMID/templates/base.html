@@ -110,7 +110,13 @@ content:url('/static/questionMark.png');
         <td>
 
             {% if user.is_authenticated %}
-            <form action="{% url 'logout' %}" method="post">{% csrf_token %}<button type='submit' class="btn btn-primary">Log Out</button></form>
+            <div class="user-info" style="display:flex; align-items: center;">
+                <div style="color: rgb(78, 132, 233); font-size:larger;">Hi, {{ user.get_username }}&nbsp;&nbsp;</div>
+                <form action="{% url 'logout' %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary">Log Out</button>
+                </form>
+            </div>
             {% endif %}
         </td>
     </tr>
