@@ -683,7 +683,7 @@ def lasso(request):
     y = pd.Categorical(df[colName])
 
     try:
-        image = runLasso.apply_async((x, y), serializer="pickle")
+        image = runLasso.apply_async((x, y, df, colName), serializer="pickle")
     except Exception as e:
         return HttpResponse("Lasso Failed:" + str(e), status=500)
     return HttpResponse(base64.b64encode(image.get()), content_type="image/png")
@@ -774,6 +774,8 @@ def genePlot(request):
     adata = usr.getAnndata()
     if adata is None:
         return HttpResponse("No data is in use for the account", status=400)
+    if "cluster" not in adata.obs.columns:
+        return HttpResponse("Please run clustering first.", status=400)
     geneList1 = []
     for i in geneList:  # find legal geneList
         if i in adata.var_names:
@@ -977,39 +979,55 @@ def meta_column_values(request, colName):
     df = usr.getIntegrationData()
     if colName.lower() == "Cluster".lower():
         colName = "cluster"
-    if colName in adata.obs_keys() and not np.issubdtype(
-        adata.obs[colName].dtype, np.number
-    ):
-        temp = list(set(adata.obs[colName]))
-        if len(temp) == 1:
-            return HttpResponse(
-                "Only 1-type value found in the colName: " + colName, status=400
+    if request.method == "GET":
+        if colName in adata.obs_keys() and not np.issubdtype(
+            adata.obs[colName].dtype, np.number
+        ):
+            temp = list(set(adata.obs[colName]))
+            if len(temp) == 1:
+                return HttpResponse(
+                    "Only 1-type value found in the colName: " + colName, status=400
+                )
+            elif len(temp) > 30:
+                return HttpResponse(
+                    "More than 30-type values found in the colName: " + colName,
+                    status=400,
+                )
+            temp.sort()
+            return JsonResponse(temp, safe=False)
+        if colName in df.columns:
+            histogram_trace = go.Histogram(
+                x=df[colName],
+                histnorm="probability density",  # Set histogram normalization to density
+                marker_color="rgba(0, 0, 255, 0.7)",  # Set marker color
             )
-        elif len(temp) > 30:
-            return HttpResponse(
-                "More than 30-type values found in the colName: " + colName, status=400
+
+            # Configure the layout
+            layout = go.Layout(
+                title="Density Plot for " + colName,  # Set plot title
+                xaxis=dict(title=colName),  # Set x-axis label
+                yaxis=dict(title="Density"),  # Set y-axis label
             )
-        temp.sort()
-        return JsonResponse(temp, safe=False)
-    elif colName in df.columns:
-        histogram_trace = go.Histogram(
-            x=df[colName],
-            histnorm="probability density",  # Set histogram normalization to density
-            marker_color="rgba(0, 0, 255, 0.7)",  # Set marker color
-        )
 
-        # Configure the layout
-        layout = go.Layout(
-            title="Density Plot for " + colName,  # Set plot title
-            xaxis=dict(title=colName),  # Set x-axis label
-            yaxis=dict(title="Density"),  # Set y-axis label
-        )
+            # Create figure
+            fig = go.Figure(data=[histogram_trace], layout=layout)
 
-        # Create figure
-        fig = go.Figure(data=[histogram_trace], layout=layout)
-
-        return HttpResponse(
-            base64.b64encode(fig.to_image(format="png")), content_type="image/png"
-        )
-    else:
-        return HttpResponse("Can't find the colName: " + colName, status=400)
+            return HttpResponse(
+                base64.b64encode(fig.to_image(format="png")), content_type="image/png"
+            )
+        else:
+            return HttpResponse("Can't find the colName: " + colName, status=400)
+    if request.method == "DELETE":
+        print("123123")
+        col = MetaFileColumn.objects.filter(
+            user=request.user, cID=usr.cID, colName=colName
+        ).first()
+        if col is None:
+            return HttpResponse("No such colName called:" + colName, status=400)
+        elif col.label == "1":
+            return HttpResponse("Please make {colName} inactive first.", status=400)
+        print(colName)
+        MetaFileColumn.objects.filter(
+            user=request.user, cID=usr.cID, colName=colName, label="0"
+        ).delete()
+        return HttpResponse("Delete {colName} Successfully.", status=200)

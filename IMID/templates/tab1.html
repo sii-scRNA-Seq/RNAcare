@@ -150,7 +150,8 @@
 			success:function(response){
 				$('.btn').attr('disabled',false);
 				alert('Data Process successful.');
-				$('#my-select-label-numeric').val('');
+				$('#my-select-label-numeric').val("<option value='' selected='selected'>----SELECT----</option>");
+				$('#my-select-label-delete').val("<option value='' selected='selected'>----SELECT----</option>");
 				$('#label-numeric-input').val('');
 				$('#label-numeric-input-texts').val('');
 				integrated=1;
@@ -599,6 +600,8 @@ function TGenePlotClick()
 	$('#vlnPlot').html('');
 	$('#densityPlot').html('');
 	$('#heatmapPlot').html('');
+	n=3;
+
 	$.ajax({
 			url:url,
 			datType:'json',
@@ -611,7 +614,8 @@ function TGenePlotClick()
 			$('#loader').show();
 			},
 			complete:function(){
-			$('#loader').hide();
+				n-=1;
+				if(n==0)$('#loader').hide();
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
@@ -639,7 +643,8 @@ function TGenePlotClick()
 			$('#loader').show();
 			},
 			complete:function(){
-			$('#loader').hide();
+				n-=1;
+				if(n==0)$('#loader').hide();
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
@@ -667,7 +672,8 @@ function TGenePlotClick()
 			$('#loader').show();
 			},
 			complete:function(){
-			$('#loader').hide();
+				n-=1;
+				if(n==0)$('#loader').hide();
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
@@ -794,6 +800,7 @@ function refreshMySelectLabel()
 						if(labeled=='0'){
 							if(colName!='ID_REF') $('#my-select-label').append('<option value="'+colName+'">'+colName+'</option>');
 							else $('#my-select-label').append('<option value="'+colName+'" disabled="">'+colName+'</option>');
+
 						}
 						else{
 							if(colName!='LABEL'){
@@ -821,6 +828,46 @@ function refreshMySelectLabel()
 	});
 }
 
+function refreshMyDeleteLabel()
+{
+	url='/meta/columns/?';
+	url+='cID='+clientUniqueID;
+	$.ajax({
+			url:url,
+			datType:'text',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			$('.btn').attr('disabled',true);
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				$('#my-select-label-delete').html("<option value='' selected='selected'>----SELECT----</option>");
+				for (i=0;i<response.length;i++)
+				{
+					colName=response[i][0];
+					labeled=response[i][1];
+					numeric=response[i][2];
+					if(numeric=='0'&&labeled=='0'&&colName!='ID_REF'){
+						$('#my-select-label-delete').append('<option value="'+colName+'">'+colName+'</option>');
+					}
+
+				}	
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+}
 function labelAssignConfirm()
 {
 	if($('#my-select-label').val()==''&&label_selected_value==''){
@@ -855,6 +902,7 @@ function labelAssignConfirm()
 				alert('Update new label(s) successfully.');
 				label_selected_value=$('#my-select-label').val();
 				$('#eda-label-choose').val('batch2');
+				refreshMyDeleteLabel();
 				
 			},
 			error:function(response){
@@ -958,6 +1006,42 @@ function labelNumericConfirm()
 				$('#label-numeric-input-texts').val('');
 				$('#my-select-label-numeric').val('');
 				refreshMySelectLabel();			
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+}
+
+function labelDeleteConfirm()
+{
+	value=$('#my-select-label-delete').val();
+	if(value=='')return
+	url='/meta/'+value+'/';
+	url+='?cID='+clientUniqueID;
+	$.ajax({
+			url:url,
+			dataType:'text',
+			cache:false,
+			headers: {'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val() },
+			contentType:'application/json',
+			processData:false,
+			type:'delete',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			$('.btn').attr('disabled',true);
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				alert('Label Deleted Successfully.');
+				refreshMySelectLabel();
+				refreshMyDeleteLabel();		
 			},
 			error:function(response){
 				alert(response.responseText);
@@ -1128,7 +1212,7 @@ function label_name_change(targetLabel,targetClusterNum)
   </tr>
   <tr>
 	<td>
-		<div id="metaAdvancedSettingClick" onclick="metaAdvanced();">&gt;&gt;Enable Meta File Advanced Settings</div>
+		<div id="metaAdvancedSettingClick" onclick="metaAdvanced();" title="Click to create new labels based on Meta File Data.">&gt;&gt;Enable Meta File Advanced Settings</div>
 	</td>
   	<td style="text-align:right;" colspan='2'>
 		<button id="next2" class="btn btn-primary">&nbsp;&nbsp;Integrate&nbsp;&nbsp;</button>
@@ -1142,9 +1226,11 @@ function label_name_change(targetLabel,targetClusterNum)
 		<ul>
 		  <li><a href="#tabs-label-1">Label Generation</a></li>
 		  <li><a href="#tabs-label-2">Label Assignment</a></li>
+		  <li><a href="#tabs-label-3" onClick="refreshMyDeleteLabel();">Label Delete</a></li>
 		</ul>
 		<div id="tabs-label-1">
 			<label>Create New Label from numerical fields:</label>
+			<img class='question' style="max-width:0.8%;" title="This tab is used for creating labels based on Continuous variables in meta file.<br>After you created the label, you will need to go to the next tab to activate it.<img src='/static/continuous.png' width='500' height='auto'/>"/>
 			<br>
 			<select id="my-select-label-numeric" onchange="numLabelChange();">
 				<option value='' selected='selected'>----SELECT----</option>
@@ -1179,12 +1265,28 @@ function label_name_change(targetLabel,targetClusterNum)
 				</div>
 			</div>
 			<ul>
-				<li>Press 'Modify' to make the above selected categorical fields as Labels:</li>
+				<li>Press 'Modify' to make the above selected categorical fields as Labels:<img class='question' style="max-width:0.8%;" title="Activate you previously created label or the Categorical label in the meta-file.<br><img src='/static/labels.png' width='500' height='auto'/>"/>
+				</li>
 			</ul>
-			<button id="label-assign-confirm" class="btn btn-primary" onclick="labelAssignConfirm();"; style="margin-left:800px;" style="margin-left:300px;">&nbsp;&nbsp;Modify&nbsp;&nbsp;</button>
-			
+			<button id="label-assign-confirm" class="btn btn-primary" onclick="labelAssignConfirm();"; style="margin-left:800px;" style="margin-left:300px;">&nbsp;&nbsp;Modify&nbsp;&nbsp;</button>	
 		</div>
+		<div id="tabs-label-3">
+			<ul>
+				<li>Delete the label you previously created.<img class='question' style="max-width:0.8%;" title="Only inactive labels with the suffix  '__crted'  can be deleted."/>
+				</li>
+			</ul>
+			<div style="text-align: center;">
+				<div style="display: inline-block;">
+					<br><br>
+					<select id="my-select-label-delete">
+						<option value='' selected='selected'>----SELECT----</option>
+					</select>
+					<br>
+				</div>
+			</div>
+			<button id="label-delete-confirm" class="btn btn-primary" onclick="labelDeleteConfirm();"; style="margin-left:800px;" style="margin-left:300px;">&nbsp;&nbsp;Delete&nbsp;&nbsp;</button>	
 		
+		</div>
 	</div>
   </div>
   </div>
@@ -1339,7 +1441,9 @@ function label_name_change(targetLabel,targetClusterNum)
   </div>
 
   <div id="tabs-7">
-	<p>Input your target gene list for the clusters and choose the separator.</p>
+	<p>Input your target gene list for the clusters and choose the separator.
+		<img class='question' style="max-width:0.8%;" title="This tab is used for plots for at most 15 target Genes after running clustering.<br>You can input your interested genes, generating its violin/density and heatmap plots. <br>If your input is GeneID, you may need to convert them to Symbol ID first.<br>Sys provides you candidate gene Lists, <ul><li>PCA(3) for top important genes contributing to the first 3 Principal Components after PCA.</li><li>The second option is for marker genes after clustering.</li></ul>"/>	
+	</p>
 	<label>Choose the separator for the gene list:</label>
 	<select id="separator">
 		<option value="Comma"  selected="selected">Comma</option>
@@ -1371,7 +1475,7 @@ function label_name_change(targetLabel,targetClusterNum)
   </div>
   
   <div id='tabs-5'>
-  	<p>Select one interesting Label/Cluster for Feature Selection by Lasso:&nbsp;<img class='question' style="max-width:0.8%;" title="<p>LASSO regression, also known as L1 regularization, is a popular technique used in statistical modeling and machine learning to estimate the relationships between variables and make predictions. LASSO stands for Least Absolute Shrinkage and Selection Operator.</p><p>The primary goal of LASSO regression is to find a balance between model simplicity and accuracy. It achieves this by adding a penalty term to the traditional linear regression model, which encourages sparse solutions where some coefficients are forced to be exactly zero. This feature makes LASSO particularly useful for feature selection, as it can automatically identify and discard irrelevant or redundant variables.</p>"/></p>
+  	<p>Select one Label/Cluster of interest for Feature Selection by Lasso:&nbsp;<img class='question' style="max-width:0.8%;" title="<p>LASSO regression, also known as L1 regularization, is a popular technique used in statistical modeling and machine learning to estimate the relationships between variables and make predictions. LASSO stands for Least Absolute Shrinkage and Selection Operator.</p><p>The primary goal of LASSO regression is to find a balance between model simplicity and accuracy. It achieves this by adding a penalty term to the traditional linear regression model, which encourages sparse solutions where some coefficients are forced to be exactly zero. This feature makes LASSO particularly useful for feature selection, as it can automatically identify and discard irrelevant or redundant variables.</p>"/></p>
 	<table>
   		<tr>
 			<td style="text-align:left;width:50%">
@@ -1381,7 +1485,7 @@ function label_name_change(targetLabel,targetClusterNum)
 					<option value='' selected='selected'>----SELECT----</option>
 				</select>
 				<br><br>
-				<label>Select interesting group of the Label/Cluster:</label>
+				<label>Select group of interest of the Label/Cluster:</label>
 				<br>
 				<select id='cluster_num1'>
 					<option value='' selected='selected'>----SELECT----</option>
@@ -1400,7 +1504,7 @@ function label_name_change(targetLabel,targetClusterNum)
   </div>
   
   <div id='tabs-6'>
-  	<p>Select one interesting Label/Cluster for Go Enrichment Analysis:&nbsp;<img class='question' style="max-width:0.8%;" title="<p>GO (Gene Ontology) enrichment analysis is a computational method used in bioinformatics to identify overrepresented gene ontology terms associated with a set of genes. Gene Ontology provides a standardized vocabulary for annotating the molecular functions, biological processes, and cellular components of genes and gene products.</p>"/></p>
+  	<p>Select one Label/Cluster of interest for Go Enrichment Analysis:&nbsp;<img class='question' style="max-width:0.8%;" title="<p>GO (Gene Ontology) enrichment analysis is a computational method used in bioinformatics to identify overrepresented gene ontology terms associated with a set of genes. Gene Ontology provides a standardized vocabulary for annotating the molecular functions, biological processes, and cellular components of genes and gene products.</p>"/></p>
   	<table>
   		<tr>
 			<td style="text-align:left;width:50%">
@@ -1410,7 +1514,7 @@ function label_name_change(targetLabel,targetClusterNum)
 					<option value='' selected='selected'>----SELECT----</option>
 				</select>
 				<br><br>
-				<label>Select interesting Class of Cluster:</label>
+				<label>Select Class of interest of Cluster:</label>
 				<br>
 				<select id='cluster_num'>
 					<option value='' selected='selected'>----SELECT----</option>

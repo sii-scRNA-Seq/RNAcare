@@ -44,3 +44,22 @@ Note: the reids settings is set up in djangoproject/settings.py with the corresp
 Then start the cerlery: 
 celery -A djangoproject worker -l info
 ```
+3. import the user info from old sys to the new
+```
+From the old sys folder:
+python manage.py shell
+import pickle
+from django.contrib.auth.models import User
+usrs=User.objects.all()
+with open('user.pkl','wb')as f:
+    pickle.dump(usrs,f)
+
+Open new sys folder:
+from IMID.models import CustomUser
+import pickle
+with open('user.pkl','rb')as f:
+    users=pickle.load(f)
+for i in users[1:]:
+    CustomUser.objects.create(username=i.username,email=i.email,password=i.password)
+
+```
