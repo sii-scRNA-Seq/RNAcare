@@ -163,7 +163,6 @@ def edaIntegrate(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
-    username = request.user.username
     cID = request.GET.get("cID", None)
 
     corrected = request.GET.get("correct", "Combat")
@@ -245,7 +244,7 @@ def edaIntegrate(request):
             # exclude NA
             temp1 = temp1.dropna(axis=1)
             dfs.append(temp1)
-
+            print(file)
             # color2.extend(list(temp.LABEL))
             batch.extend(
                 ["_".join(file.split("_")[1:]).split(".csv")[0]] * temp1.shape[0]

@@ -21,12 +21,13 @@ from combat.pycombat import pycombat
 from matplotlib import pyplot as plt
 from django.http import HttpResponse, JsonResponse
 from collections import Counter
-import math
 import requests
 import json
 import io
 import base64
 from threadpoolctl import threadpool_limits
+from cryptography.fernet import Fernet
+import hashlib
 
 
 @lru_cache(maxsize=None)
