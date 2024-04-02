@@ -41,6 +41,7 @@ from .utils import (
     GeneID2SymID,
     usrCheck,
     UploadFileColumnCheck,
+    preview_dataframe,
 )
 
 from .models import MetaFileColumn, UploadedFile, SharedFile
@@ -86,7 +87,6 @@ def uploadExpression(request):
     cID = request.POST.get("cID", None)
     if cID is None:
         return HttpResponse("cID not provided.", status=400)
-    fileNames = []
     context = {}
     UploadedFile.objects.filter(user=request.user, type1="exp", cID=cID).delete()
     files = request.FILES.getlist("files[]", None)
@@ -95,7 +95,6 @@ def uploadExpression(request):
     for f in files:
         temp_file = UploadedFile(user=request.user, cID=cID, type1="exp", file=f)
         new_exp_files.append(temp_file)
-        fileNames.append(temp_file.file.path)
         context[f.name] = {}
     UploadedFile.objects.bulk_create(new_exp_files)
 
@@ -104,20 +103,15 @@ def uploadExpression(request):
     ).all():
         df = pd.read_csv(file.file.path, nrows=5, header=0)
         f = file.file.name
-        if "ID_REF" not in df.columns:
-            return HttpResponse("No ID_REF column in the expression file", status=400)
-        if UploadFileColumnCheck(df) == 0:
-            return HttpResponse("Column name illegal.", status=400)
-        if len(df.columns) > 7:  # only show 7 columns
-            df = pd.concat([df.iloc[:, 0:4], df.iloc[:, -3:]], axis=1)
 
-            temp = df.columns[3]
-            df.rename(columns={temp: "..."}, inplace=True)
-            df["..."] = "..."
+        check, mess = UploadFileColumnCheck(df, ("ID_REF"))
+        if check is False:
+            return HttpResponse(mess, status=400)
+        df = preview_dataframe(df)
         json_re = df.reset_index().to_json(orient="records")
         data = json.loads(json_re)
-        context["_".join(f.split("_")[1:])]["d"] = data
-        context["_".join(f.split("_")[1:])]["names"] = ["index"] + df.columns.to_list()
+        context[f]["d"] = data
+        context[f]["names"] = ["index"] + df.columns.to_list()
 
     return render(request, "table.html", {"root": context})
 
@@ -139,16 +133,10 @@ def uploadMeta(request):
     context = {}
     context["metaFile"] = {}
     df = pd.read_csv(f.file.path, nrows=5, header=0)
-    if "ID_REF" not in df.columns:
-        return HttpResponse("No ID_REF column in the clinical file", status=400)
-    if "LABEL" not in df.columns:
-        return HttpResponse("No LABEL column in the clinical file", status=400)
-    if len(df.columns) > 7:  # only show 7 columns
-        df = pd.concat([df.iloc[:, 0:4], df.iloc[:, -3:]], axis=1)
-
-        temp = df.columns[3]
-        df.rename(columns={temp: "..."}, inplace=True)
-        df["..."] = "..."
+    check, mess = UploadFileColumnCheck(df, ("ID_REF", "LABEL"))
+    if check is False:
+        return HttpResponse(mess, status=400)
+    df = preview_dataframe(df)
     json_re = df.reset_index().to_json(orient="records")
     data = json.loads(json_re)
     context["metaFile"]["d"] = data

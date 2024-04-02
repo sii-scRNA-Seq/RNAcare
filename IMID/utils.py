@@ -26,8 +26,6 @@ import json
 import io
 import base64
 from threadpoolctl import threadpool_limits
-from cryptography.fernet import Fernet
-import hashlib
 
 
 @lru_cache(maxsize=None)
@@ -45,6 +43,21 @@ def build_GOEnrichmentStudyNS():
         alpha=0.05,
         methods=["fdr_bh"],
     )
+
+
+def preview_dataframe(df):
+    if len(df.columns) > 7:
+        selected_columns = list(df.columns[:4]) + ["..."] + list(df.columns[-3:])
+        df = df[selected_columns]
+        df.rename(columns={df.columns[3]: "..."}, inplace=True)
+        df["..."] = "..."
+    return df
+
+
+def has_duplicate_columns(df):
+    # Check for duplicated column names
+    duplicated_columns = df.columns[df.columns.duplicated()]
+    return len(duplicated_columns) > 0
 
 
 def zip_for_vis(X2D, batch, obs):
@@ -309,8 +322,13 @@ def GeneID2SymID(geneList):
     return retRes
 
 
-def UploadFileColumnCheck(df):
-    return 1
+def UploadFileColumnCheck(df, keywords):
+    for keyword in keywords:
+        if keyword not in df.columns:
+            return False, f"No {keyword} column in the expression file"
+    if has_duplicate_columns(df):
+        return False, "file has duplicated columns."
+    return True, ""
 
 
 def usrCheck(request, flag=1):
