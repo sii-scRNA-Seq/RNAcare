@@ -48,9 +48,6 @@ from .models import MetaFileColumn, UploadedFile, SharedFile
 from django.db import transaction
 from IMID.tasks import vlnPlot, densiPlot, heatmapPlot, runLasso
 
-# lasso.R for data visualization
-# sys.path.append('/home/mt229a/Downloads/')#gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
-
 
 @login_required()
 def index(request):
@@ -58,6 +55,12 @@ def index(request):
         request,
         "index.html",
     )
+
+
+"""
+This page will show different shared data to different users within different user groups. If the user is defined in a group,
+the programme will filter his corresponding group. Otherwise it will return all shared data.
+"""
 
 
 @login_required()
@@ -78,6 +81,13 @@ def tab(request):
             .values_list("cohort", "label")
         )
     return render(request, "tab1.html", {"root": context})
+
+
+"""
+This program provides entrance for user to upload Expression files. One user can upload multiple expression files at a time.
+'ID_REF' should be one of the colnames in each Expression file.
+User uses UploadedFile to store their uploaded expression data, the column type1 is set to be 'exp' to represent the stored expression file.
+"""
 
 
 @login_required()
@@ -116,6 +126,13 @@ def uploadExpression(request):
     return render(request, "table.html", {"root": context})
 
 
+"""
+This program provides entrance for user to upload Meta files. One user can upload only one meta file at a time.
+'ID_REF','LABEL' should be one of the colnames in each Meta file.
+User uses UploadedFile to store their uploaded expression data, the column type1 is set to be 'cli' to represent the stored clinical data.
+"""
+
+
 @login_required()
 def uploadMeta(request):
     if request.method != "POST":
@@ -142,6 +159,16 @@ def uploadMeta(request):
     context["metaFile"]["d"] = data
     context["metaFile"]["names"] = ["index"] + df.columns.to_list()
     return render(request, "table.html", {"root": context})
+
+
+"""
+This is for data integration based on selected options. The files comes from 1. user uploaded files. 2. Built-in Data.
+in_ta and in_ta1 are used for expression and meta data list separately
+The processing logic is:
+First, using user uploaded meta file as the base then inner join with selected built-in meta files to get the shared clinic features. =>temp0
+Then join the expression files=>temp1 with consideration of log2, batch effect
+Third, join temp0 and temp1;
+"""
 
 
 @login_required()
@@ -232,7 +259,6 @@ def edaIntegrate(request):
             # exclude NA
             temp1 = temp1.dropna(axis=1)
             dfs.append(temp1)
-            print(file)
             # color2.extend(list(temp.LABEL))
             batch.extend(
                 ["_".join(file.split("_")[1:]).split(".csv")[0]] * temp1.shape[0]
