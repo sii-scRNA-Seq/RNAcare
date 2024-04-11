@@ -421,6 +421,7 @@ function clusterBtnClick(){
 }
 
 function goEnrich(){
+	if($('#go_label_name').val()==''||$('#cluster_num').val()==''){alert('Please Select a value.');return;}
 	$('.btn').attr('disabled',true);
 	url='/goenrich/?colName='+$('#go_label_name').val()+'&cluster_n='+$('#cluster_num').val();
 	url+='&cID='+clientUniqueID;
@@ -454,6 +455,7 @@ function goEnrich(){
 }
 
 function golasso(){
+	if($('#lasso_label_name').val()==''||$('#cluster_num1').val()==''){alert('Please Select a value.');return;}
 	$('.btn').attr('disabled',true);
 	url='/lasso/?colName='+$('#lasso_label_name').val()+'&cluster_n='+$('#cluster_num1').val();
 	url+='&cID='+clientUniqueID;
