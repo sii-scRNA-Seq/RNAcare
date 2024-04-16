@@ -12,7 +12,7 @@ import pandas as pd
 
 
 @shared_task
-def vlnPlot(geneList, adata):
+def vlnPlot(geneList, adata, groupby):
     sc.set_figure_params(dpi=100)
     sc.settings.verbosity = 0
     num_genes = len(geneList)
@@ -34,7 +34,7 @@ def vlnPlot(geneList, adata):
             for i, gene in enumerate(geneList):
                 if i < num_genes:
                     ax = axes[i]
-                    sc.pl.violin(adata, [gene], groupby="cluster", ax=axes[i])
+                    sc.pl.violin(adata, [gene], groupby=groupby, ax=axes[i])
                     ax.set_title(gene)  # Add title to subplot
 
             # Remove any unused subplots
@@ -73,7 +73,7 @@ def densiPlot(geneList, adata):
 
 
 @shared_task
-def heatmapPlot(geneList, adata):
+def heatmapPlot(geneList, adata, groupby):
     # scale and store results in layer
     figure1 = io.BytesIO()
     adata.layers["scaled"] = sc.pp.scale(adata, copy=True).X
@@ -81,7 +81,7 @@ def heatmapPlot(geneList, adata):
         sc.pl.heatmap(
             adata,
             geneList,
-            groupby="cluster",
+            groupby=groupby,
             layer="scaled",
             vmin=-2,
             vmax=2,

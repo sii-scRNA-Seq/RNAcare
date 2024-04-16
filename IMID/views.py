@@ -754,7 +754,7 @@ def candiGenes(request):
             result.extend(pcs_loadings.nsmallest(2, columns=i).index.tolist())
         return JsonResponse(result, safe=False)
     else:
-        markers = usr.getMarkers()
+        markers = usr.getMarkers(method)
         if markers is None:
             return HttpResponse("Please run clustering method first.", status=400)
         clusters = set(markers.group)
@@ -776,6 +776,7 @@ def genePlot(request):
         usr = checkRes["usrData"]
     type = request.GET.get("type", "vln")
     geneList = request.GET.get("geneList", None)
+    groupby = request.GET.get("groupby", "cluster")
     if geneList is None:
         return HttpResponse("geneList is Required", status=400)
     try:
@@ -801,11 +802,15 @@ def genePlot(request):
     if len(geneList1) > 12:
         geneList1 = geneList1[:12]
     if type == "vln":
-        image_data = vlnPlot.apply_async((geneList1, adata), serializer="pickle")
+        image_data = vlnPlot.apply_async(
+            (geneList1, adata, groupby), serializer="pickle"
+        )
     elif type == "density":
         image_data = densiPlot.apply_async((geneList1, adata), serializer="pickle")
     else:  # type=='heatmap'
-        image_data = heatmapPlot.apply_async((geneList1, adata), serializer="pickle")
+        image_data = heatmapPlot.apply_async(
+            (geneList1, adata, groupby), serializer="pickle"
+        )
     return JsonResponse({"fileName": image_data.get()})
 
 

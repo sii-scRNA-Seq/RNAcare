@@ -150,8 +150,8 @@
 			success:function(response){
 				$('.btn').attr('disabled',false);
 				alert('Data Process successful.');
-				$('#my-select-label-numeric').val("<option value='' selected='selected'>----SELECT----</option>");
-				$('#my-select-label-delete').val("<option value='' selected='selected'>----SELECT----</option>");
+				$('#my-select-label-numeric').html("<option value='' selected='selected'>----SELECT----</option>");
+				$('#my-select-label-delete').html("<option value='' selected='selected'>----SELECT----</option>");
 				$('#label-numeric-input').val('');
 				$('#label-numeric-input-texts').val('');
 				integrated=1;
@@ -172,6 +172,8 @@
 	orig_label=$('#eda-label-choose').val();
 	url='/eda/?cID='+clientUniqueID;
 	url+='&label='+$('#eda-label-choose').val();
+
+	$('#candidateCluster').html('<option value="" selected="selected"></option><option value="cluster">Clustering Method</option>');
 	$.ajax({
 			url: url,
 			datType:'json',
@@ -192,15 +194,18 @@
 				dfs2 = response.dfs2;
 				plotlyPlot('graphDiv2',dfs2);
 				$('#eda-label-choose').html('');
+				
 				for(i=0;i<response.labels.length;i++)
 				{
 					temp_r=response.labels[i];
 					if(temp_r=='LABEL')temp_r='batch2';
 					if(temp_r==orig_label){
 						$('#eda-label-choose').append("<option value='"+temp_r+"' selected='selected'>"+response.labels[i]+"</option>");
+						$('#candidateCluster').append("<option value='"+temp_r+"'>"+response.labels[i]+"</option>");
 					}
 					else{
 						$('#eda-label-choose').append("<option value='"+temp_r+"'>"+response.labels[i]+"</option>");
+						$('#candidateCluster').append("<option value='"+temp_r+"'>"+response.labels[i]+"</option>");
 					}
 				}	
 				$.ajax({
@@ -560,6 +565,8 @@ function loadCandiGenes()
 {
 	sep=getSep();
 	tempValue=$('#candidateGeneList').val();
+	tempCluster=$('#candidateCluster').val();
+	tempValue=tempCluster;
 	if(tempValue=='')return;
 	url='/dega/candiGenes/?method='+tempValue;
 	url+='&cID='+clientUniqueID;
@@ -593,10 +600,12 @@ function loadCandiGenes()
 function TGenePlotClick()
 {
 	tempValue=$('#targetGene').val();
+	groupby=$('#candidateCluster').val();
+	if(groupby=='')return;
 	sep=getSep();
 	tempValue=tempValue.split(sep).join(',');
 	if(tempValue=='')return;
-	url='/dega/plot/?type=vln&geneList='+tempValue;
+	url='/dega/plot/?type=vln&geneList='+tempValue+'&groupby='+groupby;
 	url+='&cID='+clientUniqueID;
 	$('.btn').attr('disabled',true);
 	$('#vlnPlot').html('');
@@ -659,7 +668,7 @@ function TGenePlotClick()
 				return;
 			}
 	});
-	url='/dega/plot/?type=heatmap&geneList='+tempValue;
+	url='/dega/plot/?type=heatmap&geneList='+tempValue+'&groupby='+groupby;
 	url+='&cID='+clientUniqueID;
 	$('.btn').attr('disabled',true);
 	$.ajax({
@@ -1455,11 +1464,16 @@ function label_name_change(targetLabel,targetClusterNum)
 		<option value="Tab">Tab</option>
 		<option value="Semicolon">Semicolon</option>
 	</select>&nbsp;&nbsp;&nbsp;
-	<label>Choose Candidate Gene List.</label>
+	<label>Select Cluster:</label>
+	<select id="candidateCluster" onchange='$("#candidateGeneList option:first").prop("selected", true);'>
+		<option value="" selected="selected"></option>
+		<option value="cluster">Clustering Method</option>
+	</select>
+	<label>Choose Candidate Gene List:</label>
 	<select id="candidateGeneList" onchange="loadCandiGenes();">
 		<option value="" selected="selected"></option>
 		<option value="pca">PCA(3)</option>
-		<option value="clusters">Leiden/HDBSCAN/KMeans</option>
+		<option value="clusters">Related to Cluster</option>
 	</select>
 	<br><br>
 	<div style="position:relative;display:inline-block;">
