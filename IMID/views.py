@@ -291,7 +291,12 @@ def edaIntegrate(request):
     pca_temp = usr.getAnndata().obsm["X_pca"]
 
     if fr == "TSNE":
-        tsne = TSNE(n_components=2, random_state=42, n_jobs=2)
+        tsne = TSNE(
+            n_components=2,
+            random_state=42,
+            n_jobs=2,
+            perplexity=min(30.0, pca_temp.shape[0] - 1),
+        )
         X2D = tsne.fit_transform(pca_temp)
     else:
         umap1 = umap.UMAP(n_components=2, random_state=42, n_neighbors=30, n_jobs=2)
@@ -446,9 +451,12 @@ def clustering(request):
             param = float(param)
         except:
             return HttpResponse("Resolution should be a float", status=400)
-        with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
-            sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
-            sc.tl.leiden(adata, resolution=param)
+        try:
+            with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
+                sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
+                sc.tl.leiden(adata, resolution=param)
+        except Exception as e:
+            return HttpResponse(f"{e}", status=400)
         Resp = clusteringPostProcess(X2D, adata, "leiden", usr)
         return Resp
     elif cluster == "HDBSCAN":
@@ -458,8 +466,8 @@ def clustering(request):
             param = int(param)
         except:
             return HttpResponse("K should be positive integer.", status=400)
-        if param <= 5:
-            param = HttpResponse("minSize should be at least 5.", status=400)
+        if param < 5:
+            return HttpResponse("minSize should be at least 5.", status=400)
         labels = hdbscan.HDBSCAN(min_cluster_size=int(param)).fit_predict(
             adata.obsm["X_pca"]
         )
@@ -788,7 +796,11 @@ def genePlot(request):
     adata = usr.getAnndata()
     if adata is None:
         return HttpResponse("No data is in use for the account", status=400)
-    if "cluster" not in adata.obs.columns:
+    if (
+        "cluster" not in adata.obs.columns
+        and groupby == "cluster"
+        and type != "density"
+    ):
         return HttpResponse("Please run clustering first.", status=400)
     geneList1 = []
     for i in geneList:  # find legal geneList
@@ -929,7 +941,12 @@ def meta_columns(request):
 
                 pca_temp = usr.getAnndata().obsm["X_pca"]
                 if fr == "TSNE":
-                    tsne = TSNE(n_components=2, random_state=42, n_jobs=2)
+                    tsne = TSNE(
+                        n_components=2,
+                        random_state=42,
+                        n_jobs=2,
+                        perplexity=min(30.0, pca_temp.shape[0] - 1),
+                    )
                     X2D = tsne.fit_transform(pca_temp)
                 else:
                     umap1 = umap.UMAP(
