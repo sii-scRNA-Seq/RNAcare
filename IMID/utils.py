@@ -47,7 +47,7 @@ def build_GOEnrichmentStudyNS():
 
 def preview_dataframe(df):
     if len(df.columns) > 7:
-        selected_columns = list(df.columns[:4]) + ["..."] + list(df.columns[-3:])
+        selected_columns = list(df.columns[:4]) + list(df.columns[-3:])
         df = df[selected_columns]
         df.rename(columns={df.columns[3]: "..."}, inplace=True)
         df["..."] = "..."

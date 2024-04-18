@@ -1,6 +1,6 @@
 from django.db import models
 import pandas as pd
-from .constants import ONTOLOGY, NUMBER_CPU_LIMITS, BUILT_IN_LABELS
+from .constants import ONTOLOGY, NUMBER_CPU_LIMITS, BUILT_IN_LABELS, BASE_STATIC
 from threadpoolctl import threadpool_limits
 import pickle
 import scanpy as sc
@@ -241,9 +241,7 @@ class userData:
         ProcessFile.objects.create(
             user=user_instance,
             cID=self.cID,
-            pickle_file=ContentFile(
-                pickle.dumps(self), self.uID + "_" + self.cID + ".pkl"
-            ),
+            pickle_file=ContentFile(pickle.dumps(self), self.cID + ".pkl"),
         )
         return True
 
