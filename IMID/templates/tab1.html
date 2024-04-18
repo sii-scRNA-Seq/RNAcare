@@ -566,8 +566,8 @@ function loadCandiGenes()
 	sep=getSep();
 	tempValue=$('#candidateGeneList').val();
 	tempCluster=$('#candidateCluster').val();
-	tempValue=tempCluster;
-	if(tempValue=='')return;
+	if(tempValue==''||tempCluster=='')return;
+	if(tempValue!='pca')tempValue=tempCluster;
 	url='/dega/candiGenes/?method='+tempValue;
 	url+='&cID='+clientUniqueID;
 	$('.btn').attr('disabled',true);
