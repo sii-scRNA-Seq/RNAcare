@@ -112,16 +112,16 @@ def uploadExpression(request):
         user=request.user, type1="exp", cID=cID
     ).all():
         df = pd.read_csv(file.file.path, nrows=5, header=0)
-        f = file.file.name
+        f = file.file.name.split("/")[-1]
 
-        check, mess = UploadFileColumnCheck(df, ("ID_REF"))
+        check, mess = UploadFileColumnCheck(df, ("ID_REF",))
         if check is False:
             return HttpResponse(mess, status=400)
         df = preview_dataframe(df)
         json_re = df.reset_index().to_json(orient="records")
         data = json.loads(json_re)
-        context[f]["d"] = data
-        context[f]["names"] = ["index"] + df.columns.to_list()
+        context["_".join(f.split("_")[1:])]["d"] = data
+        context["_".join(f.split("_")[1:])]["names"] = ["index"] + df.columns.to_list()
 
     return render(request, "table.html", {"root": context})
 
