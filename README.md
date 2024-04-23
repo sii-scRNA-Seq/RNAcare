@@ -35,7 +35,7 @@ pip install celery
 
 To install redis and start the server:
 sudo apt install redis
-redis-server port 8001
+redis-server --port 8001
 
 Then open another terminal for test:
 redis-cli -p 8001
