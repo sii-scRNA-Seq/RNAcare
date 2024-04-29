@@ -42,7 +42,7 @@ redis-cli -p 8001
 
 Note: the reids settings is set up in djangoproject/settings.py with the corresponding port number and serialization method.
 Then start the cerlery: 
-celery -A djangoproject worker -l info
+python3 -m celery -A djangoproject worker -l info
 ```
 3. import the user info from old sys to the new
 ```
