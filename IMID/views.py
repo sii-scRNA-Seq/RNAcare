@@ -1053,7 +1053,6 @@ def meta_column_values(request, colName):
         else:
             return HttpResponse("Can't find the colName: " + colName, status=400)
     if request.method == "DELETE":
-        print("123123")
         col = MetaFileColumn.objects.filter(
             user=request.user, cID=usr.cID, colName=colName
         ).first()
