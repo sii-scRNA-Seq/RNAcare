@@ -88,6 +88,7 @@ Our platform is developed in Python, utilizing several widely used packages. The
 ## Data collection
 For demonstration, we used whole blood samples from the Pathobiology of Early Arthritis Cohort (PEAC), which includes over 350 patients with early inflammatory arthritis. The platform enables users to generate publication-ready figures and interactively explore data.
 Integration of Omics and Clinical Data
+The main webpage entrance is(assuming you start it at local): http://127.0.0.1:8000/tab/
 Our platform supports the integration of multi-omics data with clinical data, facilitating a comprehensive analysis that combines genetic, transcriptomic, proteomic, and metabolomic data with patient-specific clinical information. This integrated approach allows users to uncover more complex and clinically relevant insights. After clicking the ‘Upload’ button in the sidebar, uploaded information about the study and experiment is displayed in the panel. It shows the first 5 rows for dataset with column names. User will have option to select log2 to transform the dataset later. For later calculation.
 ![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/574b2abe-420d-4053-9e4d-0059576d7ee6)
 
