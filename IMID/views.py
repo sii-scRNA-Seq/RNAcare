@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 import pandas as pd
 import json
 from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 import umap.umap_ as umap
 import scanpy as sc
 import numpy as np
@@ -298,9 +299,19 @@ def edaIntegrate(request):
             perplexity=min(30.0, pca_temp.shape[0] - 1),
         )
         X2D = tsne.fit_transform(pca_temp)
-    else:
-        umap1 = umap.UMAP(n_components=2, random_state=42, n_neighbors=30, n_jobs=2)
+    elif fr == "UMAP":
+        umap1 = umap.UMAP(
+            n_components=2,
+            random_state=42,
+            n_neighbors=min(30, pca_temp.shape[0] // 2),
+            n_jobs=2,
+        )
         X2D = umap1.fit_transform(pca_temp)
+
+    else:
+        pca = PCA(n_components=2, random_state=42)
+        X2D = pca.fit_transform(pca_temp)
+        # print(X2D)
 
     usr.setFRData(X2D)
 
@@ -948,11 +959,19 @@ def meta_columns(request):
                         perplexity=min(30.0, pca_temp.shape[0] - 1),
                     )
                     X2D = tsne.fit_transform(pca_temp)
-                else:
+                elif fr == "UMAP":
                     umap1 = umap.UMAP(
-                        n_components=2, random_state=42, n_neighbors=30, n_jobs=2
+                        n_components=2,
+                        random_state=42,
+                        n_neighbors=min(30, pca_temp.shape[0] // 2),
+                        n_jobs=2,
                     )
                     X2D = umap1.fit_transform(pca_temp)
+
+                else:
+                    pca = PCA(n_components=2, random_state=42)
+                    X2D = pca.fit_transform(pca_temp)
+                    # print(X2D)
                 usr.setFRData(X2D)
         except Exception as e:
             return HttpResponse("Labels creating Problem. " + str(e), status=400)
@@ -1053,7 +1072,6 @@ def meta_column_values(request, colName):
         else:
             return HttpResponse("Can't find the colName: " + colName, status=400)
     if request.method == "DELETE":
-        print("123123")
         col = MetaFileColumn.objects.filter(
             user=request.user, cID=usr.cID, colName=colName
         ).first()
@@ -1061,7 +1079,6 @@ def meta_column_values(request, colName):
             return HttpResponse("No such colName called:" + colName, status=400)
         elif col.label == "1":
             return HttpResponse("Please make {colName} inactive first.", status=400)
-        print(colName)
         MetaFileColumn.objects.filter(
             user=request.user, cID=usr.cID, colName=colName, label="0"
         ).delete()
