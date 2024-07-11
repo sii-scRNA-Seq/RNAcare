@@ -107,6 +107,7 @@ EDA produces several plots, including interactive 2D plots for dimension reducti
 ## Differential Gene Expression Analysis(DGEA)
 Apart from visualizing the data by batches, users then have option to cluster the dataset by Kmeans, Leiden and HDBSCAN with some parameter tuning. Then top N genes for the clustering method will be generated. Then, LASSO method will be adopted demonstrating the feature importance for the batches and clusters separately.  At the same time, user can select top N(default=20) differential genes in each group. All figures generated and displayed in the user interface, many of which can be explored interactively on the webserver, are publication-ready quality and can be downloaded with a mouse click in PNG format.
 ![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/54a144d1-a6e3-4dc5-8eb5-7d502bfee64c)
+
 Besides, we offer a function by which user can easily trace back the procedure of clustering. User just needs to input the min and max value of the range and the expected number of levels. The algorithm will generate clusters based on the number of intervals between the range.
 ![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/05f7592b-579d-4bed-8bf1-2f22dbce5f85)
 
