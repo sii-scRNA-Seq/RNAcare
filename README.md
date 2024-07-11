@@ -98,6 +98,7 @@ In this tab, user has option to choose shared cohort(s) to intergrate with, and 
 ## User-Defined and Created Labels
 ![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/78efc0a9-da7a-4de2-a94e-28bd47f73f82)
 ![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/bbf5dbd2-4fb5-444a-be6c-610809f6b5d6)
+
 In this section, user can create self-defined fields based on uploaded fields for later analysis as the targeted dependendant variable.
 
 ## Exploratory Data Analysis
