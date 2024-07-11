@@ -1060,7 +1060,6 @@ def meta_column_values(request, colName):
             return HttpResponse("No such colName called:" + colName, status=400)
         elif col.label == "1":
             return HttpResponse("Please make {colName} inactive first.", status=400)
-        print(colName)
         MetaFileColumn.objects.filter(
             user=request.user, cID=usr.cID, colName=colName, label="0"
         ).delete()
