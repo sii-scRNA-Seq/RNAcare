@@ -52,6 +52,91 @@ for i in users[1:]:
     CustomUser.objects.create(username=i.username,email=i.email,password=i.password)
 
 ```
+To copy a Django project from GitHub, including the SQLite database, and make it runnable on your local machine, you can follow these steps:
+Step 1: Clone the Repository
+
+First, clone the repository from GitHub to your local machine.
+
+bash
+```
+git clone https://github.com/username/repo_name.git
+cd repo_name
+```
+Step 2: Set Up a Virtual Environment
+
+It's a good practice to use a virtual environment to manage your project's dependencies.
+
+bash
+```
+# Install virtualenv if you haven't already
+pip install virtualenv
+
+# Create a virtual environment
+virtualenv venv
+
+# Activate the virtual environment
+# On Windows
+venv\Scripts\activate
+# On macOS/Linux
+source venv/bin/activate
+```
+Step 3: Install Dependencies
+
+Install the dependencies listed in the requirements.txt file.
+
+bash
+```
+pip install -r requirements.txt
+```
+Step 4: Verify SQLite Database
+
+Make sure the SQLite database file is included in the repository. The database file is usually named db.sqlite3 and should be located in the root of your Django project directory. If it's included, you should see it when you list the files in the project directory:
+
+bash
+```
+ls
+# You should see db.sqlite3 in the output
+```
+Step 5: Configure the Django Settings
+
+Ensure the Django settings file is configured correctly. The default settings for SQLite should be fine if you're running it locally.
+
+Open the settings.py file in your Django project directory and check the database settings:
+
+python
+```
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / "db.sqlite3",
+    }
+}
+```
+Step 6: Run Migrations (if needed)
+
+If there have been changes to the models and you need to update the database schema, you can run the migrations. This step might not be necessary if the database file already exists and is up to date.
+
+bash
+```
+python manage.py migrate
+```
+Step 7: Create a Superuser (if needed)
+
+If you need to create a superuser for accessing the Django admin interface, you can do so with:
+
+bash
+```
+python manage.py createsuperuser
+```
+Step 8: Run the Django Development Server
+
+Finally, run the Django development server to verify that everything is set up correctly.
+
+bash
+```
+python manage.py runserver
+```
+Open your web browser and go to http://127.0.0.1:8000/ to see your Django project running.
 # System Introduction
 ![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/0b490eb5-67b2-41b2-8e0a-429618f04aab)
 Gene expression analysis can be instrumental in comparing gene expression levels in diseased patients versus unaffected counterparts, potentially leading to new treatment strategies. Advances in high-throughput gene expression techniques have significantly increased the number of gene expression studies. Our platform facilitates research on data from IMID (Immune-Mediated Inflammatory Diseases) patients, supported by IMID-Bio-UK and funded by the Medical Research Council. IMID-Bio-UK aims to leverage a rich reserve of biosamples, deeply phenotyped clinical cohorts, and high-quality multi-omic data from various national stratified medicine programs.
