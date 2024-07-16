@@ -63,7 +63,7 @@ bash
 git clone https://github.com/username/repo_name.git
 cd repo_name
 ```
-Step 2: Set Up a Virtual Environment
+Step 2: Set Up a Virtual Environment(for development, we use python 3.8.19)
 
 It's a good practice to use a virtual environment to manage your project's dependencies.
 
