@@ -52,6 +52,7 @@ for i in users[1:]:
     CustomUser.objects.create(username=i.username,email=i.email,password=i.password)
 
 ```
+4. Complete code for migration:
 To copy a Django project from GitHub, including the SQLite database, and make it runnable on your local machine, you can follow these steps:
 Step 1: Clone the Repository
 
