@@ -54,7 +54,7 @@ for i in users[1:]:
 ```
 #### 4. Complete code for migration:
 To copy a Django project from GitHub, including the SQLite database, and make it runnable on your local machine, you can follow these steps:
-Step 1: Clone the Repository
+##### Step 1: Clone the Repository
 
 First, clone the repository from GitHub to your local machine.
 
@@ -63,7 +63,7 @@ bash
 git clone https://github.com/username/repo_name.git
 cd repo_name
 ```
-Step 2: Set Up a Virtual Environment(for development, we use python 3.8.19)
+##### Step 2: Set Up a Virtual Environment(for development, we use python 3.8.19)
 
 It's a good practice to use a virtual environment to manage your project's dependencies.
 
@@ -81,7 +81,7 @@ venv\Scripts\activate
 # On macOS/Linux
 source venv/bin/activate
 ```
-Step 3: Install Dependencies
+##### Step 3: Install Dependencies
 
 Install the dependencies listed in the requirements.txt file.
 
@@ -89,7 +89,7 @@ bash
 ```
 pip install -r requirements.txt
 ```
-Step 4: Verify SQLite Database
+##### Step 4: Verify SQLite Database
 
 Make sure the SQLite database file is included in the repository. The database file is usually named db.sqlite3 and should be located in the root of your Django project directory. If it's included, you should see it when you list the files in the project directory:
 
@@ -98,7 +98,7 @@ bash
 ls
 # You should see db.sqlite3 in the output
 ```
-Step 5: Configure the Django Settings
+##### Step 5: Configure the Django Settings
 
 Ensure the Django settings file is configured correctly. The default settings for SQLite should be fine if you're running it locally.
 
@@ -113,7 +113,7 @@ DATABASES = {
     }
 }
 ```
-Step 6: Run Migrations (if needed)
+##### Step 6: Run Migrations (if needed)
 
 If there have been changes to the models and you need to update the database schema, you can run the migrations. This step might not be necessary if the database file already exists and is up to date.
 
@@ -121,7 +121,7 @@ bash
 ```
 python manage.py migrate
 ```
-Step 7: Create a Superuser (if needed)
+##### Step 7: Create a Superuser (if needed)
 
 If you need to create a superuser for accessing the Django admin interface, you can do so with:
 
@@ -129,7 +129,7 @@ bash
 ```
 python manage.py createsuperuser
 ```
-Step 8: Run the Django Development Server
+##### Step 8: Run the Django Development Server
 
 Finally, run the Django development server to verify that everything is set up correctly.
 
@@ -140,7 +140,8 @@ python manage.py runserver
 Open your web browser and go to http://127.0.0.1:8000/ to see your Django project running.
 
 #### 5. For the initialization of the database, admin has an option to upload shared dataset to the tabel:
-![image](https://github.com/user-attachments/assets/d8729c97-a6f7-4b6d-b619-3bfeab007b34)
+![image](https://github.com/user-attachments/assets/4390b0bd-3da5-4db6-bc5f-22002611cabc)
+
 
 Each dataset should include two files, one is Expression Data and the other is Meta Data. They share the same chort names.
 Then it can be shared among different roles by changing the following info:
