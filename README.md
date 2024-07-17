@@ -138,6 +138,20 @@ bash
 python manage.py runserver
 ```
 Open your web browser and go to http://127.0.0.1:8000/ to see your Django project running.
+
+5. For the initialization of the database, admin has an option to upload shared dataset to the tabel:
+![image](https://github.com/user-attachments/assets/d8729c97-a6f7-4b6d-b619-3bfeab007b34)
+
+Each dataset should include two files, one is Expression Data and the other is Meta Data. They share the same chort names.
+Then it can be shared among different roles by changing the following info:
+
+![image](https://github.com/user-attachments/assets/66367db5-4b61-464e-94de-f40197885f80)
+
+![image](https://github.com/user-attachments/assets/e95f177c-e53e-4b8d-a009-045c8e3f9630)
+
+
+
+
 # System Introduction
 ![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/0b490eb5-67b2-41b2-8e0a-429618f04aab)
 Gene expression analysis can be instrumental in comparing gene expression levels in diseased patients versus unaffected counterparts, potentially leading to new treatment strategies. Advances in high-throughput gene expression techniques have significantly increased the number of gene expression studies. Our platform facilitates research on data from IMID (Immune-Mediated Inflammatory Diseases) patients, supported by IMID-Bio-UK and funded by the Medical Research Council. IMID-Bio-UK aims to leverage a rich reserve of biosamples, deeply phenotyped clinical cohorts, and high-quality multi-omic data from various national stratified medicine programs.
