@@ -182,6 +182,7 @@ Our platform supports the integration of multi-omics data with clinical data, fa
 
 ## Data harmonisation, and transformation
 ![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/c4d28b6f-f3c1-45c3-9239-6d2686ec3be3)
+
 In this tab, user has option to choose shared cohort(s) to intergrate with, and data processing technique to process the data including removing batch effect, log2 transformation and feature reduction methods.  
 
 ## User-Defined and Created Labels
