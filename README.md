@@ -11,8 +11,8 @@ GSE179633 collected 23 skin biopsies of healthy control(HC), DLE (discoid lupus 
 For GSE 130955, RNA from skin biopsies from 58 patients in the Prospective Registry for Early Systemic Sclerosis (PRESS) cohort (mean disease duration 1.3 years) and 33 matched healthy controls was examined by nextGen RNA sequencing. 3- or 4-mm diameter punch biopsies were obtained from the forearm skin and immersed in RNAlater solution (Qiagen). RNA was extracted using miRNeasy Mini kits (Qiagen). cDNA libraries were prepared using the Illumina TruSeq stranded Total RNA Library Prep Gold kit, loaded on cBot (Illumina) at a final concentration of 10 pM to perform cluster generation, followed by 2 x 76 bp paired-end sequencing on HiSeq 2500 (Illumina), generating on average around 50 million reads per sample. 
 
 # System Implementation and Package dependence
-1. The sys is built based on django+Celery+Redis to avoid some issue of fig.save for matplot.
-2. In order to use the Celery and Redis, please have a reference about how to set up it. https://realpython.com/asynchronous-tasks-with-django-and-celery/
+#### 1. The sys is built based on django+Celery+Redis to avoid some issue of fig.save for matplot.
+#### 2. In order to use the Celery and Redis, please have a reference about how to set up it. https://realpython.com/asynchronous-tasks-with-django-and-celery/
 ```
 To install django:
 pip install django
@@ -33,7 +33,7 @@ Note: the reids settings is set up in djangoproject/settings.py with the corresp
 Then start the cerlery: 
 python3 -m celery -A djangoproject worker -l info
 ```
-3. import the user info from old sys to the new
+#### 3. import the user info from old sys to the new
 ```
 From the old sys folder:
 python manage.py shell
@@ -52,7 +52,7 @@ for i in users[1:]:
     CustomUser.objects.create(username=i.username,email=i.email,password=i.password)
 
 ```
-4. Complete code for migration:
+#### 4. Complete code for migration:
 To copy a Django project from GitHub, including the SQLite database, and make it runnable on your local machine, you can follow these steps:
 Step 1: Clone the Repository
 
@@ -139,7 +139,7 @@ python manage.py runserver
 ```
 Open your web browser and go to http://127.0.0.1:8000/ to see your Django project running.
 
-5. For the initialization of the database, admin has an option to upload shared dataset to the tabel:
+#### 5. For the initialization of the database, admin has an option to upload shared dataset to the tabel:
 ![image](https://github.com/user-attachments/assets/d8729c97-a6f7-4b6d-b619-3bfeab007b34)
 
 Each dataset should include two files, one is Expression Data and the other is Meta Data. They share the same chort names.
