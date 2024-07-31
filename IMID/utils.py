@@ -11,7 +11,7 @@ from genes_ncbi_proteincoding import GENEID2NT
 import random
 import string
 from .constants import GeneID_URL, NUMBER_CPU_LIMITS
-from .models import Gene, GOTerm, userData, MetaFileColumn
+from .models import Gene, GOTerm, userData, MetaFileColumn, SharedFile, UploadedFile
 from harmony import harmonize
 import pandas as pd
 import numpy as np
@@ -26,6 +26,8 @@ import json
 import io
 import base64
 from threadpoolctl import threadpool_limits
+import anndata as ad
+from sklearn.preprocessing import MinMaxScaler
 
 
 @lru_cache(maxsize=None)
@@ -346,3 +348,131 @@ def usrCheck(request, flag=1):
                 "message": "Can't find the user/device.Please request from the beginning.",
             }
     return {"status": 1, "usrData": usr}
+
+
+# normalize transcriptomic data
+def normalize(df, count_threshold=2000):
+    df_filtered = df.loc[:, df.sum(axis=0) >= count_threshold]
+    adata = ad.AnnData(df_filtered)
+
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    return adata.to_df()
+
+
+# normalize clinic data
+def normalize1(df):
+    # Identify numeric columns
+    numeric_columns = df.select_dtypes(include=np.number).columns
+    string_columns = df.select_dtypes(exclude=np.number).columns
+
+    # Separate numeric and string data
+    df_numeric = df[numeric_columns]
+    df_strings = df[string_columns]
+
+    scaler = MinMaxScaler()
+
+    # Fit and transform the numeric data
+    df_numeric_normalized = pd.DataFrame(
+        scaler.fit_transform(df_numeric), columns=numeric_columns
+    )
+    df_numeric_normalized.index = df_numeric.index
+    df_normalized = pd.concat([df_strings, df_numeric_normalized], axis=1)
+    df_normalized.dropna(axis=0, inplace=True)
+
+    return df_normalized
+
+
+def loadSharedData(request, integrate, cID):
+    files = UploadedFile.objects.filter(user=request.user, type1="exp", cID=cID).all()
+    if files:
+        files = [i.file.path for i in files]
+    else:
+        files = []
+    files_meta = set()
+    in_ta, in_ta1 = {}, {}
+    if request.user.groups.exists():
+        for i in SharedFile.objects.filter(
+            type1="expression", groups__in=request.user.groups.all()
+        ).all():
+            in_ta[i.cohort] = i.file.path
+        for i in SharedFile.objects.filter(
+            type1="meta", groups__in=request.user.groups.all()
+        ).all():
+            in_ta1[i.cohort] = i.file.path
+    else:
+        for i in SharedFile.objects.filter(type1="expression").all():
+            in_ta[i.cohort] = i.file.path
+        for i in SharedFile.objects.filter(type1="meta").all():
+            in_ta1[i.cohort] = i.file.path
+
+    for i in integrate:
+        if i in in_ta:
+            files.append(in_ta[i])
+            files_meta.add(in_ta1[i])
+    return files, files_meta
+
+
+def integrateCliData(request, integrate, cID, files_meta):
+    f = UploadedFile.objects.filter(user=request.user, type1="cli", cID=cID).first()
+    if f is not None:
+        temp0 = pd.read_csv(f.file.path)
+        temp0 = temp0.dropna(axis=1)
+    else:
+        temp0 = pd.DataFrame()
+    if integrate[0] != "null" or integrate != [""]:  # jquery plugin compatible
+        for i in files_meta:
+            if temp0.shape == (0, 0):
+                temp0 = pd.read_csv(i).dropna(axis=1, inplace=False)
+
+            else:
+                temp0 = pd.concat(
+                    [temp0, pd.read_csv(i).dropna(axis=1, inplace=False)],
+                    axis=0,
+                    join="inner",
+                )
+    return temp0
+
+
+def integrateExData(files, temp0, log2, corrected):
+    dfs = []
+    batch = []
+    obs = []
+    for file in files:
+        temp01 = pd.read_csv(file).set_index("ID_REF")
+        # filter records that have corresponding clinical data in meta files.
+        temp = temp01.join(temp0[["ID_REF", "LABEL"]].set_index("ID_REF"), how="inner")
+        temp1 = temp.reset_index().drop(
+            ["ID_REF", "LABEL"], axis=1, inplace=False
+        )  # exclude ID_REF & LABEL
+
+        # exclude NA
+        temp1.dropna(axis=1, inplace=True)
+        if temp1.shape[0] != 0:
+            temp1 = normalize(temp1)
+
+            dfs.append(temp1)
+            # color2.extend(list(temp.LABEL))
+            batch.extend(
+                ["_".join(file.split("_")[1:]).split(".csv")[0]] * temp1.shape[0]
+            )
+            # obs.extend(temp.ID_REF.tolist())
+            obs.extend(temp.index.tolist())
+    if log2 == "Yes":
+        dfs = [np.log2(i + 1) for i in dfs]
+
+    dfs1 = None
+    if len(dfs) > 1:
+        if corrected == "Combat":
+            dfs1 = combat([i.T for i in dfs])
+        elif corrected == "Harmony":
+            dfs1 = harmony(dfs, batch, obs)
+        elif corrected == "BBKNN":
+            dfs1 = bbknn(dfs)
+    elif len(dfs) == 0:
+        return HttpResponse("No matched data for meta and omics", status=400)
+    else:
+        dfs1 = dfs[0]
+
+    dfs1["ID_REF"] = obs
+    dfs1["FileName"] = batch
+    return dfs1
