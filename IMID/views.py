@@ -43,6 +43,11 @@ from .utils import (
     usrCheck,
     UploadFileColumnCheck,
     preview_dataframe,
+    normalize,
+    normalize1,
+    loadSharedData,
+    integrateCliData,
+    integrateExData,
 )
 
 from .models import MetaFileColumn, UploadedFile, SharedFile
@@ -167,8 +172,8 @@ This is for data integration based on selected options. The files comes from 1. 
 in_ta and in_ta1 are used for expression and meta data list separately
 The processing logic is:
 First, using user uploaded meta file as the base then inner join with selected built-in meta files to get the shared clinic features. =>temp0
-Then join the expression files=>temp1 with consideration of log2, batch effect
-Third, join temp0 and temp1;
+Then join the expression files=>dfs1 with consideration of log2, batch effect
+Third, join temp0 and dfs1;
 """
 
 
@@ -188,104 +193,20 @@ def edaIntegrate(request):
     if "" in integrate:
         integrate.remove("")
 
-    files = UploadedFile.objects.filter(user=request.user, type1="exp", cID=cID).all()
-    if files:
-        files = [i.file.path for i in files]
-    else:
-        files = []
+    files, files_meta = loadSharedData(request, integrate, cID)
 
-    files_meta = set()
-    in_ta, in_ta1 = {}, {}
-    if request.user.groups.exists():
-        for i in SharedFile.objects.filter(
-            type1="expression", groups__in=request.user.groups.all()
-        ).all():
-            in_ta[i.cohort] = i.file.path
-        for i in SharedFile.objects.filter(
-            type1="meta", groups__in=request.user.groups.all()
-        ).all():
-            in_ta1[i.cohort] = i.file.path
-    else:
-        for i in SharedFile.objects.filter(type1="expression").all():
-            in_ta[i.cohort] = i.file.path
-        for i in SharedFile.objects.filter(type1="meta").all():
-            in_ta1[i.cohort] = i.file.path
+    temp0 = integrateCliData(request, integrate, cID, files_meta)
 
-    for i in integrate:
-        if i in in_ta:
-            files.append(in_ta[i])
-            files_meta.add(in_ta1[i])
-    dfs = []
-    batch = []
-    obs = []
-    temp0 = []
-
-    f = UploadedFile.objects.filter(user=request.user, type1="cli", cID=cID).first()
-    if f is not None:
-        temp0 = pd.read_csv(f.file.path)
-        temp0 = temp0.dropna(axis=1)
-    else:
-        temp0 = pd.DataFrame()
-    if integrate[0] != "null" or integrate != [""]:  # jquery plugin compatible
-        for i in files_meta:
-            if temp0.shape == (0, 0):
-                temp0 = pd.concat(
-                    [temp0, pd.read_csv(i).dropna(axis=1, inplace=False)],
-                    axis=0,
-                    join="outer",
-                )
-            else:
-                temp0 = pd.concat(
-                    [temp0, pd.read_csv(i).dropna(axis=1, inplace=False)],
-                    axis=0,
-                    join="inner",
-                )
     if temp0.shape == (0, 0):
         return HttpResponse("Can't find meta file", status=400)
     if len(files) == 0:
         return HttpResponse("Can't find expression file", status=400)
 
-    for file in files:
-        temp01 = pd.read_csv(file).set_index("ID_REF")
-        if "raw" in file or "RAW" in file:
-            temp01 = temp01.div(temp01.sum(axis=1), axis=0) * 1e6
-            # temp01=temp01/temp01.sum()*1e6
-        temp = temp01.join(temp0[["ID_REF", "LABEL"]].set_index("ID_REF"), how="inner")
-        temp1 = temp.reset_index().drop(
-            ["ID_REF", "LABEL"], axis=1, inplace=False
-        )  # exclude ID_REF & LABEL
-        # rpkm to CPM
-        if temp1.shape[0] != 0:
-            temp1 = (temp1.div(temp1.sum(axis=0), axis=1) * 1e6) / temp1.sum().sum()
-            # exclude NA
-            temp1 = temp1.dropna(axis=1)
-            dfs.append(temp1)
-            # color2.extend(list(temp.LABEL))
-            batch.extend(
-                ["_".join(file.split("_")[1:]).split(".csv")[0]] * temp1.shape[0]
-            )
-            # obs.extend(temp.ID_REF.tolist())
-            obs.extend(temp.index.tolist())
-    if log2 == "Yes":
-        dfs = [np.log2(i + 1) for i in dfs]
-
-    dfs1 = None
-    if len(dfs) > 1:
-        if corrected == "Combat":
-            dfs1 = combat([i.T for i in dfs])
-        elif corrected == "Harmony":
-            dfs1 = harmony(dfs, batch, obs)
-        elif corrected == "BBKNN":
-            dfs1 = bbknn(dfs)
-    elif len(dfs) == 0:
-        return HttpResponse("No matched data for meta and omics", status=400)
-    else:
-        dfs1 = dfs[0]
-
-    dfs1["ID_REF"] = obs
-    dfs1["FileName"] = batch
-    # temp0=pd.concat(temp0,axis=0).reset_index(drop=True) #combine all clinic data
-    temp = dfs1.set_index("ID_REF").join(temp0.set_index("ID_REF"), how="inner")
+    dfs1 = integrateExData(files, temp0, log2, corrected)
+    # combine Ex and clinic data
+    temp = dfs1.set_index("ID_REF").join(
+        normalize1(temp0).set_index("ID_REF"), how="inner"
+    )
     temp["obs"] = temp.index.tolist()
     usr.setIntegrationData(temp)
 
@@ -311,7 +232,6 @@ def edaIntegrate(request):
     else:
         pca = PCA(n_components=2, random_state=42)
         X2D = pca.fit_transform(pca_temp)
-        # print(X2D)
 
     usr.setFRData(X2D)
 
