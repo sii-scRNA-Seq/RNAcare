@@ -102,7 +102,8 @@ Then it can be shared among different roles by changing the following info throu
 
 
 At the same time, admin needs to assign group(s) to the specific users, as you see in the following picture, this user was assigned to the ORBIT group. By default, users can see data from all cohorts.
-![image](https://github.com/user-attachments/assets/df87a176-3d5d-4e57-8c33-ac313107821e)
+![image](https://github.com/user-attachments/assets/ab348807-7b96-4abb-a7d2-0fc829d0c985)
+
 
 #### 6. The sys is built based on django+Celery+Redis to avoid some issue of fig.save for matplot.
 #### 7. In order to use the Celery and Redis, please have a reference about how to set up it. https://realpython.com/asynchronous-tasks-with-django-and-celery/
