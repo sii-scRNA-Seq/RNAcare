@@ -87,21 +87,20 @@ bash
 ```
 python manage.py runserver
 ```
-Open your web browser and go to http://127.0.0.1:8000/ to see your Django project running.
+Open your web browser and go to http://127.0.0.1:8000/tab/ to see your Django project running.
 
 #### 5. For the initialization of the database, admin has an option to upload shared dataset to the tabel:
 ![image](https://github.com/user-attachments/assets/4390b0bd-3da5-4db6-bc5f-22002611cabc)
 
 
-Each dataset should include two files, one is Expression Data and the other is Meta Data. They share the same chort names. SharedFileInstance is used for uploaded shared files management.
-Then it can be shared among different roles by changing the following info through table SharedFile:
+###### Each dataset should include two files, one is Expression Data and the other is Meta Data. They share the same chort names. SharedFileInstance is used for uploaded shared files management. Then it can be shared among different roles by changing the following info through table SharedFiles:
 
 ![image](https://github.com/user-attachments/assets/66367db5-4b61-464e-94de-f40197885f80)
 
 ![image](https://github.com/user-attachments/assets/e95f177c-e53e-4b8d-a009-045c8e3f9630)
 
 
-At the same time, admin needs to assign group(s) to the specific users, as you see in the following picture, this user was assigned to the ORBIT group. By default, users can see data from all cohorts.
+###### At the same time, admin needs to assign group(s) to the specific users, as you see in the following picture, this user was assigned to the ORBIT group. By default, users can see data from all cohorts.
 ![image](https://github.com/user-attachments/assets/ab348807-7b96-4abb-a7d2-0fc829d0c985)
 
 
