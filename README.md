@@ -80,7 +80,7 @@ python manage.py runserver
 ```
 Open your web browser and go to http://127.0.0.1:8000/tab/ to see your Django project running.
 
-#### 5. For the initialization of the database, admin has an option to upload shared dataset to the tabel:
+#### 5. For the initialization of the database, admin has an option to go to admin interface to upload shared dataset to the tabel:
 ![image](https://github.com/user-attachments/assets/4390b0bd-3da5-4db6-bc5f-22002611cabc)
 
 
