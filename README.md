@@ -106,7 +106,7 @@ At the same time, admin needs to assign group(s) to the specific users, as you s
 
 #### 6. The sys is built based on django+Celery+Redis to avoid some issue of fig.save for matplot.
 #### 7. In order to use the Celery and Redis, please have a reference about how to set up it. https://realpython.com/asynchronous-tasks-with-django-and-celery/
-```
+
 To start the Redis server:
 Open another console:
 ```
@@ -123,8 +123,8 @@ Then open another console to start the cerlery:
 python3 -m celery -A djangoproject worker -l info
 ```
 #### 8. import the user info from old sys to the new(if needed)
-```
 From the old sys folder:
+```
 python manage.py shell
 import pickle
 from django.contrib.auth.models import User
