@@ -34,20 +34,16 @@ from .utils import (
     zip_for_vis,
     fromPdtoSangkey,
     go_it,
-    combat,
-    harmony,
-    bbknn,
     clusteringPostProcess,
     getTopGeneCSV,
     GeneID2SymID,
     usrCheck,
-    UploadFileColumnCheck,
-    preview_dataframe,
-    normalize,
     normalize1,
     loadSharedData,
     integrateCliData,
     integrateExData,
+    getExpression,
+    getMeta,
 )
 
 from .models import MetaFileColumn, UploadedFile, SharedFile
@@ -90,81 +86,60 @@ def tab(request):
 
 
 """
-This program provides entrance for user to upload Expression files. One user can upload multiple expression files at a time.
+This program provides entrance for user to upload/get Expression files. One user can upload multiple expression files at a time.
 'ID_REF' should be one of the colnames in each Expression file.
 User uses UploadedFile to store their uploaded expression data, the column type1 is set to be 'exp' to represent the stored expression file.
 """
 
 
 @login_required()
-def uploadExpression(request):
-    if request.method != "POST":
-        return HttpResponse("Method not allowed", status=405)
-    cID = request.POST.get("cID", None)
-    if cID is None:
-        return HttpResponse("cID not provided.", status=400)
-    context = {}
-    UploadedFile.objects.filter(user=request.user, type1="exp", cID=cID).delete()
-    files = request.FILES.getlist("files[]", None)
-    new_exp_files = []
+def opExpression(request):
+    if request.method == "POST":
+        cID = request.POST.get("cID", None)
+        if cID is None:
+            return HttpResponse("cID not provided.", status=400)
+        UploadedFile.objects.filter(user=request.user, type1="exp", cID=cID).delete()
+        files = request.FILES.getlist("files[]", None)
+        new_exp_files = []
 
-    for f in files:
-        temp_file = UploadedFile(user=request.user, cID=cID, type1="exp", file=f)
-        new_exp_files.append(temp_file)
-        context[f.name] = {}
-    UploadedFile.objects.bulk_create(new_exp_files)
-
-    for file in UploadedFile.objects.filter(
-        user=request.user, type1="exp", cID=cID
-    ).all():
-        df = pd.read_csv(file.file.path, nrows=5, header=0)
-        f = file.file.name.split("/")[-1]
-
-        check, mess = UploadFileColumnCheck(df, ("ID_REF",))
-        if check is False:
-            return HttpResponse(mess, status=400)
-        df = preview_dataframe(df)
-        json_re = df.reset_index().to_json(orient="records")
-        data = json.loads(json_re)
-        context["_".join(f.split("_")[1:])]["d"] = data
-        context["_".join(f.split("_")[1:])]["names"] = ["index"] + df.columns.to_list()
-
-    return render(request, "table.html", {"root": context})
+        for f in files:
+            temp_file = UploadedFile(user=request.user, cID=cID, type1="exp", file=f)
+            new_exp_files.append(temp_file)
+            # context[f.name] = {}
+        UploadedFile.objects.bulk_create(new_exp_files)
+        return getExpression(request, cID)
+    elif request.method == "GET":
+        cID = request.GET.get("cID", None)
+        if cID is None:
+            return HttpResponse("cID not provided.", status=400)
+        return getExpression(request, cID, 0)
 
 
 """
-This program provides entrance for user to upload Meta files. One user can upload only one meta file at a time.
+This program provides entrance for user to upload/get Meta files. One user can upload only one meta file at a time.
 'ID_REF','LABEL' should be one of the colnames in each Meta file.
 User uses UploadedFile to store their uploaded expression data, the column type1 is set to be 'cli' to represent the stored clinical data.
 """
 
 
 @login_required()
-def uploadMeta(request):
-    if request.method != "POST":
-        return HttpResponse("Method not allowed", status=405)
-    cID = request.POST.get("cID", None)
-    if cID is None:
-        return HttpResponse("cID not provided.", status=400)
-    files = request.FILES.getlist("meta", None)
-    if files is None:
-        return HttpResponse("Upload the meta file is required", status=405)
-    files = files[0]
-    UploadedFile.objects.filter(user=request.user, type1="cli", cID=cID).delete()
-    UploadedFile.objects.create(user=request.user, cID=cID, type1="cli", file=files)
-    f = UploadedFile.objects.filter(user=request.user, type1="cli", cID=cID).first()
-    context = {}
-    context["metaFile"] = {}
-    df = pd.read_csv(f.file.path, nrows=5, header=0)
-    check, mess = UploadFileColumnCheck(df, ("ID_REF", "LABEL"))
-    if check is False:
-        return HttpResponse(mess, status=400)
-    df = preview_dataframe(df)
-    json_re = df.reset_index().to_json(orient="records")
-    data = json.loads(json_re)
-    context["metaFile"]["d"] = data
-    context["metaFile"]["names"] = ["index"] + df.columns.to_list()
-    return render(request, "table.html", {"root": context})
+def opMeta(request):
+    if request.method == "POST":
+        cID = request.POST.get("cID", None)
+        if cID is None:
+            return HttpResponse("cID not provided.", status=400)
+        files = request.FILES.getlist("meta", None)
+        if files is None:
+            return HttpResponse("Upload the meta file is required", status=405)
+        files = files[0]
+        UploadedFile.objects.filter(user=request.user, type1="cli", cID=cID).delete()
+        UploadedFile.objects.create(user=request.user, cID=cID, type1="cli", file=files)
+        return getMeta(request, cID)
+    elif request.method == "GET":
+        cID = request.GET.get("cID", None)
+        if cID is None:
+            return HttpResponse("cID not provided.", status=400)
+        return getMeta(request, cID, 0)
 
 
 """
@@ -636,6 +611,8 @@ def lasso(request):
 
     try:
         image = runLasso.apply_async((x, y, df, colName), serializer="pickle")
+        if image.get() == b"":
+            return HttpResponse("No features after filtering.", status=400)
     except Exception as e:
         return HttpResponse("Lasso Failed:" + str(e), status=500)
     return HttpResponse(base64.b64encode(image.get()), content_type="image/png")
