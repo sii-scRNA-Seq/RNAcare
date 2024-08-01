@@ -39,16 +39,7 @@ bash
 ```
 pip install -r requirements.txt
 ```
-##### Step 4: Verify SQLite Database
-
-Make sure the SQLite database file is included in the repository. The database file is usually named db.sqlite3 and should be located in the root of your Django project directory. If it's included, you should see it when you list the files in the project directory:
-
-bash
-```
-ls
-# You should see db.sqlite3 in the output
-```
-##### Step 5: Configure the Django Settings
+##### Step 4: Configure the Django Settings
 
 Ensure the Django settings file is configured correctly. The default settings for SQLite should be fine if you're running it locally.
 
@@ -63,7 +54,7 @@ DATABASES = {
     }
 }
 ```
-##### Step 6: Run Migrations (if needed)
+##### Step 5: Run Migrations (if needed)
 
 If there have been changes to the models and you need to update the database schema, you can run the migrations. This step might not be necessary if the database file already exists and is up to date.
 
@@ -71,7 +62,7 @@ bash
 ```
 python manage.py migrate
 ```
-##### Step 7: Create a Superuser (if needed)
+##### Step 6: Create a Superuser (if needed)
 
 If you need to create a superuser for accessing the Django admin interface, you can do so with:
 
@@ -79,7 +70,7 @@ bash
 ```
 python manage.py createsuperuser
 ```
-##### Step 8: Run the Django Development Server
+##### Step 7: Run the Django Development Server
 
 Finally, run the Django development server to verify that everything is set up correctly.
 
