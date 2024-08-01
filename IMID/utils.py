@@ -28,6 +28,7 @@ import base64
 from threadpoolctl import threadpool_limits
 import anndata as ad
 from sklearn.preprocessing import MinMaxScaler
+from django.shortcuts import render
 
 
 @lru_cache(maxsize=None)
@@ -51,8 +52,8 @@ def preview_dataframe(df):
     if len(df.columns) > 7:
         selected_columns = list(df.columns[:4]) + list(df.columns[-3:])
         df = df[selected_columns]
-        df.rename(columns={df.columns[3]: "..."}, inplace=True)
-        df["..."] = "..."
+        df = df.rename(columns={df.columns[3]: "..."})
+        df.loc[:, "..."] = "..."
     return df
 
 
@@ -476,3 +477,49 @@ def integrateExData(files, temp0, log2, corrected):
     dfs1["ID_REF"] = obs
     dfs1["FileName"] = batch
     return dfs1
+
+
+"""flag==1 means response after uploading; flag==0 means initialize for the tab view."""
+
+
+def getExpression(request, cID, flag=1):
+    context = {}
+    for file in UploadedFile.objects.filter(
+        user=request.user, type1="exp", cID=cID
+    ).all():
+        df = pd.read_csv(file.file.path, nrows=5, header=0)
+        f = file.file.name.split("/")[-1]
+
+        check, mess = UploadFileColumnCheck(df, ("ID_REF",))
+        if check is False:
+            return HttpResponse(mess, status=400)
+        df = preview_dataframe(df)
+        json_re = df.reset_index().to_json(orient="records")
+        data = json.loads(json_re)
+        context["_".join(f.split("_")[1:])] = {}
+        context["_".join(f.split("_")[1:])]["d"] = data
+        context["_".join(f.split("_")[1:])]["names"] = ["index"] + df.columns.to_list()
+    if flag == 0 and len(context) == 0:
+        return HttpResponse("", status=200)
+    return render(request, "table.html", {"root": context})
+
+
+def getMeta(request, cID, flag=1):
+    context = {}
+    f = UploadedFile.objects.filter(user=request.user, type1="cli", cID=cID).first()
+    if f is None:
+        if flag == 1:
+            return HttpResponse(mess, status=400)
+        else:
+            return HttpResponse("", status=200)
+    context["metaFile"] = {}
+    df = pd.read_csv(f.file.path, nrows=5, header=0)
+    check, mess = UploadFileColumnCheck(df, ("ID_REF", "LABEL"))
+    if check is False:
+        return HttpResponse(mess, status=400)
+    df = preview_dataframe(df)
+    json_re = df.reset_index().to_json(orient="records")
+    data = json.loads(json_re)
+    context["metaFile"]["d"] = data
+    context["metaFile"]["names"] = ["index"] + df.columns.to_list()
+    return render(request, "table.html", {"root": context})

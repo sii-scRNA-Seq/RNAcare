@@ -106,7 +106,8 @@ def runLasso(x, y, df, colName):
     coef = pd.Series(
         model.coef_, df.drop([colName], axis=1, inplace=False).columns
     ).sort_values(key=abs, ascending=False)
-
+    if len(coef[coef != 0]) == 0:
+        return b""
     coef[coef != 0][:50].plot.bar(
         x="Features", y="Coef", figure=plt.figure(), fontsize=6
     )

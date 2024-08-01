@@ -8,6 +8,7 @@
   integrated=0;
   label_selected_value='';
   $( function() {
+	initDf();
     $(document).tooltip();
 	$('#metaAdvancedSetting').fadeOut();
     $('#FR_processed').prop('checked',false);
@@ -47,7 +48,7 @@
 		form_data.append("csrfmiddlewaretoken",csrf_token);
 		
 		$.ajax({
-			url: '/upload/geneExpression/?cID='+clientUniqueID,
+			url: '/geneExpression/?cID='+clientUniqueID,
 			datType:'json',
 			cache:false,
 			contentType:false,
@@ -88,7 +89,7 @@
 		form_data.append('cID', clientUniqueID);
 		
 		$.ajax({
-			url: '/upload/meta/?cID='+clientUniqueID,
+			url: '/meta/?cID='+clientUniqueID,
 			datType:'json',
 			cache:false,
 			contentType:false,
@@ -310,6 +311,53 @@
     });
 
   });
+
+function initDf(){
+	$('#preview1').html('');
+	$('#preview2').html('');
+	$.ajax({
+			url: '/geneExpression/?cID='+clientUniqueID,
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('#preview1').html(response);
+			},
+			error:function(response){
+				alert(response.responseText);
+			}
+	});
+
+	$.ajax({
+			url: '/meta/?cID='+clientUniqueID,
+			datType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('#preview2').html(response);
+				
+			},
+			error:function(response){
+				alert(response.responseText);
+			}
+		});
+}
   
   
 function unpack(rows,n){
