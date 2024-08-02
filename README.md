@@ -189,10 +189,11 @@ In this tab, user has option to choose shared cohort(s) to intergrate with, and 
 ![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/bbf5dbd2-4fb5-444a-be6c-610809f6b5d6)
 
 In this section, user can create self-defined fields based on uploaded fields for later analysis as the targeted dependendant variable.
-(1) Users can creat new labels based on continuous numerical variables through "Label Generation";
-(2) Users then need to activated the created labels (labelled as "*__crtedN") or existing categorical labels through "Label Assignment";
-(3) If users doesn't need the activated labels anymore, they need disactivated those labels, after disactivation, the original labels (numerical one or the categorical one) will be back as independant variables.
-(4) Users also have options to delete the newly created "*__crtedN" labels through "Label Delete", but they need to disactive those labels first. Original categorical variables can not be deleted because they are from clinic files.
+
+###### (1) Users can creat new labels based on continuous numerical variables through "Label Generation";
+###### (2) Users then need to activated the created labels (labelled as "*__crtedN") or existing categorical labels through "Label Assignment";
+###### (3) If users doesn't need the activated labels anymore, they need disactivated those labels, after disactivation, the original labels (numerical one or the categorical one) will be back as independant variables.
+###### (4) Users also have options to delete the newly created "*__crtedN" labels through "Label Delete", but they need to disactive those labels first. Original categorical variables can not be deleted because they are from clinic files.
 
 ## Exploratory Data Analysis
 EDA produces several plots, including interactive 2D plots for dimension reduction techniques like t-SNE and UMAP. Users can download corrected data for further analysis.
