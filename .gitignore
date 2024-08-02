@@ -7,7 +7,6 @@ IMID/geneData/upload/
 !IMID/geneData/upload/.gitkeep
 djangoproject/__pycache_
 IMID/__pycache__
-IMID/migrations/__init__.py
 accounts/migrations/__pycache__
 accounts/__pycache__
 .RData
