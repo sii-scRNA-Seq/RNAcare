@@ -43,7 +43,7 @@ pip install -r requirements.txt
 
 Ensure the Django settings file is configured correctly. The default settings for SQLite should be fine if you're running it locally.
 
-Open the settings.py file in your Django project directory and check the database settings:
+Open the settings.py file in your Django project directory and check the database settings and modify the uploaded folder:
 
 python
 ```
@@ -53,6 +53,10 @@ DATABASES = {
         'NAME': BASE_DIR / "db.sqlite3",
     }
 }
+
+# change to your own folder for storing user specific uploaded files
+MEDIA_URL = "/data/mingcanIMID/"
+MEDIA_ROOT = os.path.join("/data/mingcanIMID/", "uploaded")
 ```
 ##### Step 5: Run Migrations (if needed)
 
