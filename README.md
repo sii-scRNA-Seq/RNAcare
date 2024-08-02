@@ -54,7 +54,7 @@ DATABASES = {
     }
 }
 
-# change to your own folder for storing user specific uploaded expression and clinic files
+# change to your own folder for storing user specific uploaded expression and clinic files and storing the shared cohorts data
 MEDIA_URL = "/data/mingcanIMID/"
 MEDIA_ROOT = os.path.join("/data/mingcanIMID/", "uploaded")
 ```
