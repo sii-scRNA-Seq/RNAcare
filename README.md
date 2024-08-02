@@ -10,7 +10,7 @@ First, clone the repository from GitHub to your local machine.
 
 bash
 ```
-git clone https://github.com/username/repo_name.git
+git clone https://github.com/sii-scRNA-Seq/RNA-CARE.git
 cd repo_name
 ```
 ##### Step 2: Set Up a Virtual Environment(for development, we use python 3.8.19)
