@@ -13,4 +13,4 @@ accounts/__pycache__
 .Rhistory
 test/
 uploaded/
-db.sqlite3
+db.sqlite3*
