@@ -23,7 +23,7 @@ bash
 pip install virtualenv
 
 # Create a virtual environment
-virtualenv venv
+python3 -m virtualenv venv
 
 # Activate the virtual environment
 # On Windows
