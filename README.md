@@ -176,6 +176,7 @@ Then you will see the your setup at the front end.
 
 ![image](https://github.com/user-attachments/assets/89b65a2f-57b7-4cb4-8a35-e8e72f5b9691)
 
+Note: It is recommended that when naming the fields in meata file, all clinic features should be better start with "c_" for distinguishing from the gene symbol id. And when intergrating different cohorts, their names of clinic features should be identically matched one another in each file. Otherwise, sys will not recognize the common field.
 
 
 
