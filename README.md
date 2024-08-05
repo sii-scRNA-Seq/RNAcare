@@ -156,6 +156,32 @@ for u in users[1:]:
         password=u.password
     )
 ```
+##### Step 10 (optional): Initialize shared cohorts (if needed)
+In the demonstraion, we provide 3 shared cohorts for optional intergration with user uploaded dataset. They can be downloaded from:
+Admin can also initialize his own shared cohorts by the same way through uploading the expression and meta data at backend.
+
+###### Step 10.1 upload expression and meta data to Shared File Instance
+![image](https://github.com/user-attachments/assets/0d356840-a7fb-4818-a1df-7ab58c3e3dce)
+
+![image](https://github.com/user-attachments/assets/9665fd0a-12e7-4e4c-aeb9-48154a9157e5)
+
+###### Step 10.2 Assign expression and meta files separately to the cohorts which will be filtered by users with matched groups at front end.
+![image](https://github.com/user-attachments/assets/afb70f9b-bc6c-43ff-a5fd-98d2da53cdd4)
+
+Note: Label is used for displaying the help info at the front end
+
+![image](https://github.com/user-attachments/assets/299da697-e3b1-4a3e-acc3-5324b80e7001)
+
+Then you will see the your setup at the front end.
+
+![image](https://github.com/user-attachments/assets/89b65a2f-57b7-4cb4-8a35-e8e72f5b9691)
+
+
+
+
+
+
+
 
 # System Introduction
 ![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/0b490eb5-67b2-41b2-8e0a-429618f04aab)
