@@ -54,6 +54,9 @@ DATABASES = {
 # change to your own folder for storing user specific uploaded expression and clinic files and storing the shared cohorts data
 MEDIA_URL = "/data/mingcanIMID/"
 MEDIA_ROOT = os.path.join("/data/mingcanIMID/", "uploaded")
+
+# change to your local server if it is not 127.0.0.1
+ALLOWED_HOSTS = ["127.0.0.1","http://rna-care.mvls.gla.ac.uk"]
 ```
 You might also want to change the directory for user uploaded files from the default value to some other directory that you have write access to:
 
