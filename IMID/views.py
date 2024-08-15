@@ -180,7 +180,7 @@ def edaIntegrate(request):
     dfs1 = integrateExData(files, temp0, log2, corrected)
     # combine Ex and clinic data
     temp = dfs1.set_index("ID_REF").join(
-        normalize1(temp0).set_index("ID_REF"), how="inner"
+        normalize1(temp0, log2).set_index("ID_REF"), how="inner"
     )
     temp["obs"] = temp.index.tolist()
     usr.setIntegrationData(temp)

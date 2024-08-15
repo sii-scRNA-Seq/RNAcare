@@ -361,7 +361,7 @@ def normalize(df, count_threshold=2000):
 
 
 # normalize clinic data
-def normalize1(df):
+def normalize1(df, log2="No"):
     # Identify numeric columns
     numeric_columns = df.select_dtypes(include=np.number).columns
     string_columns = df.select_dtypes(exclude=np.number).columns
@@ -376,6 +376,8 @@ def normalize1(df):
     df_numeric_normalized = pd.DataFrame(
         scaler.fit_transform(df_numeric), columns=numeric_columns
     )
+    if log2 == "Yes":
+        df_numeric_normalized = np.log1p(df_numeric_normalized)
     df_numeric_normalized.index = df_numeric.index
     df_normalized = pd.concat([df_strings, df_numeric_normalized], axis=1)
     df_normalized.dropna(axis=0, inplace=True)
