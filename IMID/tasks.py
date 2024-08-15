@@ -99,7 +99,7 @@ def heatmapPlot(geneList, adata, groupby):
 @shared_task(time_limit=180, soft_time_limit=150)
 def runLasso(x, y, df, colName):
     try:
-        model = LassoCV(cv=5, random_state=42, n_jobs=-1, max_iter=10000, tol=0.01)
+        model = LassoCV(cv=5, random_state=42, n_jobs=-1, max_iter=10000, tol=0.001)
         model.fit(x, y)
     except Exception as e:
         raise e
