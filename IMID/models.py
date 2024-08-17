@@ -250,9 +250,9 @@ class userData:
         user_instance = CustomUser.objects.filter(username=user).first()
         if not user_instance:
             return None
-        custom_user = ProcessFile.objects.filter(user=user_instance, cID=cID).first()
-        if not custom_user:
+        custom_upload = ProcessFile.objects.filter(user=user_instance, cID=cID).first()
+        if not custom_upload:
             return None
         else:
-            with open(custom_user.pickle_file.path, "rb") as f:
+            with open(custom_upload.pickle_file.path, "rb") as f:
                 return pickle.loads(f.read())
