@@ -66,7 +66,7 @@ def auth_required(f):
                 )
             except (
                 jwt.ExpiredSignatureError,
-                jwt.INvalidTokenError,
+                jwt.InvalidTokenError,
                 CustomUser.DoesNotExist,
             ):
                 return JsonResponse({"error": "Invalid Token"}, status=401)
