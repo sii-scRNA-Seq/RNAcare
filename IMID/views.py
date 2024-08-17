@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
-from django.contrib.auth.decorators import login_required
+
+# from django.contrib.auth.decorators import login_required
 import pandas as pd
 import json
 from sklearn.manifold import TSNE
@@ -18,6 +19,7 @@ import io
 import base64
 from django.db.models import Q
 from collections import defaultdict
+from django.contrib.auth import authenticate
 
 # gene_result.txt, genes_ncbi_proteincoding.py, go-basic.obo
 
@@ -44,6 +46,8 @@ from .utils import (
     integrateExData,
     getExpression,
     getMeta,
+    generate_jwt_token,
+    auth_required,
 )
 
 from .models import MetaFileColumn, UploadedFile, SharedFile
@@ -51,7 +55,24 @@ from django.db import transaction
 from IMID.tasks import vlnPlot, densiPlot, heatmapPlot, runLasso
 
 
-@login_required()
+def restLogin(request):
+    if request.method != "POST":
+        return HttpResponse("Method not allowed.", status=405)
+    body = request.body.decode("utf-8")
+    try:
+        data = json.loads(body)
+    except:
+        return JsonResponse({"error": "Invalid credentials"}, status=400)
+    username = data["username"]
+    password = data["password"]
+    user = authenticate(username=username, password=password)
+    if user is not None:
+        token = generate_jwt_token(user)
+        return JsonResponse({"token": token})
+    return JsonResponse({"error": "Invalid credentials"}, status=400)
+
+
+@auth_required
 def index(request):
     return render(
         request,
@@ -65,7 +86,7 @@ the programme will filter his corresponding group. Otherwise it will return all 
 """
 
 
-@login_required()
+@auth_required
 def tab(request):
     context = {}
     if request.user.groups.exists():
@@ -92,7 +113,7 @@ User uses UploadedFile to store their uploaded expression data, the column type1
 """
 
 
-@login_required()
+@auth_required
 def opExpression(request):
     if request.method == "POST":
         cID = request.POST.get("cID", None)
@@ -122,7 +143,7 @@ User uses UploadedFile to store their uploaded expression data, the column type1
 """
 
 
-@login_required()
+@auth_required
 def opMeta(request):
     if request.method == "POST":
         cID = request.POST.get("cID", None)
@@ -152,7 +173,7 @@ Third, join temp0 and dfs1;
 """
 
 
-@login_required()
+@auth_required
 def edaIntegrate(request):
     checkRes = usrCheck(request, 0)
     if checkRes["status"] == 0:
@@ -245,7 +266,7 @@ def edaIntegrate(request):
     return HttpResponse("Operation successful.", status=200)
 
 
-@login_required()
+@auth_required
 def eda(request):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
@@ -277,7 +298,7 @@ def eda(request):
     return JsonResponse(context)
 
 
-@login_required()
+@auth_required
 def dgea(request):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
@@ -333,7 +354,7 @@ def dgea(request):
         return getTopGeneCSV(adata, "cluster", n_genes)
 
 
-@login_required()
+@auth_required
 def clustering(request):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
@@ -404,7 +425,7 @@ def clustering(request):
         return Resp
 
 
-@login_required()
+@auth_required
 def clusteringAdvanced(request):
     clientID = request.GET.get("cID", None)
     if clientID is None:
@@ -454,7 +475,7 @@ def clusteringAdvanced(request):
         return JsonResponse(result)
 
 
-@login_required()
+@auth_required
 def advancedSearch(request):
     # username = request.user.username
     name = request.GET.get("name", None)
@@ -512,7 +533,7 @@ def advancedSearch(request):
     return JsonResponse(res)
 
 
-@login_required()
+@auth_required
 def goenrich(request):
     cluster_n = request.GET.get("cluster_n", None)
     checkRes = usrCheck(request)
@@ -581,7 +602,7 @@ def goenrich(request):
     )
 
 
-@login_required()
+@auth_required
 def lasso(request):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
@@ -618,7 +639,7 @@ def lasso(request):
     return HttpResponse(base64.b64encode(image.get()), content_type="image/png")
 
 
-@login_required()
+@auth_required
 def downloadCorrected(request):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
@@ -632,7 +653,7 @@ def downloadCorrected(request):
     return response
 
 
-@login_required()
+@auth_required
 def downloadCorrectedCluster(request):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
@@ -649,7 +670,7 @@ def downloadCorrectedCluster(request):
     return response
 
 
-@login_required()
+@auth_required
 def candiGenes(request):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
@@ -683,7 +704,7 @@ def candiGenes(request):
         return JsonResponse(result, safe=False)
 
 
-@login_required()
+@auth_required
 def genePlot(request):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
@@ -734,7 +755,7 @@ def genePlot(request):
     return JsonResponse({"fileName": image_data.get()})
 
 
-@login_required()
+@auth_required
 def GeneLookup(request):
     geneList = request.GET.get("geneList", None)
     if geneList is None:
@@ -750,7 +771,7 @@ def GeneLookup(request):
     return JsonResponse(result, safe=False)
 
 
-@login_required()
+@auth_required
 def checkUser(request):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
@@ -759,7 +780,7 @@ def checkUser(request):
         return HttpResponse("User exists.", status=200)
 
 
-@login_required()
+@auth_required
 def meta_columns(request):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
@@ -919,7 +940,7 @@ def meta_columns(request):
         return HttpResponse("Label created Successfully. ", status=200)
 
 
-@login_required()
+@auth_required
 def meta_column_values(request, colName):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:

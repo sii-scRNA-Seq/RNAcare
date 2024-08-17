@@ -11,7 +11,15 @@ from genes_ncbi_proteincoding import GENEID2NT
 import random
 import string
 from .constants import GeneID_URL, NUMBER_CPU_LIMITS
-from .models import Gene, GOTerm, userData, MetaFileColumn, SharedFile, UploadedFile
+from .models import (
+    CustomUser,
+    Gene,
+    GOTerm,
+    userData,
+    MetaFileColumn,
+    SharedFile,
+    UploadedFile,
+)
 from harmony import harmonize
 import pandas as pd
 import numpy as np
@@ -29,6 +37,52 @@ from threadpoolctl import threadpool_limits
 import anndata as ad
 from sklearn.preprocessing import MinMaxScaler
 from django.shortcuts import render
+from functools import wraps
+import jwt
+import datetime
+from django.conf import settings
+
+
+def auth_required(f):
+    @wraps(f)
+    def wrap(request, *args, **kwargs):
+        is_browser = "Mozilla" in request.META.get("HTTP_USER_AGENT", "")
+        if is_browser:
+            if not request.user.is_authenticated:
+                return JsonResponse({"error": "Authentication required"}, status=401)
+        else:
+            token = request.headers.get("Authorization")
+            if not token or not token.startswith("Bearer "):
+                return JsonResponse(
+                    {"error": "Token is missing or invalid"}, status=401
+                )
+            token = token.split()[1]
+            try:
+                decoded_token = jwt.decode(
+                    token, settings.SECRET_KEY, algorithms=["HS256"]
+                )
+                request.user = CustomUser.objects.get(
+                    username=decoded_token["username"]
+                )
+            except (
+                jwt.ExpiredSignatureError,
+                jwt.INvalidTokenError,
+                CustomUser.DoesNotExist,
+            ):
+                return JsonResponse({"error": "Invalid Token"}, status=401)
+        return f(request, *args, **kwargs)
+
+    return wrap
+
+
+def generate_jwt_token(user):
+    expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=2)
+    token = jwt.encode(
+        {"username": user.username, "exp": expiration},
+        settings.SECRET_KEY,
+        algorithm="HS256",
+    )
+    return token
 
 
 @lru_cache(maxsize=None)

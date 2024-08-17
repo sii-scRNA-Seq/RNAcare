@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     # path("", views.index, name="index"),
+    path(r"accounts/rest/login", views.restLogin, name="restLogin"),
     path(r"GeneLookup/", views.GeneLookup, name="GeneLookup"),
     path(r"geneExpression/", views.opExpression, name="op_expression"),
     path(r"meta/", views.opMeta, name="op_meta"),
