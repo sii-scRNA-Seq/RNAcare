@@ -199,6 +199,8 @@ def edaIntegrate(request):
         return HttpResponse("Can't find expression file", status=400)
 
     dfs1 = integrateExData(files, temp0, log2, corrected)
+    if dfs1 is None:
+        return HttpResponse("No matched data for meta and omics", status=400)
     # combine Ex and clinic data
     temp = dfs1.set_index("ID_REF").join(
         normalize1(temp0, log2).set_index("ID_REF"), how="inner"
