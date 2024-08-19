@@ -526,7 +526,7 @@ def integrateExData(files, temp0, log2, corrected):
         elif corrected == "BBKNN":
             dfs1 = bbknn(dfs)
     elif len(dfs) == 0:
-        return HttpResponse("No matched data for meta and omics", status=400)
+        return None
     else:
         dfs1 = dfs[0]
 
