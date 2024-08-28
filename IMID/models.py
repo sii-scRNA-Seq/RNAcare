@@ -170,7 +170,6 @@ class userData:
         ]
         adata.obs["obs"] = df.LABEL.tolist()
         n_comps = 100
-
         with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
             sc.tl.pca(
                 adata,

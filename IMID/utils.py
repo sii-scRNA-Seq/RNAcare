@@ -41,6 +41,7 @@ from functools import wraps
 import jwt
 import datetime
 from django.conf import settings
+from django.shortcuts import redirect
 
 
 def auth_required(f):
@@ -49,7 +50,7 @@ def auth_required(f):
         is_browser = "Mozilla" in request.META.get("HTTP_USER_AGENT", "")
         if is_browser:
             if not request.user.is_authenticated:
-                return JsonResponse({"error": "Authentication required"}, status=401)
+                return redirect("login")
         else:
             token = request.headers.get("Authorization")
             if not token or not token.startswith("Bearer "):
@@ -409,9 +410,16 @@ def usrCheck(request, flag=1):
 def normalize(df, count_threshold=2000):
     df_filtered = df.loc[:, df.sum(axis=0) >= count_threshold]
     adata = ad.AnnData(df_filtered)
+    adata.obs.index = [i for i in df_filtered.index]
+
+    adata.var["mt"] = adata.var_names.str.startswith("MT-")
+    sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
+    # Filter cells with >5% mitochondrial genes
+    adata = adata[adata.obs.pct_counts_mt < 5, :]
 
     sc.pp.normalize_total(adata, target_sum=1e4)
-    return adata.to_df()
+    rdf = adata.to_df()
+    return rdf
 
 
 # normalize clinic data
@@ -501,7 +509,7 @@ def integrateExData(files, temp0, log2, corrected):
         temp1 = temp.reset_index().drop(
             ["ID_REF", "LABEL"], axis=1, inplace=False
         )  # exclude ID_REF & LABEL
-
+        temp1.index = temp.index
         # exclude NA
         temp1.dropna(axis=1, inplace=True)
         if temp1.shape[0] != 0:
@@ -513,7 +521,7 @@ def integrateExData(files, temp0, log2, corrected):
                 ["_".join(file.split("_")[1:]).split(".csv")[0]] * temp1.shape[0]
             )
             # obs.extend(temp.ID_REF.tolist())
-            obs.extend(temp.index.tolist())
+            obs.extend(temp1.index.tolist())
     if log2 == "Yes":
         dfs = [np.log2(i + 1) for i in dfs]
 
