@@ -201,13 +201,13 @@ def edaIntegrate(request):
     dfs1 = integrateExData(files, temp0, log2, corrected)
     if dfs1 is None:
         return HttpResponse("No matched data for meta and omics", status=400)
+
     # combine Ex and clinic data
     temp = dfs1.set_index("ID_REF").join(
         normalize1(temp0, log2).set_index("ID_REF"), how="inner"
     )
     temp["obs"] = temp.index.tolist()
     usr.setIntegrationData(temp)
-
     pca_temp = usr.getAnndata().obsm["X_pca"]
 
     if fr == "TSNE":
