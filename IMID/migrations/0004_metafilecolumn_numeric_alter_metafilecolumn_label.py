@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('IMID', '0005_merge_20240316_2306'),
+        ('IMID', '0003_populate_go_enrich_data'),
     ]
 
     operations = [
