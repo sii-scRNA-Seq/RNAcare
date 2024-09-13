@@ -3,7 +3,7 @@ import scanpy as sc
 import math
 from matplotlib import pyplot as plt
 from threadpoolctl import threadpool_limits
-from sklearn.linear_model import LassoCV
+from sklearn.linear_model import LogisticRegressionCV
 import base64
 import io
 
@@ -99,7 +99,17 @@ def heatmapPlot(geneList, adata, groupby):
 @shared_task(time_limit=180, soft_time_limit=150)
 def runLasso(x, y, df, colName):
     try:
-        model = LassoCV(cv=5, random_state=42, n_jobs=-1, max_iter=10000, tol=0.001)
+        model = LogisticRegressionCV(
+            cv=5,
+            penalty="l1",
+            solver="saga",
+            class_weight="balanced",
+            scoring="accuracy",
+            random_state=42,
+            n_jobs=-1,
+            max_iter=10000,
+            tol=0.001,
+        )
         model.fit(x, y)
     except Exception as e:
         raise e
