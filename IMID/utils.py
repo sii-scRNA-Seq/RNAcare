@@ -487,11 +487,11 @@ def integrateCliData(request, integrate, cID, files_meta):
     if integrate[0] != "null" or integrate != [""]:  # jquery plugin compatible
         for i in files_meta:
             if temp0.shape == (0, 0):
-                temp0 = pd.read_csv(i).dropna(axis=1, inplace=False)
+                temp0 = pd.read_csv(i).dropna(axis=0, inplace=False)
 
             else:
                 temp0 = pd.concat(
-                    [temp0, pd.read_csv(i).dropna(axis=1, inplace=False)],
+                    [temp0, pd.read_csv(i).dropna(axis=0, inplace=False)],
                     axis=0,
                     join="inner",
                 )
