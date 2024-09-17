@@ -628,11 +628,9 @@ def lasso(request):
 
     index = df[colName] == cluster
     index1 = df[colName] != cluster
-    print("****************")
     df.loc[index, colName] = 1
     df.loc[index1, colName] = 0
     y = pd.Categorical(df[colName])
-    print(y)
 
     try:
         image = runLasso.apply_async((x, y, df, colName), serializer="pickle")
