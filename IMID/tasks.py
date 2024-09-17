@@ -6,6 +6,7 @@ from threadpoolctl import threadpool_limits
 from sklearn.linear_model import LogisticRegressionCV
 import base64
 import io
+import numpy as np
 
 from celery import shared_task
 import pandas as pd
@@ -99,13 +100,14 @@ def heatmapPlot(geneList, adata, groupby):
 @shared_task(time_limit=180, soft_time_limit=150)
 def runLasso(x, y, df, colName):
     try:
+        y = np.array(y)
         model = LogisticRegressionCV(
             cv=5,
             penalty="l1",
             solver="saga",
             class_weight="balanced",
-            scoring="accuracy",
-            random_state=42,
+            scoring="roc_auc",
+            random_state=40,
             n_jobs=-1,
             max_iter=10000,
             tol=0.001,
@@ -114,7 +116,7 @@ def runLasso(x, y, df, colName):
     except Exception as e:
         raise e
     coef = pd.Series(
-        model.coef_, df.drop([colName], axis=1, inplace=False).columns
+        model.coef_[0], df.drop([colName], axis=1, inplace=False).columns
     ).sort_values(key=abs, ascending=False)
     if len(coef[coef != 0]) == 0:
         return b""
