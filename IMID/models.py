@@ -210,13 +210,19 @@ class userData:
         t["FileName"] = self.anndata.obs["batch1"]
         t["obs"] = self.anndata.obs["obs"]
         t["LABEL"] = t["obs"]
+        for i in self.anndata.obs.columns:
+            if "__crted" in i:
+                t[i] = self.anndata.obs[i]
         return t
 
     def getCorrectedClusterCSV(self) -> "pd.DataFrame":
-        t = self.anndata.to_df()
+        t = self.anndata.to_df().round(12)
         t["FileName"] = self.anndata.obs["batch1"]
         t["obs"] = self.anndata.obs["obs"]
         t["LABEL"] = t["obs"]
+        for i in self.anndata.obs.columns:
+            if "__crted" in i:
+                t[i] = self.anndata.obs[i]
         if "cluster" in self.anndata.obs.columns:
             t["cluster"] = self.anndata.obs["cluster"]
             return t
