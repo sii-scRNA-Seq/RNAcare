@@ -53,6 +53,7 @@ from .utils import (
 from .models import MetaFileColumn, UploadedFile, SharedFile
 from django.db import transaction
 from IMID.tasks import vlnPlot, densiPlot, heatmapPlot, runLasso
+from pydeseq2.ds import DeseqStats
 
 
 def restLogin(request):
@@ -628,8 +629,8 @@ def lasso(request):
 
     index = df[colName] == cluster
     index1 = df[colName] != cluster
-    df.loc[index, colName] = 1
-    df.loc[index1, colName] = 0
+    df.loc[index, colName] = "1"
+    df.loc[index1, colName] = "0"
     y = pd.Categorical(df[colName])
 
     try:
