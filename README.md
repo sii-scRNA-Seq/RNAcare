@@ -1,9 +1,9 @@
-# RNA-care: RNA-based Clinical Analysis and Research Engine
+# RNAcare: RNA based Clinical Analysis and Research Engine
 Gene expression analysis is a powerful tool to gain insight into the mechanisms and processes underlying the biological and phenotypic differences between sample groups and requires highly professional skills for scientists to access, integrate and analyse gene expression. Previously related research focus on establishing tools and platform form single cell RNA-seq analysis, which provide user-friendly graphic interfaces to perform interactive and reproducible gene expression analysis of microarray and RNA-seq datasets and generate a range of publication ready figures. However, those harmonised datasets are not bulked RNA datasets and not patient specific. For some experiments, patient specific samples are collected and cannot be directly applied by this platform. Our platform, provides a solution for performing interactive and reproducible analysis of microarray and RNA-seq bulked gene expression data, enable medical researchers to perform exploratory data analysis and find different/common pattern among patients with similar diseases without informatics proficiency. 
 
 # System Implementation and Package dependence
 #### 1. Complete code for migration:
-To copy RNA-care from GitHub and make it runnable on your local machine, you can follow these steps:
+To copy RNAcare from GitHub and make it runnable on your local machine, you can follow these steps:
 ##### Step 1: Clone the Repository
 
 First, clone the repository from GitHub to your local machine.
