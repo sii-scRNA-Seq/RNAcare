@@ -42,6 +42,10 @@ import jwt
 import datetime
 from django.conf import settings
 from django.shortcuts import redirect
+from pydeseq2.dds import DeseqDataSet
+from pydeseq2.default_inference import DefaultInference
+
+inference = DefaultInference(n_cpus=NUMBER_CPU_LIMITS)
 
 
 def auth_required(f):
@@ -257,11 +261,11 @@ def clusteringPostProcess(X2D, adata, method, usr):
     li = adata.obs[method].tolist()
     count_dict = Counter(li)
     for member, count in count_dict.items():
-        if count < 10:
+        if count < 3:
             return HttpResponse(
                 "The number of data in the cluster "
                 + str(member)
-                + " is less than 10, which will not be able for further analysis.",
+                + " is less than 3, which will not be able for further analysis.",
                 status=405,
             )
 
@@ -406,6 +410,9 @@ def usrCheck(request, flag=1):
     return {"status": 1, "usrData": usr}
 
 
+from rnanorm import CPM
+
+
 # normalize transcriptomic data
 def normalize(df, count_threshold=2000):
     df_filtered = df.loc[:, df.sum(axis=0) >= count_threshold]
@@ -417,9 +424,23 @@ def normalize(df, count_threshold=2000):
     # Filter cells with >5% mitochondrial genes
     adata = adata[adata.obs.pct_counts_mt < 5, :]
 
-    sc.pp.normalize_total(adata, target_sum=1e4)
-    rdf = adata.to_df()
-    return rdf
+    # sc.pp.normalize_total(adata, target_sum=1e6)
+    # adata.X = calculate_deseq2_normalization(adata.to_df()) # the result is the same with running CPM()
+    adata.X = CPM().fit_transform(adata.to_df())
+    # counts = adata.to_df()
+    # metadata = pd.DataFrame(
+    #    {"condition": ["sc1"] * counts.shape[0]}, index=counts.index
+    # )
+    # metadata["condition"][0] = "sc2"
+    # dds = DeseqDataSet(
+    #    counts=counts,
+    #    metadata=metadata,
+    #    design_factors="condition",
+    #    inference=inference,
+    # )
+    # dds.deseq2()
+    # rdf = dds.to_df()
+    return adata
 
 
 # normalize clinic data
@@ -435,13 +456,16 @@ def normalize1(df, log2="No"):
     scaler = MinMaxScaler()
 
     # Fit and transform the numeric data
-    df_numeric_normalized = pd.DataFrame(
-        scaler.fit_transform(df_numeric), columns=numeric_columns
-    )
-    if log2 == "Yes":
-        df_numeric_normalized = np.log1p(df_numeric_normalized)
-    df_numeric_normalized.index = df_numeric.index
-    df_normalized = pd.concat([df_strings, df_numeric_normalized], axis=1)
+    if df_numeric.shape[1] > 0:
+        df_numeric_normalized = pd.DataFrame(
+            scaler.fit_transform(df_numeric), columns=numeric_columns
+        )
+        if log2 == "Yes":
+            df_numeric_normalized = np.log1p(df_numeric_normalized)
+        df_numeric_normalized.index = df_numeric.index
+        df_normalized = pd.concat([df_strings, df_numeric_normalized], axis=1)
+    else:
+        df_normalized = df_strings
     df_normalized.dropna(axis=0, inplace=True)
 
     return df_normalized
@@ -514,16 +538,18 @@ def integrateExData(files, temp0, log2, corrected):
         temp1.dropna(axis=1, inplace=True)
         if temp1.shape[0] != 0:
             temp1 = normalize(temp1)
-
             dfs.append(temp1)
             # color2.extend(list(temp.LABEL))
             batch.extend(
-                ["_".join(file.split("_")[1:]).split(".csv")[0]] * temp1.shape[0]
+                ["_".join(file.split("_")[1:]).split(".csv")[0]]
+                * temp1.to_df().shape[0]
             )
             # obs.extend(temp.ID_REF.tolist())
-            obs.extend(temp1.index.tolist())
+            obs.extend(temp1.to_df().index.tolist())
     if log2 == "Yes":
-        dfs = [np.log2(i + 1) for i in dfs]
+        dfs = [np.log2(i.to_df() + 1) for i in dfs]
+    else:
+        dfs = [i.to_df() for i in dfs]
 
     dfs1 = None
     if len(dfs) > 1:
