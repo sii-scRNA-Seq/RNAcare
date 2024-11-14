@@ -12,7 +12,7 @@
 	introJs().setOptions({
 		steps:[{
 			title:'Welcome',
-			intro:'<div style="width:400px;">Welcome to RNAcare, {{ user.get_username }}</div>'
+			intro:"<div style='width:500px'> Welcome to RNAcare, {{ user.get_username }}</div>"
 		},
 		{
 			element: document.querySelector('.first'),
@@ -45,6 +45,14 @@
 		{
 			element: document.querySelector('#tooltip1'),
 			intro:'Anytime you have a question, just hover on it!'
+		},
+		{
+			element: document.querySelector('#upload1'),
+			intro:"Upload csv (bulked) RNA-seq Files, each file needs to include ID_REF",
+		},
+		{
+			element: document.querySelector('#upload2'),
+			intro:"Upload a csv meta-data File, each file needs to include ID_REF and LABEL, may include some clinic data(numeric)"
 		},
 		{
 			element: document.querySelector('#tour'),
