@@ -17,3 +17,4 @@ redis
 django_cleanup
 kaleido
 threadpoolctl
+rnanorm

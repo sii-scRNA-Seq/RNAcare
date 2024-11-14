@@ -208,6 +208,7 @@ def edaIntegrate(request):
         normalize1(temp0, log2).set_index("ID_REF"), how="inner"
     )
     temp["obs"] = temp.index.tolist()
+    # temp.dropna(axis=1, inplace=True)
     usr.setIntegrationData(temp)
     pca_temp = usr.getAnndata().obsm["X_pca"]
 
