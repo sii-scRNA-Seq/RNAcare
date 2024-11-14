@@ -7,6 +7,55 @@
   flag_open=0;
   integrated=0;
   label_selected_value='';
+  function startTour(){
+	localStorage.removeItem('introJsDontShowAgain');
+	introJs().setOptions({
+		steps:[{
+			title:'Welcome',
+			intro:'<div style="width:400px;">Welcome to RNAcare, {{ user.get_username }}</div>'
+		},
+		{
+			element: document.querySelector('.first'),
+			intro:'You can upload your expression data files and meta data file here. You can skip this step and just use built-in ones in the next tab for trial.'
+		},
+		{
+			element: document.querySelector('.second'),
+			intro:'You can combine different datasets including the selection of built-in ones, and define the data transformation and integration. For data transformation, you can pick log2, and feature reduction methods, like t-SNE, UMAP and PCA; For integration, the user can choose between Harmony and Combat. <b>Besides</b> It supports user\'s self-defined labels based on the clinical parameters after your integration. '
+		},
+		{
+			element: document.querySelector('.third'),
+			intro:'You can visualise the quality of the transformation and integration and download the processed data here'
+		},
+		{
+			element: document.querySelector('.fourth'),
+			intro:'Clustering based on you processed data and finding the biomarkers for each cluster.'
+		},
+		{
+			element: document.querySelector('.fifth'),
+			intro:'You can visualise the Violin, density and heatmap plots for your specific labels/clusters.'
+		},
+		{
+			element: document.querySelector('.sixth'),
+			intro:'Lasso regression for your specific label/cluster to find its related genes of interest.'
+		},
+		{
+			element: document.querySelector('.seventh'),
+			intro:'Enrichment analysis for your label/cluster if you don\'t upload clinical parameters in the meta data file.'
+		},
+		{
+			element: document.querySelector('#tooltip1'),
+			intro:'Anytime you have a question, just hover on it!'
+		},
+		{
+			element: document.querySelector('#tour'),
+			intro:'Or go back to this tour again.'
+		},
+	],
+	}).start();
+  }
+  document.addEventListener('DOMContentLoaded',function(){
+	startTour();
+  });
   $( function() {
 	initDf();
     $(document).tooltip();
@@ -1167,13 +1216,13 @@ function label_name_change(targetLabel,targetClusterNum)
 <div id='loader' style='display:none'></div>
 <div id="tabs" style='width:1800px;'>
   <ul>
-    <li><a href="#tabs-1">Data Collection</a></li>
-    <li><a href="#tabs-2">Data Processing</a></li>
-    <li><a href="#tabs-3">EDA</a></li>
-    <li><a href="#tabs-4">DEGA-Clustering</a></li>
-	<li><a href='#tabs-7'>DEGA-Target Gene</a></li>
-    <li><a href="#tabs-5">LASSO FeastureSelect</a></li>
-    <li><a href="#tabs-6">Go Enrichment</a></li>
+    <li><a href="#tabs-1" class="first">Data Collection</a></li>
+    <li><a href="#tabs-2" class="second">Data Processing</a></li>
+    <li><a href="#tabs-3" class="third">EDA</a></li>
+    <li><a href="#tabs-4" class="fourth">DEGA-Clustering</a></li>
+	<li><a href='#tabs-7' class="fifth">DEGA-Target Gene</a></li>
+    <li><a href="#tabs-5" class="sixth">LASSO FeastureSelect</a></li>
+    <li><a href="#tabs-6" class="seventh">Go Enrichment</a></li>
   </ul>
   <div id="tabs-1">
     <fieldset name="Multiple Files Upload">

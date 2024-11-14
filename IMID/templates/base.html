@@ -98,6 +98,8 @@ content:url('/static/questionMark.png');
 <script src = "https://code.jquery.com/ui/1.9.2/jquery-ui.js"></script>
 <link href="{% static 'multi-select.css'%}"  media="screen" rel="stylesheet" type="text/css">
 <script src="{% static 'jquery.multi-select.js'%}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/intro.min.js"></script>
+<link href = "https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/introjs.min.css" rel = "stylesheet">
 </head>
 <body>
 <div class="container">
@@ -112,6 +114,7 @@ content:url('/static/questionMark.png');
             {% if user.is_authenticated %}
             <div class="user-info" style="display:flex; align-items: center;">
                 <div style="color: rgb(78, 132, 233); font-size:larger;">Hi, {{ user.get_username }}&nbsp;&nbsp;</div>
+                <button onclick="startTour();" id="tour" class="btn btn-primary">Restart Tour</button>&nbsp;&nbsp;
                 <form action="{% url 'logout' %}" method="post">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-primary">Log Out</button>

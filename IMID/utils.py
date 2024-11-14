@@ -261,11 +261,11 @@ def clusteringPostProcess(X2D, adata, method, usr):
     li = adata.obs[method].tolist()
     count_dict = Counter(li)
     for member, count in count_dict.items():
-        if count < 3:
+        if count < 10:
             return HttpResponse(
                 "The number of data in the cluster "
                 + str(member)
-                + " is less than 3, which will not be able for further analysis.",
+                + " is less than 10, which will not be able for further analysis.",
                 status=405,
             )
 
@@ -415,18 +415,24 @@ from rnanorm import CPM
 
 # normalize transcriptomic data
 def normalize(df, count_threshold=2000):
-    df_filtered = df.loc[:, df.sum(axis=0) >= count_threshold]
+    df = df[[col for col in df.columns if not (col.startswith("LOC") and len(col) > 8)]]
+    is_rnaseq = df.applymap(lambda x: float(x).is_integer()).mean().mean() > 0.9
+    if is_rnaseq:
+        df_filtered = df.loc[:, df.sum(axis=0) >= count_threshold]
+    else:
+        df_filtered = df.copy()
     adata = ad.AnnData(df_filtered)
     adata.obs.index = [i for i in df_filtered.index]
 
-    adata.var["mt"] = adata.var_names.str.startswith("MT-")
-    sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
-    # Filter cells with >5% mitochondrial genes
-    adata = adata[adata.obs.pct_counts_mt < 5, :]
+    if is_rnaseq:
+        adata.var["mt"] = adata.var_names.str.startswith("MT-")
+        sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
+        # Filter cells with >5% mitochondrial genes
+        adata = adata[adata.obs.pct_counts_mt < 5, :]
 
-    # sc.pp.normalize_total(adata, target_sum=1e6)
-    # adata.X = calculate_deseq2_normalization(adata.to_df()) # the result is the same with running CPM()
-    adata.X = CPM().fit_transform(adata.to_df())
+        # sc.pp.normalize_total(adata, target_sum=1e6)
+        # adata.X = calculate_deseq2_normalization(adata.to_df()) # the result is the same with running CPM()
+        adata.X = CPM().fit_transform(adata.to_df())
     # counts = adata.to_df()
     # metadata = pd.DataFrame(
     #    {"condition": ["sc1"] * counts.shape[0]}, index=counts.index
@@ -453,15 +459,17 @@ def normalize1(df, log2="No"):
     df_numeric = df[numeric_columns]
     df_strings = df[string_columns]
 
-    scaler = MinMaxScaler()
+    # scaler = MinMaxScaler()
 
     # Fit and transform the numeric data
     if df_numeric.shape[1] > 0:
-        df_numeric_normalized = pd.DataFrame(
-            scaler.fit_transform(df_numeric), columns=numeric_columns
-        )
         if log2 == "Yes":
-            df_numeric_normalized = np.log1p(df_numeric_normalized)
+            df_numeric_normalized = np.log1p(df_numeric)
+        else:
+            scaler = MinMaxScaler()
+            df_numeric_normalized = pd.DataFrame(
+                scaler.fit_transform(df_numeric), columns=numeric_columns
+            )
         df_numeric_normalized.index = df_numeric.index
         df_normalized = pd.concat([df_strings, df_numeric_normalized], axis=1)
     else:
