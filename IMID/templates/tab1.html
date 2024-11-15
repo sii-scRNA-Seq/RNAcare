@@ -55,6 +55,10 @@
 			intro:"Upload a csv meta-data File, each file needs to include ID_REF and LABEL, may include some clinic data(numeric)"
 		},
 		{
+			element: document.querySelector('#TemplateUpload'),
+			intro:'You can download the templates for upload here.'
+		},
+		{
 			element: document.querySelector('#tour'),
 			intro:'Or go back to this tour again.'
 		},
@@ -1235,7 +1239,9 @@ function label_name_change(targetLabel,targetClusterNum)
   <div id="tabs-1">
     <fieldset name="Multiple Files Upload">
     <div id="msg"></div>
-    <p>Upload Gene Expression files&nbsp;<img id='tooltip1'class='question' title="In this section, users upload their files(multiple). File names will be used for later visualisation. ID_REF is a compulsory field for each file.<p><img src='/static/fileUpload.png' width='500' height='auto'/></p>"/>&nbsp;&nbsp;&nbsp;<button id="advancedSearch" class="btn btn-primary" onclick="window.open('/advancedSearch/?cID='+clientUniqueID);" title="This is used for processing any online data. User can search for any public dataset and integrate them into the research.">Advanced Search</button></p>
+    <p>Upload Gene Expression files&nbsp;<img id='tooltip1'class='question' title="In this section, users upload their files(multiple). File names will be used for later visualisation. ID_REF is a compulsory field for each file.<p><img src='/static/fileUpload.png' width='500' height='auto'/></p>"/>&nbsp;&nbsp;&nbsp;
+		<button class="btn btn-primary" id='TemplateUpload' onclick="window.location.href='/static/template.zip'">Download Templates for Upload</button> &nbsp;&nbsp;&nbsp;
+		<button id="advancedSearch" class="btn btn-primary" onclick="window.open('/advancedSearch/?cID='+clientUniqueID);" title="This is used for processing any online data. User can search for any public dataset and integrate them into the research.">Advanced Search</button></p>
     <table>
     <tr>
 	<td style="vertical-align:top;">
