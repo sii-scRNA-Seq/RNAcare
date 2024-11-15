@@ -42,10 +42,11 @@ import jwt
 import datetime
 from django.conf import settings
 from django.shortcuts import redirect
-from pydeseq2.dds import DeseqDataSet
-from pydeseq2.default_inference import DefaultInference
 
-inference = DefaultInference(n_cpus=NUMBER_CPU_LIMITS)
+# from pydeseq2.dds import DeseqDataSet
+# from pydeseq2.default_inference import DefaultInference
+
+# inference = DefaultInference(n_cpus=NUMBER_CPU_LIMITS)
 
 
 def auth_required(f):

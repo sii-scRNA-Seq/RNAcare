@@ -53,7 +53,8 @@ from .utils import (
 from .models import MetaFileColumn, UploadedFile, SharedFile
 from django.db import transaction
 from IMID.tasks import vlnPlot, densiPlot, heatmapPlot, runLasso
-from pydeseq2.ds import DeseqStats
+
+# from pydeseq2.ds import DeseqStats
 
 
 def restLogin(request):
@@ -915,7 +916,8 @@ def meta_columns(request):
 
         threshold = [float(i) for i in threshold]
         count = MetaFileColumn.objects.filter(
-            Q(colName=colName) | Q(colName__startswith=colName + "__crted")
+            (Q(colName=colName) | Q(colName__startswith=colName + "__crted"))
+            & Q(user=request.user)
         ).count()
         if count == 0:
             HttpResponse(
