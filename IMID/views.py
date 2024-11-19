@@ -304,7 +304,7 @@ def eda(request):
 
 
 @auth_required
-def dgea(request):
+def dega(request):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
         return HttpResponse(checkRes["message"], status=400)
