@@ -45,7 +45,6 @@ from django.shortcuts import redirect
 
 # from pydeseq2.dds import DeseqDataSet
 # from pydeseq2.default_inference import DefaultInference
-
 # inference = DefaultInference(n_cpus=NUMBER_CPU_LIMITS)
 
 
@@ -257,17 +256,16 @@ def bbknn(dfs):
 def clusteringPostProcess(X2D, adata, method, usr):
     if method != "kmeans" and len(set(adata.obs[method])) == 1:
         # throw error for just 1 cluster
-        return HttpResponse("Only 1 Cluster after clustering", status=400)
+        raise Exception("Only 1 Cluster after clustering")
 
     li = adata.obs[method].tolist()
     count_dict = Counter(li)
     for member, count in count_dict.items():
         if count < 10:
-            return HttpResponse(
+            raise Exception(
                 "The number of data in the cluster "
                 + str(member)
-                + " is less than 10, which will not be able for further analysis.",
-                status=405,
+                + " is less than 10, which will not be able for further analysis."
             )
 
     traces = zip_for_vis(X2D, list(adata.obs[method]), adata.obs_names.tolist())
@@ -329,16 +327,13 @@ def clusteringPostProcess(X2D, adata, method, usr):
         }
         for i in set(b["batch"].tolist())
     ]
-
-    return JsonResponse(
-        {
-            "traces": traces,
-            "fileName": base64.b64encode(figure1.getvalue()).decode("utf-8"),
-            "fileName1": base64.b64encode(figure2.getvalue()).decode("utf-8"),
-            "bc1": barChart1,
-            "bc2": barChart2,
-        }
-    )
+    return {
+        "traces": traces,
+        "fileName": base64.b64encode(figure1.getvalue()).decode("utf-8"),
+        "fileName1": base64.b64encode(figure2.getvalue()).decode("utf-8"),
+        "bc1": barChart1,
+        "bc2": barChart2,
+    }
 
 
 def getTopGeneCSV(adata, groupby, n_genes):
@@ -353,13 +348,9 @@ def getTopGeneCSV(adata, groupby, n_genes):
                 result["names"][group], columns=[f"TopGene_{group}"]
             )
             result_df = pd.concat([result_df, top_genes], axis=1).loc[: int(n_genes),]
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = "attachment; filename=topGenes.csv"
-        result_df.to_csv(path_or_buf=response)
-        return response
-
+        return result_df
     else:
-        return HttpResponse("Only one cluster", status=500)
+        raise Exception("Only one cluster.")
 
 
 def GeneID2SymID(geneList):

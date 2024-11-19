@@ -13,7 +13,6 @@ from matplotlib import pyplot as plt
 import hdbscan
 from threadpoolctl import threadpool_limits
 from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
 import math
 import io
 import base64
@@ -31,19 +30,12 @@ import plotly.graph_objects as go
 
 import requests
 from bs4 import BeautifulSoup
-from .constants import ONTOLOGY, BUILT_IN_LABELS, NUMBER_CPU_LIMITS
+from .constants import BUILT_IN_LABELS, NUMBER_CPU_LIMITS
 from .utils import (
     zip_for_vis,
     fromPdtoSangkey,
-    go_it,
-    clusteringPostProcess,
-    getTopGeneCSV,
     GeneID2SymID,
     usrCheck,
-    normalize1,
-    loadSharedData,
-    integrateCliData,
-    integrateExData,
     getExpression,
     getMeta,
     generate_jwt_token,
@@ -52,7 +44,16 @@ from .utils import (
 
 from .models import MetaFileColumn, UploadedFile, SharedFile
 from django.db import transaction
-from IMID.tasks import vlnPlot, densiPlot, heatmapPlot, runLasso
+from IMID.tasks import (
+    vlnPlot,
+    densiPlot,
+    heatmapPlot,
+    runLasso,
+    runIntegrate,
+    runDega,
+    runClustering,
+    runGoEnrich,
+)
 
 # from pydeseq2.ds import DeseqStats
 
@@ -128,7 +129,6 @@ def opExpression(request):
         for f in files:
             temp_file = UploadedFile(user=request.user, cID=cID, type1="exp", file=f)
             new_exp_files.append(temp_file)
-            # context[f.name] = {}
         UploadedFile.objects.bulk_create(new_exp_files)
         return getExpression(request, cID)
     elif request.method == "GET":
@@ -191,83 +191,13 @@ def edaIntegrate(request):
     if "" in integrate:
         integrate.remove("")
 
-    files, files_meta = loadSharedData(request, integrate, cID)
-
-    temp0 = integrateCliData(request, integrate, cID, files_meta)
-
-    if temp0.shape == (0, 0):
-        return HttpResponse("Can't find meta file", status=400)
-    if len(files) == 0:
-        return HttpResponse("Can't find expression file", status=400)
-
-    dfs1 = integrateExData(files, temp0, log2, corrected)
-    if dfs1 is None:
-        return HttpResponse("No matched data for meta and omics", status=400)
-
-    # combine Ex and clinic data
-    temp = dfs1.set_index("ID_REF").join(
-        normalize1(temp0, log2).set_index("ID_REF"), how="inner"
-    )
-    temp["obs"] = temp.index.tolist()
-    # temp.dropna(axis=1, inplace=True)
-    usr.setIntegrationData(temp)
-    pca_temp = usr.getAnndata().obsm["X_pca"]
-
-    if fr == "TSNE":
-        tsne = TSNE(
-            n_components=2,
-            random_state=42,
-            n_jobs=2,
-            perplexity=min(30.0, pca_temp.shape[0] - 1),
-        )
-        X2D = tsne.fit_transform(pca_temp)
-    elif fr == "UMAP":
-        umap1 = umap.UMAP(
-            n_components=2,
-            random_state=42,
-            n_neighbors=min(30, pca_temp.shape[0] // 2),
-            n_jobs=2,
-        )
-        X2D = umap1.fit_transform(pca_temp)
-
-    else:
-        pca = PCA(n_components=2, random_state=42)
-        X2D = pca.fit_transform(pca_temp)
-
-    usr.setFRData(X2D)
-
-    if usr.save() is False:
-        return HttpResponse("Error for creating user records.", status=400)
-
-    # store column info of meta file into database
     try:
-        with transaction.atomic():
-            new_file_columns = []
-            MetaFileColumn.objects.filter(user=request.user, cID=cID).delete()
-            for cn in temp0.columns:
-                if cn == "LABEL":
-                    label = "1"
-                else:
-                    label = "0"
-                if np.issubdtype(temp0[cn].dtype, np.number):
-                    num_flag = "1"
-                else:
-                    num_flag = "0"
-                temp_meta = MetaFileColumn(
-                    user=request.user,
-                    cID=cID,
-                    colName=cn,
-                    label=label,
-                    numeric=num_flag,
-                )
-                if temp_meta is None:
-                    raise Exception("MetaFileColumn create Failed.")
-                else:
-                    new_file_columns.append(temp_meta)
-            MetaFileColumn.objects.bulk_create(new_file_columns)
-    except:
-        return HttpResponse("Error for registering to DataBase.", status=400)
-
+        result = runIntegrate.apply_async(
+            (request, integrate, cID, log2, corrected, usr, fr), serializer="pickle"
+        )
+        result.get()
+    except Exception as e:
+        return HttpResponse(str(e), status=500)
     return HttpResponse("Operation successful.", status=200)
 
 
@@ -316,47 +246,20 @@ def dega(request):
     clusters = request.GET.get("clusters", "default")
     n_genes = request.GET.get("topN", 4)
 
-    if clusters == "default":
-        with plt.rc_context():
-            figure1 = io.BytesIO()
-            figure2 = io.BytesIO()
-            with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
-                if len(set(adata.obs["batch1"])) > 1:
-                    sc.tl.rank_genes_groups(adata, groupby="batch1", method="t-test")
-                    sc.tl.dendrogram(adata, groupby="batch1")
-                    sc.pl.rank_genes_groups_dotplot(
-                        adata, n_genes=int(n_genes), show=False, color_map="bwr"
-                    )
-                    plt.savefig(
-                        figure1,
-                        format="png",
-                        bbox_inches="tight",
-                    )
-                    figure1 = base64.b64encode(figure1.getvalue()).decode("utf-8")
-                else:
-                    figure1 = ""
-                if len(set(adata.obs[targetLabel])) > 1:
-                    sc.tl.rank_genes_groups(adata, groupby=targetLabel, method="t-test")
-                    sc.tl.dendrogram(adata, groupby=targetLabel)
-                    sc.pl.rank_genes_groups_dotplot(
-                        adata, n_genes=int(n_genes), show=False, color_map="bwr"
-                    )
-                    plt.savefig(
-                        figure2,
-                        format="png",
-                        bbox_inches="tight",
-                    )
-                    figure2 = base64.b64encode(figure2.getvalue()).decode("utf-8")
-                else:
-                    figure2 = ""
-            return JsonResponse([figure1, figure2], safe=False)
-    elif clusters == "fileName":
-        # show top gene for specific group
-        return getTopGeneCSV(adata, "batch1", n_genes)
-    elif clusters == "label":
-        return getTopGeneCSV(adata, targetLabel, n_genes)
-    elif clusters in ("LEIDEN", "HDBSCAN", "KMeans"):
-        return getTopGeneCSV(adata, "cluster", n_genes)
+    try:
+        result = runDega.apply_async(
+            (clusters, adata, targetLabel, n_genes), serializer="pickle"
+        )
+        result = result.get()
+    except Exception as e:
+        return HttpResponse(str(e), status=500)
+    if type(result) is list:
+        return JsonResponse(result, safe=False)
+    else:
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = "attachment; filename=topGenes.csv"
+        result.to_csv(path_or_buf=response)
+        return response
 
 
 @auth_required
@@ -376,58 +279,14 @@ def clustering(request):
         return HttpResponse("Please run feature reduction first.", status=400)
     X2D = X2D.tolist()
     adata = usr.getAnndata()
-    if cluster == "LEIDEN":
-        if param is None:
-            param = 1
-        try:
-            param = float(param)
-        except:
-            return HttpResponse("Resolution should be a float", status=400)
-        try:
-            with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
-                sc.pp.neighbors(adata, n_neighbors=40, n_pcs=40)
-                sc.tl.leiden(adata, resolution=param)
-        except Exception as e:
-            return HttpResponse(f"{e}", status=400)
-        Resp = clusteringPostProcess(X2D, adata, "leiden", usr)
-        return Resp
-    elif cluster == "HDBSCAN":
-        if param is None:
-            param = 20
-        try:
-            param = int(param)
-        except:
-            return HttpResponse("K should be positive integer.", status=400)
-        if param < 5:
-            return HttpResponse("minSize should be at least 5.", status=400)
-        labels = hdbscan.HDBSCAN(min_cluster_size=int(param)).fit_predict(
-            adata.obsm["X_pca"]
+    try:
+        result = runClustering.apply_async(
+            (cluster, adata, X2D, usr, param), serializer="pickle"
         )
-        if min(labels) >= 0:
-            labels = [str(i) for i in labels]
-        else:
-            labels = [str(i + 1) for i in labels]  # for outlier, will be assigned as -1
-
-        adata.obs["hdbscan"] = labels
-        adata.obs["hdbscan"] = adata.obs["hdbscan"].astype("category")
-        Resp = clusteringPostProcess(X2D, adata, "hdbscan", usr)
-        return Resp
-    elif cluster == "Kmeans":
-        try:
-            param = int(param)
-        except:
-            return HttpResponse("K should be positive integer.", status=400)
-
-        if param <= 1:
-            return HttpResponse("K should be larger than 1.", status=400)
-        km = KMeans(n_clusters=int(param), random_state=42, n_init="auto").fit(
-            adata.obsm["X_pca"]
-        )
-        labels = [str(i) for i in km.labels_]
-        adata.obs["kmeans"] = labels
-        adata.obs["kmeans"] = adata.obs["kmeans"].astype("category")
-        Resp = clusteringPostProcess(X2D, adata, "kmeans", usr)
-        return Resp
+        result = result.get()
+    except Exception as e:
+        return HttpResponse(str(e), status=400)
+    return JsonResponse(result)
 
 
 @auth_required
@@ -551,60 +410,12 @@ def goenrich(request):
     if cluster_n is None or colName is None:
         return HttpResponse("Illegal colName/value for the Label.", status=400)
 
-    df = usr.getCorrectedCSV()
-    if (
-        any(df.columns.str.startswith("c_")) is True
-        or len(set(df.columns).intersection({"age", "crp", "bmi", "esr", "BMI"})) > 0
-    ):
-        return HttpResponse("Not Allowed Clinic Data", status=400)
-    markers = usr.getMarkers(colName)
-    if markers is None:
-        return HttpResponse("Please run clustering method first.", status=400)
-    markers = markers[
-        (markers.pvals_adj < 0.05)
-        & (markers.logfoldchanges > 0.5)
-        & (markers.group.astype(str) == str(cluster_n))
-    ]
-    if len(markers.index) == 0:
-        return HttpResponse("No marker genes", status=400)
-    with threadpool_limits(limits=2, user_api="blas"):
-        df = go_it(markers.names.values)
-    df1 = df.groupby("class").head(10).reset_index(drop=True)
-
-    fig = go.Figure()
-
-    def fig_add_trace_ontology(fig, df, ontology):
-        fig.add_trace(
-            go.Bar(
-                y=df[df["class"] == ontology.name].term[::-1],
-                x=df[df["class"] == ontology.name].per[::-1],
-                name=ontology.name,
-                customdata=[
-                    "P_corr=" + str(round(i, 5))
-                    for i in df[df["class"] == ontology.name].p_corr[::-1]
-                ],
-                hovertemplate="Ratio: %{x:.5f}<br> %{customdata}",
-                orientation="h",
-                marker={
-                    "color": df[df["class"] == ontology.name].p_corr[::-1],
-                    "colorscale": ontology.color,
-                },
-            )
-        )
-
-    for o in ONTOLOGY.values():
-        fig_add_trace_ontology(fig, df1, o)
-
-    fig.update_layout(
-        barmode="stack",
-        height=1200,
-        uniformtext_minsize=50,
-        uniformtext_mode="hide",
-        xaxis=dict(title="Gene Ratio"),
-    )
-    return HttpResponse(
-        base64.b64encode(fig.to_image(format="png")), content_type="image/png"
-    )
+    try:
+        result = runGoEnrich.apply_async((usr, colName, cluster_n), serializer="pickle")
+        result = result.get()
+    except Exception as e:
+        return HttpResponse(str(e), status=400)
+    return HttpResponse(result, content_type="image/png")
 
 
 @auth_required
