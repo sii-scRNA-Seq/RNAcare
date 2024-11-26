@@ -149,6 +149,7 @@ class userData:
         self.uID = uID
         self.integrationData = pd.DataFrame()  # expression+clinic+label
         self.anndata = None  # expression+clinic for X
+        self.redMethod = ""
 
     def setIntegrationData(self, df):
         df = df.copy().round(15)
@@ -170,12 +171,16 @@ class userData:
         ]
         adata.obs["obs"] = df.LABEL.tolist()
         n_comps = 100
-        with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
-            sc.tl.pca(
-                adata,
-                svd_solver="arpack",
-                n_comps=min(t.shape[0] - 1, t.shape[1] - 1, n_comps),
-            )
+        print(t.shape[0] - 1, t.shape[1] - 1, n_comps)
+        try:
+            with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
+                sc.tl.pca(
+                    adata,
+                    svd_solver="arpack",
+                    n_comps=min(t.shape[0] - 1, t.shape[1] - 1, n_comps),
+                )
+        except Exception as e:
+            raise Exception(f"{e}")
         self.anndata = adata
 
     def setAnndata(self, adata):

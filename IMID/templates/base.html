@@ -85,10 +85,16 @@ content:url('/static/questionMark.png');
   background-color: rgba(0, 0, 0, 0.5);
   z-index: 999;
 }
-
+@media print {
+    .no-break {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    
+}
 
 </style>
-<title>RNA-CARE: RNA-based Clinical Analysis and Research Engine</title>
+<title>RNAcare: RNA-based Clinical Analysis and Research Engine</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -107,7 +113,7 @@ content:url('/static/questionMark.png');
 <table>
     <tr>
         <td>
-            <h3 class="text-primary">RNA-CARE: RNA-based Clinical Analysis and Research Engine</h3>
+            <h3 class="text-primary">RNAcare: RNA-based Clinical Analysis and Research Engine</h3>
         </td>
         <td>
 
