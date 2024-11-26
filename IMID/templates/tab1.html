@@ -7,9 +7,12 @@
   flag_open=0;
   integrated=0;
   label_selected_value='';
+  introFlag=1;
+  tourCompleted=false;
   function startTour(){
-	localStorage.removeItem('introJsDontShowAgain');
-	introJs().setOptions({
+	introFlag=1;
+	$('#tabs').tabs('option', 'active', 0);
+	intro = introJs().setOptions({
 		steps:[{
 			title:'Welcome',
 			intro:"<div style='width:500px'> Welcome to RNAcare, {{ user.get_username }}</div>"
@@ -17,30 +20,6 @@
 		{
 			element: document.querySelector('.first'),
 			intro:'You can upload your expression data files and meta data file here. You can skip this step and just use built-in ones in the next tab for trial.'
-		},
-		{
-			element: document.querySelector('.second'),
-			intro:'You can combine different datasets including the selection of built-in ones, and define the data transformation and integration. For data transformation, you can pick log2, and feature reduction methods, like t-SNE, UMAP and PCA; For integration, the user can choose between Harmony and Combat. <b>Besides</b> It supports user\'s self-defined labels based on the clinical parameters after your integration. '
-		},
-		{
-			element: document.querySelector('.third'),
-			intro:'You can visualise the quality of the transformation and integration and download the processed data here'
-		},
-		{
-			element: document.querySelector('.fourth'),
-			intro:'Clustering based on you processed data and finding the biomarkers for each cluster.'
-		},
-		{
-			element: document.querySelector('.fifth'),
-			intro:'You can visualise the Violin, density and heatmap plots for your specific labels/clusters.'
-		},
-		{
-			element: document.querySelector('.sixth'),
-			intro:'Lasso regression for your specific label/cluster to find its related genes of interest.'
-		},
-		{
-			element: document.querySelector('.seventh'),
-			intro:'Enrichment analysis for your label/cluster if you don\'t upload clinical parameters in the meta data file.'
 		},
 		{
 			element: document.querySelector('#tooltip1'),
@@ -59,11 +38,133 @@
 			intro:'You can download the templates for upload here.'
 		},
 		{
+			element: document.querySelector('.second'),
+			intro:'You can combine different datasets including the selection of built-in ones, and define the data transformation and integration. For data transformation, you can pick log2, and feature reduction methods, like t-SNE, UMAP and PCA; For integration, the user can choose between Harmony and Combat. <b>Besides</b> It supports user\'s self-defined labels based on the clinical parameters after your integration. '
+		},
+		{
+			element: document.querySelector('#built-in-data'),
+			intro:'You can choose some of the built-in data here alone, or integrated with your previous uploaded data. Columns sharing the same column names will be retained.'
+		},
+		{
+			element: document.querySelector('#processOption'),
+			intro:'Choose options to process the data.'
+		},
+		{
+			element: document.querySelector('#next2'),
+			intro:'Click \'Processing\' button to process the data first.'
+		},
+		{
+			element: document.querySelector('#next2EDA'),
+			intro:'After processing the data, then click this to navigate to the next page.'
+		},
+		{
+			element: document.querySelector('#metaAdvancedSettingClick'),
+			intro:'Or, before navigating, you can create new labels based on the processed clinical data. In you uploaded clinical data, features with continous values can be used to create new labels here, features with categorical values will show as candidate labels directly, waiting for being activated.'
+		},
+		{
+			element: document.querySelector('.third'),
+			intro:'You can visualise the quality of the transformation and integration and download the processed data here'
+		},
+		{
+			element: document.querySelector('#VbOption'),
+			intro:'Choose the Value for coloring the processed data.'
+		},
+		{
+			element: document.querySelector('.fourth'),
+			intro:'Clustering based on you processed data and finding the biomarkers for each cluster.'
+		},
+		{
+			element: document.querySelector('.fifth'),
+			intro:'You can visualise the Violin, density and heatmap plots for your specific labels/clusters.'
+		},
+		{
+			element: document.querySelector('.sixth'),
+			intro:'Lasso regression for your specific label/cluster to find its related genes of interest.'
+		},
+		{
+			element: document.querySelector('.seventh'),
+			intro:'Enrichment analysis for your label/cluster if you don\'t upload clinical parameters in the meta data file.'
+		},
+		{
 			element: document.querySelector('#tour'),
 			intro:'Or go back to this tour again.'
 		},
 	],
-	}).start();
+	});
+	
+	intro.onchange(function(targetElement) {
+      if ($(targetElement).closest('.second').length) {
+        $('#tabs').tabs('option', 'active', 1); // Activate Tab 2
+      }
+	  else if ($(targetElement).closest('.third').length) {
+        $('#tabs').tabs('option', 'active', 2); // Activate Tab 3
+      }
+	  else if ($(targetElement).closest('.fourth').length) {
+        $('#tabs').tabs('option', 'active', 3); // Activate Tab 4
+      }
+	  else if ($(targetElement).closest('.fifth').length) {
+        $('#tabs').tabs('option', 'active', 4); // Activate Tab 5
+      }
+	  else if ($(targetElement).closest('.sixth').length) {
+        $('#tabs').tabs('option', 'active', 5); // Activate Tab 6
+      }
+	  else if ($(targetElement).closest('.seventh').length) {
+        $('#tabs').tabs('option', 'active', 6); // Activate Tab 7
+      }
+	  else if ($(targetElement).closest('#tour').length) {
+        $('#tabs').tabs('option', 'active', 0); // Activate Tab 1
+      }
+    });
+
+	intro.oncomplete(function() {
+    	tourCompleted = true; // Mark as completed
+	});
+
+	intro.onexit(function() {
+		if (!tourCompleted) {
+			introFlag=0;
+    	}
+	});
+
+	intro.start();
+  }
+  function Tour2(){
+	if(introFlag==0)return;
+	intro = introJs().setOptions({
+		steps:[{
+			element: document.querySelector('#VbOption'),
+			intro:'Choose the Value for coloring the processed data.'
+		},
+		{
+			element: document.querySelector('#VbL'),
+			intro:'Visualization by the chosen Label.'
+		},
+		{
+			element: document.querySelector('#VbF'),
+			intro:'Visualization by FileNames(batches).'
+		},
+		{
+			element: document.querySelector('#graphDiv21A'),
+			intro:'Download the image.'
+		},
+	],
+	});
+	intro.start();
+  }
+  function Tour3(){
+	if(introFlag==0)return;
+	intro = introJs().setOptions({
+		steps:[{
+			element: document.querySelector('#VbC'),
+			intro:'Visualization by Clusters'
+		},
+		{
+			element: document.querySelector('#DE4C'),
+			intro:'Dotplot for top 4 genes of each cluster.'
+		},
+	],
+	});
+	intro.start();
   }
   document.addEventListener('DOMContentLoaded',function(){
 	startTour();
@@ -81,8 +182,34 @@
 	tabs.tabs();
 	tabs_label=$('#tabs-label');
 	tabs_label.tabs();
-	$('#tabs-eda').tabs();
-	$('#tabs-dega').tabs();
+	$('#tabs-eda').tabs({
+		activate: function (event, ui) {
+			const tabId = ui.newPanel.attr("id");
+			if (tabId === "tabs-eda-2") {
+				$('#graphDiv11 .img1').each(function () {
+					// Ensure the image is visible and rendered
+					if (!$(this).data('wheelzoom-applied')) {
+							wheelzoom(this);
+							$(this).data('wheelzoom-applied', true);
+					}
+				});
+			}
+		}
+  	});
+	$('#tabs-dega').tabs({
+		activate: function (event, ui) {
+			const tabId = ui.newPanel.attr("id");
+			if (tabId === "tabs-dega-2") {
+				$('#graphDiv1-cluster-gene .img2').each(function () {
+					// Ensure the image is visible and rendered
+					if (!$(this).data('wheelzoom-applied')) {
+							wheelzoom(this);
+							$(this).data('wheelzoom-applied', true);
+					}
+				});
+			}
+		}
+  	});
     $('#HPara').hide();
     $('#KPara').hide();
     $('#tab3div').hide();$('#tab4div').hide();
@@ -110,7 +237,7 @@
 		
 		$.ajax({
 			url: '/geneExpression/?cID='+clientUniqueID,
-			datType:'json',
+			dataType:'text',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -151,7 +278,7 @@
 		
 		$.ajax({
 			url: '/meta/?cID='+clientUniqueID,
-			datType:'json',
+			dataType:'text',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -197,7 +324,7 @@
 	url+='&cID='+clientUniqueID;
 		$.ajax({
 			url: url,
-			datType:'json',
+			dataType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -239,7 +366,7 @@
 	$('#candidateCluster').html('<option value="" selected="selected"></option><option value="cluster">Clustering Method</option>');
 	$.ajax({
 			url: url,
-			datType:'json',
+			dataType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -252,10 +379,10 @@
 				$('#tab3div').show();
 				tabs.tabs('option','active',2);
 				dfs1 = response.dfs1;
-				plotlyPlot('graphDiv1',dfs1);
+				plotlyPlot('graphDiv1',dfs1,response.method);
 				$('.btn').attr('disabled',false);
 				dfs2 = response.dfs2;
-				plotlyPlot('graphDiv2',dfs2);
+				plotlyPlot('graphDiv2',dfs2,response.method);
 				$('#eda-label-choose').html('');
 				
 				for(i=0;i<response.labels.length;i++)
@@ -273,7 +400,7 @@
 				}	
 				$.ajax({
 					url: '/dgea/?cID='+clientUniqueID+'&label='+$('#eda-label-choose').val(),
-					datType:'json',
+					dataType:'json',
 					cache:false,
 					contentType:false,
 					processData:false,
@@ -283,12 +410,17 @@
 						$('#loader').hide();
 					},
 					success:function(response){
-						$('#graphDiv11A').attr('href','data:image/png;base64,'+response[0]);
-						$('#graphDiv21A').attr('href','data:image/png;base64,'+response[1]);
-						$('#graphDiv11').html('<img class="img1" src="data:image/png;base64,'+response[0]+'" width="auto" height="400px"/>');
-						$('#graphDiv21').html('<img class="img1" src="data:image/png;base64,'+response[1]+'" width="auto" height="400px"/>');
+						$('#graphDiv11A').attr('href','data:image/svg+xml;base64,'+response[0]);
+						$('#graphDiv21A').attr('href','data:image/svg+xml;base64,'+response[1]);
+						$('#graphDiv11').html('<img class="img1" src="data:image/svg+xml;base64,'+response[0]+'" width="auto" height="400px"/>');
+						$('#graphDiv21').html('<img class="img1" src="data:image/svg+xml;base64,'+response[1]+'" width="auto" height="400px"/>');
 						alert('Calculation Succeed!');
-						wheelzoom(document.querySelectorAll('img.img1'));
+						
+						$('#tabs-eda').tabs('option', 'active', 0)
+						$('#graphDiv21 .img1').each(function () {
+							wheelzoom(this);
+						});
+						Tour2();				
 					},
 					error:function(response){
 						alert(response.responseText);$('#loader').hide();
@@ -317,7 +449,7 @@
 		$('#cluster_num').html("<option value='' selected='selected'>----SELECT----</option>");
 		$.ajax({
 			url: url,
-			datType:'json',
+			dataType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -379,7 +511,7 @@ function initDf(){
 	$('#preview2').html('');
 	$.ajax({
 			url: '/geneExpression/?cID='+clientUniqueID,
-			datType:'json',
+			dataType:'text',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -400,7 +532,7 @@ function initDf(){
 
 	$.ajax({
 			url: '/meta/?cID='+clientUniqueID,
-			datType:'json',
+			dataType:'text',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -426,7 +558,7 @@ function unpack(rows,n){
 	return rows.map(function(row)
 	{return row[n];});}
 	
-function plotlyPlot(idP,dfsP){
+function plotlyPlot(idP,dfsP,method){
 	data=[];
 	sequentialScale=d3.scaleSequential().domain([0,Object.keys(dfsP).length]).interpolator(d3.interpolateRainbow);
 	i=0;
@@ -451,8 +583,21 @@ function plotlyPlot(idP,dfsP){
 	  	y:0.5,
 		itemsizing: 'constant',
 	  	},
+		  xaxis: {
+            title: method + '1', // Dynamic x-axis name
+        },
+        yaxis: {
+            title: method + '2', // Dynamic y-axis name
+        },
 	  };
-	Plotly.newPlot(idP, data, layout);
+	var config={
+		toImageButtonOptions:{
+			format:'svg',
+			filename:'download',
+			scale:'1'
+		}
+	};
+	Plotly.newPlot(idP, data, layout, config);
 }
 
 function plotlyPlot1(idP,dfsP){
@@ -465,7 +610,14 @@ function plotlyPlot1(idP,dfsP){
 		i++;
 	}
 	layout={barmode:'stack'};
-	Plotly.newPlot(idP,data,layout);
+	var config={
+		toImageButtonOptions:{
+			format:'svg',
+			filename:'download',
+			scale:'1'
+		}
+	};
+	Plotly.newPlot(idP, data, layout, config);
 }
 
 function clusterBtnClick(){
@@ -481,7 +633,7 @@ function clusterBtnClick(){
         $('.btn').attr('disabled',true);
         $.ajax({
 			url: url,
-			datType:'json',
+			dataType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -495,15 +647,21 @@ function clusterBtnClick(){
 			},
 			success:function(response){
 				$('#tab4div').show();
-				plotlyPlot('graphDiv1-cluster',response.traces);
+				plotlyPlot('graphDiv1-cluster',response.traces, response.method);
 				plotlyPlot1('bc1',response.bc1);
 				plotlyPlot1('bc2',response.bc2);
-				$('#graphDiv1-cluster-gene-A').attr('href','data:image/png;base64,'+response.fileName);
-				$('#graphDiv1-cluster-gene').html('<img class="img2" src="data:image/png;base64,'+response.fileName+'" width="auto" height="400"/>');
-				$('#graphDiv1-cluster-top-gene-A').attr('href','data:image/png;base64,'+response.fileName1);
-				$('#graphDiv1-cluster-top-gene').html('<img class="img2" src="data:image/png;base64,'+response.fileName1+'" width="1000" height="auto"/>');
+				$('#graphDiv1-cluster-gene-A').attr('href','data:image/svg+xml;base64,'+response.fileName);
+				$('#graphDiv1-cluster-gene').html('<img class="img2" src="data:image/svg+xml;base64,'+response.fileName+'" width="auto" height="400"/>');
+				$('#graphDiv1-cluster-top-gene-A').attr('href','data:image/svg+xml;base64,'+response.fileName1);
+				$('#graphDiv1-cluster-top-gene').html('<img class="img2" src="data:image/svg+xml;base64,'+response.fileName1+'" width="1000" height="auto"/>');
 				alert('Calculation Succeed!');
-				wheelzoom(document.querySelectorAll('img.img2'));
+
+				$('#tabs-dega').tabs('option', 'active', 0);
+				$('#graphDiv1-cluster-top-gene .img2').each(function () {
+                    wheelzoom(this);
+                });
+
+
 				$('.downloadData1').show();
 				$('#cluster_num').html("<option value='' selected='selected'>----SELECT----</option>");
 				$('#cluster_num1').html("<option value='' selected='selected'>----SELECT----</option>");
@@ -519,6 +677,7 @@ function clusterBtnClick(){
 					$('#lasso_label_name').append('<option value="cluster">Cluster</option>');
 					$('#go_label_name').append('<option value="cluster">Cluster</option>');
 				}
+				Tour3();
 			},
 			error:function(response){
 				alert(response.responseText);
@@ -542,7 +701,7 @@ function goEnrich(){
 	url+='&cID='+clientUniqueID;
 	$.ajax({
 			url:url,
-			datType:'json',
+			dataType:'text',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -555,7 +714,7 @@ function goEnrich(){
 			$('#loader').hide();
 			},
 			success:function(response){
-				$('#goEnrichPic').html('<img class="imgGo" src="data:image/png;base64,'+response+'" width="500" height="auto"/><br><a href="data:image/png;base64,'+response+'" target="_blank">Download Image</a>');
+				$('#goEnrichPic').html('<img class="imgGo" src="data:image/svg+xml;base64,'+response+'" width="500" height="auto"/><br><a href="data:image/svg+xml;base64,'+response+'" download="image.svg" target="_blank">Download Image</a>');
 				alert('Calculation Succeed!');
 				wheelzoom(document.querySelectorAll('img.imgGo'));
 				$('.btn').attr('disabled',false);
@@ -576,7 +735,7 @@ function golasso(){
 	url+='&cID='+clientUniqueID;
 	$.ajax({
 			url:url,
-			datType:'json',
+			dataType:'text',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -589,9 +748,9 @@ function golasso(){
 			$('#loader').hide();
 			},
 			success:function(response){
-				$('#lassoPic').html('<img class="imgLasso" src="data:image/png;base64,'+response+'" width="1000" height="auto"/><br><a href="data:image/png;base64,'+response+'" target="_blank">Download Image</a>');
+				$('#lassoPic').html('<img class="imgLasso" src="data:image/svg+xml;base64,'+response+'" width="1000" height="auto"></img><br><a href="data:image/svg+xml;base64,'+response+'" download="image.svg" target="_blank">Download Image</a>');
 				alert('Calculation Succeed!');
-				wheelzoom(document.querySelectorAll('img.imgLasso'));
+				wheelzoom(document.querySelectorAll('img .imgLasso'));
 				$('.btn').attr('disabled',false);
 			},
 			error:function(response){
@@ -625,7 +784,7 @@ function getTopGenes(t){
 	$('.btn').attr('disabled',true);
 	$.ajax({
 			url:url,
-			datType:'text',
+			dataType:'text',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -683,7 +842,7 @@ function loadCandiGenes()
 	$('.btn').attr('disabled',true);
 	$.ajax({
 			url:url,
-			datType:'json',
+			dataType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -725,7 +884,7 @@ function TGenePlotClick()
 
 	$.ajax({
 			url:url,
-			datType:'json',
+			dataType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -740,7 +899,7 @@ function TGenePlotClick()
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				$('#vlnPlot').html('<label style="display:block;text-align: center;">Violin Plot for target genes</label><br><br><img class="imgvln" src="data:image/png;base64,'+response.fileName+'" width="800" height="auto"/>');
+				$('#vlnPlot').html('<label style="display:block;text-align: center;">Violin Plot for target genes</label><br><br><img class="imgvln" src="data:image/svg+xml;base64,'+response.fileName+'" width="800" height="auto"/>');
 				//wheelzoom(document.querySelectorAll('img.imgvln'));
 			},
 			error:function(response){
@@ -754,7 +913,7 @@ function TGenePlotClick()
 	$('.btn').attr('disabled',true);
 	$.ajax({
 			url:url,
-			datType:'json',
+			dataType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -769,7 +928,7 @@ function TGenePlotClick()
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				$('#densityPlot').html('<label style="display:block;text-align: center;">Feature Plot for target genes</label><br><br><img class="feplot" src="data:image/png;base64,'+response.fileName+'" width="1000" height="auto"/>');
+				$('#densityPlot').html('<label style="display:block;text-align: center;">Feature Plot for target genes</label><br><br><img class="feplot" src="data:image/svg+xml;base64,'+response.fileName+'" width="1000" height="auto"/>');
 				//wheelzoom(document.querySelectorAll('img.feplot'));
 			},
 			error:function(response){
@@ -783,7 +942,7 @@ function TGenePlotClick()
 	$('.btn').attr('disabled',true);
 	$.ajax({
 			url:url,
-			datType:'json',
+			dataType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -798,7 +957,7 @@ function TGenePlotClick()
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				$('#heatmapPlot').html('<label style="display:block;text-align: center;">Heatmap Plot for target genes(Scaled)</label><br><br><img class="heatplot" src="data:image/png;base64,'+response.fileName+'" width="1000" height="auto"/>');
+				$('#heatmapPlot').html('<label style="display:block;text-align: center;">Heatmap Plot for target genes(Scaled)</label><br><br><img class="heatplot" src="data:image/svg+xml;base64,'+response.fileName+'" width="1000" height="auto"/>');
 				//wheelzoom(document.querySelectorAll('img.heatplot'));
 			},
 			error:function(response){
@@ -820,7 +979,7 @@ function LookUpGeneID()
 	$('.btn').attr('disabled',true);
 	$.ajax({
 			url:url,
-			datType:'text',
+			dataType:'text',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -854,7 +1013,7 @@ function metaAdvanced()
 		url='/user/?cID='+clientUniqueID;
 		$.ajax({
 			url:url,
-			datType:'text',
+			dataType:'text',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -896,7 +1055,7 @@ function refreshMySelectLabel()
 	url+='cID='+clientUniqueID;
 	$.ajax({
 			url:url,
-			datType:'text',
+			dataType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -956,7 +1115,7 @@ function refreshMyDeleteLabel()
 	url+='cID='+clientUniqueID;
 	$.ajax({
 			url:url,
-			datType:'text',
+			dataType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -977,7 +1136,7 @@ function refreshMyDeleteLabel()
 					colName=response[i][0];
 					labeled=response[i][1];
 					numeric=response[i][2];
-					if(numeric=='0'&&labeled=='0'&&colName!='ID_REF'){
+					if(numeric=='0'&&labeled=='0'&&colName!='ID_REF'&&(colName.indexOf("__crted") == -1)){
 						$('#my-select-label-delete').append('<option value="'+colName+'">'+colName+'</option>');
 					}
 
@@ -1005,7 +1164,7 @@ function labelAssignConfirm()
 	url+='&cID='+clientUniqueID;
 	$.ajax({
 			url:url,
-			datType:'json',
+			dataType:'json',
 			headers: {'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val() },
 			cache:false,
 			contentType:false,
@@ -1043,7 +1202,7 @@ function numLabelChange()
 	url+='cID='+clientUniqueID;
 	$.ajax({
 			url:url,
-			datType:'text',
+			dataType:'text',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -1058,7 +1217,7 @@ function numLabelChange()
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				$('#numLabelPlot').html('<img src="data:image/png;base64,'+response+'" width="auto" height="600px"/>');
+				$('#numLabelPlot').html('<img src="data:image/svg+xml;base64,'+response+'" width="auto" height="600px"/>');
 				
 			},
 			error:function(response){
@@ -1185,7 +1344,7 @@ function label_name_change(targetLabel,targetClusterNum)
 	url+='?cID='+clientUniqueID;
 	$.ajax({
 			url:url,
-			datType:'json',
+			dataType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -1206,6 +1365,7 @@ function label_name_change(targetLabel,targetClusterNum)
 			}
 	});
 }
+
   </script>
   
   <style>
@@ -1282,7 +1442,8 @@ function label_name_change(targetLabel,targetClusterNum)
   <table>
   
   <tr>
-  	<h5>Choose the built-in compiled cohort(s) you want to integrate with:</h5metaSetting>
+	<div id="built-in-data">
+  	<h5>Choose the built-in compiled cohort(s) you want to integrate with:</h5>
 	<br><br>
 	<select id="my-select" multiple="multiple">
 	<optgroup label='Shared-Cohorts'>
@@ -1291,10 +1452,11 @@ function label_name_change(targetLabel,targetClusterNum)
     	{% endfor %}
     	</optgroup>
 	</select>
+	</div>
   </tr>
 
   	
-  <tr>
+  <tr id="processOption">
   	<td>
    	<div name="Options1" style="left:30px; width:300px;">
    		<br>
@@ -1341,7 +1503,7 @@ function label_name_change(targetLabel,targetClusterNum)
 		<div id="metaAdvancedSettingClick" onclick="metaAdvanced();" title="Click to create new labels based on Meta File Data.">&gt;&gt;Enable Meta File Advanced Settings</div>
 	</td>
   	<td style="text-align:right;" colspan='2'>
-		<button id="next2" class="btn btn-primary">&nbsp;&nbsp;Integrate&nbsp;&nbsp;</button>
+		<button id="next2" class="btn btn-danger">&nbsp;&nbsp;Processing&nbsp;&nbsp;</button>
 		<button id="next2EDA" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
 	</td>
   </tr>
@@ -1421,7 +1583,7 @@ function label_name_change(targetLabel,targetClusterNum)
   <div id="tabs-3">
   	<p>Gene Data Explory Data Analyses</p>
 	<br>
-	<div  style="margin: 0 auto; display: table; background-color: rgb(184, 184, 224); border-radius: 5px;">
+	<div  id='VbOption' style="margin: 0 auto; display: table; background-color: rgb(184, 184, 224); border-radius: 5px;">
 		<label>&nbsp;&nbsp;Choose the created Label as target:&nbsp;&nbsp;</label>
 		<select id="eda-label-choose" onchange="edaLabelChange();">
 			<option value='batch2' selected='selected'>LABEL</option>
@@ -1430,16 +1592,16 @@ function label_name_change(targetLabel,targetClusterNum)
   	<div id='tab3div'>
 		<div id="tabs-eda" style='width:1250px;'>
 			<ul>
-			  <li><a href="#tabs-eda-1">Data processed by Labels</a></li>
-			  <li><a href="#tabs-eda-2">Data processed by FileNames</a></li>
+			  <li><a href="#tabs-eda-1" id="VbL">Data processed by Labels</a></li>
+			  <li><a href="#tabs-eda-2" id="VbF">Data processed by FileNames</a></li>
 			</ul>
 			<div id="tabs-eda-1">
-				<div id="graphDiv2" style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
-				<p>Dotplot of top 4 genes for each LABEL​</p>
-				<a id='graphDiv21A' href="..." target="_blank" style="display: block;">Download Image</a><br><br><br><br><br><br><br><br><br>
-  				<div id="graphDiv21" class="rotated" style="width:800px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+				<div id="graphDiv2" class='no-break' style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
+				<p>Dotplot of top 4 genes for each LABEL</p>
+				<a id='graphDiv21A' href="..." target="_blank" download="image.svg" style="display: block;">Download Image</a><br><br><br><br><br><br><br><br><br>
+  				<div id="graphDiv21" class="rotated no-break" style="width:800px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 				<br><br><br><br><br><br><br><br><br>
-				<p>Customised Top Number of Genes for Download​:</p>
+				<p>Customised Top Number of Genes for Download:</p>
 				<select id='topForLabels'>
 					<option value='50' selected='selected'>50</option>
 					<option value='100'>100</option>
@@ -1448,13 +1610,13 @@ function label_name_change(targetLabel,targetClusterNum)
   				<button id='topForLabelsDownloadBtn' class='btn btn-primary' onclick='getTopGenes(2);'>Download Top Genes</button>		
 			</div>
 			<div id="tabs-eda-2">
-				<div id="graphDiv1" style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
+				<div id="graphDiv1" class='no-break' style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
 				<div style="width:100%; border-top:1px solid #ccc;"></div>
-				<p>Dotplot of top 4 genes for each file​</p>
-				<a id='graphDiv11A' href="..." target="_blank" style="display: block;">Download Image</a><br><br><br><br><br><br><br><br><br>
-				<div id="graphDiv11" class="rotated" style="width:800px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+				<p>Dotplot of top 4 genes for each file</p>
+				<a id='graphDiv11A' href="..." target="_blank" download="image.svg" style="display: block;">Download Image</a><br><br><br><br><br><br><br><br><br>
+				<div id="graphDiv11" class="rotated no-break" style="width:800px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 				<br><br><br><br><br><br><br><br><br>
-				<p>Customised Top Number for Download​:</p>
+				<p>Customised Top Number for Download:</p>
 				<select id='topForFiles'>
 						<option value='50' selected='selected'>50</option>
 						<option value='100'>100</option>
@@ -1466,7 +1628,7 @@ function label_name_change(targetLabel,targetClusterNum)
   	</div>
   	<br>
 	<div style="text-align:right;">
-		<button id="download1" class="btn btn-primary" style="width:auto;" onclick='getTopGenes(4);'">Download Processed data</button>
+		<button id="download1" class="btn btn-primary" style="width:auto;" onclick='getTopGenes(4);'>Download Processed data</button>
 		<br><br>
 		<button id="next3" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
 			
@@ -1514,18 +1676,18 @@ function label_name_change(targetLabel,targetClusterNum)
 	<div id='tab4div'>
 		<div id="tabs-dega" style='width:1250px;'>
 			<ul>
-			  <li><a href="#tabs-dega-1">Data colored by clusters</a></li>
-			  <li><a href="#tabs-dega-2">Dotplot of top 4 genes for each cluster</a></li>
+			  <li><a href="#tabs-dega-1" id="VbC">Data colored by clusters</a></li>
+			  <li><a href="#tabs-dega-2" id="DE4C">Dotplot of top 4 genes for each cluster</a></li>
 			</ul>
 			<div id="tabs-dega-1">
-				<div id='graphDiv1-cluster' style="width:850px; height:850px; overflow-x:scroll; overflow-y:scroll;"></div>
+				<div id='graphDiv1-cluster' class='no-break' style="width:850px; height:850px; overflow-x:scroll; overflow-y:scroll;"></div>
 			</div>
 			<div id="tabs-dega-2">
 				<br><br><br>
-					<a id="graphDiv1-cluster-gene-A" href="..."  target="_blank" style="display: block;">Download Image</a><br><br>
-              		<div id="graphDiv1-cluster-gene" class='rotated' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+					<a id="graphDiv1-cluster-gene-A" href="..."  target="_blank" download="image.svg" style="display: block;">Download Image</a><br><br>
+              		<div id="graphDiv1-cluster-gene" class='rotated no-break' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 					<br><br><br>
-					<p>Customised Top Number of Genes for Download​:</p>
+					<p>Customised Top Number of Genes for Download:</p>
 						<select id='topForLabels'>
 							<option value='50' selected='selected'>50</option>
 							<option value='100'>100</option>
@@ -1541,17 +1703,17 @@ function label_name_change(targetLabel,targetClusterNum)
 			</tr>
 			<tr>
 				<td>
-				<div id='bc1' style="width:600px; height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
+				<div id='bc1' class='no-break' style="width:600px; height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 				</td>
 				<td>	
-				<div id="bc2" style="width:600px; height:500px;overflow-x:scroll; overflow-y:scroll;"></div>
+				<div id="bc2" class='no-break' style="width:600px; height:500px;overflow-x:scroll; overflow-y:scroll;"></div>
 				</td>
 			</tr>
 			<tr>
 				<td colspan='2'>
-				<p>Top 20 genes after running DE for clusters​</p>
-				<a id="graphDiv1-cluster-top-gene-A" href="..."  target="_blank" style="display: block;">Download Image</a><br><br>
-				<div id='graphDiv1-cluster-top-gene' style="width:1000px; overflow-x:scroll; overflow-y:scroll;"></div>
+				<p>Top 20 genes after running DE for clusters</p>
+				<a id="graphDiv1-cluster-top-gene-A" href="..."  target="_blank" download="image.svg" style="display: block;">Download Image</a><br><br>
+				<div id='graphDiv1-cluster-top-gene' class='no-break' style="width:1000px; overflow-x:scroll; overflow-y:scroll;"></div>
 				</td>
 			</tr>
 			<tr class='downloadData1'>
@@ -1567,8 +1729,8 @@ function label_name_change(targetLabel,targetClusterNum)
   </div>
 
   <div id="tabs-7">
-	<p>Input your target gene list for the clusters and choose the separator.
-		<img class='question' style="max-width:0.8%;" title="This tab is used for plots for at most 15 target Genes after running clustering.<br>You can input your interested genes, generating its violin/density and heatmap plots. <br>If your input is GeneID, you may need to convert them to Symbol ID first.<br>Sys provides you candidate gene Lists, <ul><li>PCA(3) for top important genes contributing to the first 3 Principal Components after PCA.</li><li>The second option is for marker genes after clustering.</li></ul>"/>	
+	<p>Input your target gene list for the groups for Violin, density and heatmap plot and choose the separator splitting the genes.
+		<img class='question' style="max-width:0.8%;" title="This tab is used for plots for at most 15 target Genes after running clustering.<br>You can input your interested genes, generating its violin/density and heatmap plots. <br>If your input is GeneID, you may need to convert them to Symbol ID by clicking the 'Convert to Symbol ID' button first.<br>Sys provides you candidate gene Lists, <ul><li>PCA(3) for top important genes contributing to the first 3 Principal Components after PCA.</li><li>The second option is for marker genes after clustering.</li></ul>"/>	
 	</p>
 	<label>Choose the separator for the gene list:</label>
 	<select id="separator">
@@ -1597,11 +1759,11 @@ function label_name_change(targetLabel,targetClusterNum)
 	<br>
 	<button onclick='TGenePlotClick();' class="btn btn-primary" style="position: relative;left:950px;">Submit</button>
 	<br><br>
-	<div id="vlnPlot"></div>
+	<div id="vlnPlot" class='no-break'></div>
 	<br><br>
-	<div id="densityPlot"></div>
+	<div id="densityPlot" class='no-break'></div>
 	<br><br>
-	<div id="heatmapPlot"></div>
+	<div id="heatmapPlot" class='no-break'></div>
 
   </div>
   
@@ -1628,7 +1790,7 @@ function label_name_change(targetLabel,targetClusterNum)
 		</tr>
 		<tr>
 		<td colspan='2'>
-		<div id='lassoPic' style="width:1200px; height:800px; overflow-x:scroll; overflow-y:scroll; text-align:center;"></div>
+		<div id='lassoPic' class='no-break' style="width:1200px; height:800px; overflow-x:scroll; overflow-y:scroll; text-align:center;"></div>
 		</td>
 		</tr>
   	</table>
@@ -1657,7 +1819,7 @@ function label_name_change(targetLabel,targetClusterNum)
 		</tr>
 		<tr>
 		<td colspan='2'>
-		<div id='goEnrichPic' style="width:1400px; overflow-x:scroll; overflow-y:scroll; text-align:center;"></div>
+		<div id='goEnrichPic' class='no-break' style="width:1200px; overflow-x:scroll; overflow-y:scroll; text-align:center;"></div>
 		</td>
 		</tr>
   	</table>

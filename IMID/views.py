@@ -30,7 +30,7 @@ import plotly.graph_objects as go
 
 import requests
 from bs4 import BeautifulSoup
-from .constants import BUILT_IN_LABELS, NUMBER_CPU_LIMITS
+from .constants import BUILT_IN_LABELS, NUMBER_CPU_LIMITS, ALLOW_UPLOAD
 from .utils import (
     zip_for_vis,
     fromPdtoSangkey,
@@ -53,6 +53,7 @@ from IMID.tasks import (
     runDega,
     runClustering,
     runGoEnrich,
+    runFeRed,
 )
 
 # from pydeseq2.ds import DeseqStats
@@ -119,6 +120,8 @@ User uses UploadedFile to store their uploaded expression data, the column type1
 @auth_required
 def opExpression(request):
     if request.method == "POST":
+        if ALLOW_UPLOAD is False:
+            return HttpResponse("Not Allowed user upload", status=400)
         cID = request.POST.get("cID", None)
         if cID is None:
             return HttpResponse("cID not provided.", status=400)
@@ -148,6 +151,8 @@ User uses UploadedFile to store their uploaded expression data, the column type1
 @auth_required
 def opMeta(request):
     if request.method == "POST":
+        if ALLOW_UPLOAD is False:
+            return HttpResponse("Not Allowed user upload", status=400)
         cID = request.POST.get("cID", None)
         if cID is None:
             return HttpResponse("cID not provided.", status=400)
@@ -194,8 +199,7 @@ def edaIntegrate(request):
     try:
         result = runIntegrate.apply_async(
             (request, integrate, cID, log2, corrected, usr, fr), serializer="pickle"
-        )
-        result.get()
+        ).get()
     except Exception as e:
         return HttpResponse(str(e), status=500)
     return HttpResponse("Operation successful.", status=200)
@@ -229,6 +233,7 @@ def eda(request):
         "dfs1": traces,
         "dfs2": traces1,
         "labels": labels,
+        "method": usr.redMethod,
     }
     return JsonResponse(context)
 
@@ -249,8 +254,7 @@ def dega(request):
     try:
         result = runDega.apply_async(
             (clusters, adata, targetLabel, n_genes), serializer="pickle"
-        )
-        result = result.get()
+        ).get()
     except Exception as e:
         return HttpResponse(str(e), status=500)
     if type(result) is list:
@@ -282,8 +286,7 @@ def clustering(request):
     try:
         result = runClustering.apply_async(
             (cluster, adata, X2D, usr, param), serializer="pickle"
-        )
-        result = result.get()
+        ).get()
     except Exception as e:
         return HttpResponse(str(e), status=400)
     return JsonResponse(result)
@@ -411,11 +414,12 @@ def goenrich(request):
         return HttpResponse("Illegal colName/value for the Label.", status=400)
 
     try:
-        result = runGoEnrich.apply_async((usr, colName, cluster_n), serializer="pickle")
-        result = result.get()
+        result = runGoEnrich.apply_async(
+            (usr, colName, cluster_n), serializer="pickle"
+        ).get()
     except Exception as e:
         return HttpResponse(str(e), status=400)
-    return HttpResponse(result, content_type="image/png")
+    return HttpResponse(result, content_type="image/svg+xml")
 
 
 @auth_required
@@ -447,12 +451,12 @@ def lasso(request):
     y = pd.Categorical(df[colName])
 
     try:
-        image = runLasso.apply_async((x, y, df, colName), serializer="pickle")
-        if image.get() == b"":
+        image = runLasso.apply_async((x, y, df, colName), serializer="pickle").get()
+        if image == b"":
             return HttpResponse("No features after filtering.", status=400)
     except Exception as e:
         return HttpResponse("Lasso Failed:" + str(e), status=500)
-    return HttpResponse(base64.b64encode(image.get()), content_type="image/png")
+    return HttpResponse(image, content_type="image/svg+xml")
 
 
 @auth_required
@@ -510,7 +514,12 @@ def candiGenes(request):
         markers = usr.getMarkers(method)
         if markers is None:
             return HttpResponse("Please run clustering method first.", status=400)
-        clusters = set(markers.group)
+        try:
+            clusters = set(markers.group)
+        except Exception as e:
+            return HttpResponse(
+                "There is no different values for the label you chose.", status=400
+            )
         number = math.ceil(maxGene / len(clusters))
         result = (
             markers.groupby("group")
@@ -683,29 +692,7 @@ def meta_columns(request):
                     MetaFileColumn.objects.exclude(colName="LABEL").filter(
                         user=request.user, cID=cID
                     ).update(label="0")
-
-                pca_temp = usr.getAnndata().obsm["X_pca"]
-                if fr == "TSNE":
-                    tsne = TSNE(
-                        n_components=2,
-                        random_state=42,
-                        n_jobs=2,
-                        perplexity=min(30.0, pca_temp.shape[0] - 1),
-                    )
-                    X2D = tsne.fit_transform(pca_temp)
-                elif fr == "UMAP":
-                    umap1 = umap.UMAP(
-                        n_components=2,
-                        random_state=42,
-                        n_neighbors=min(30, pca_temp.shape[0] // 2),
-                        n_jobs=2,
-                    )
-                    X2D = umap1.fit_transform(pca_temp)
-
-                else:
-                    pca = PCA(n_components=2, random_state=42)
-                    X2D = pca.fit_transform(pca_temp)
-                    # print(X2D)
+                X2D = runFeRed.apply_async((fr, usr), serializer="pickle").get()
                 usr.setFRData(X2D)
         except Exception as e:
             return HttpResponse("Labels creating Problem. " + str(e), status=400)
@@ -802,7 +789,8 @@ def meta_column_values(request, colName):
             fig = go.Figure(data=[histogram_trace], layout=layout)
 
             return HttpResponse(
-                base64.b64encode(fig.to_image(format="png")), content_type="image/png"
+                base64.b64encode(fig.to_image(format="svg")).decode("utf-8"),
+                content_type="image/svg+xml",
             )
         else:
             return HttpResponse("Can't find the colName: " + colName, status=400)

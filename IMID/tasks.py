@@ -62,7 +62,7 @@ def vlnPlot(geneList, adata, groupby):
 
             # Adjust layout
             plt.tight_layout()
-            plt.savefig(figure1, format="png", bbox_inches="tight")
+            plt.savefig(figure1, format="svg", bbox_inches="tight")
 
     image_data = base64.b64encode(figure1.getvalue()).decode("utf-8")
     return image_data
@@ -85,7 +85,7 @@ def densiPlot(geneList, adata):
                 vmax="p99",
                 cmap="coolwarm",
             )
-            plt.savefig(figure1, format="png", bbox_inches="tight")
+            plt.savefig(figure1, format="svg", bbox_inches="tight")
 
     image_data = base64.b64encode(figure1.getvalue()).decode("utf-8")
     return image_data
@@ -109,7 +109,7 @@ def heatmapPlot(geneList, adata, groupby):
             swap_axes=True,
             figsize=(11, 4),
         )
-        plt.savefig(figure1, format="png", bbox_inches="tight")
+        plt.savefig(figure1, format="svg", bbox_inches="tight")
 
     image_data = base64.b64encode(figure1.getvalue()).decode("utf-8")
     return image_data
@@ -141,11 +141,14 @@ def runLasso(x, y, df, colName):
     coef[coef != 0][:50].plot.bar(
         x="Features", y="Coef", figure=plt.figure(), fontsize=6
     )
+    plt.xlabel("Features", fontsize=8)
+    plt.ylabel("Coefficient Magnitude", fontsize=8)
+    plt.title("Top Features Identified by Lasso Regression", fontsize=10)
     with io.BytesIO() as buffer:
-        plt.savefig(buffer, format="png", bbox_inches="tight")
+        plt.savefig(buffer, format="svg", bbox_inches="tight")
         buffer.seek(0)
         image = buffer.getvalue()
-    return image
+    return base64.b64encode(image).decode("utf-8")
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
@@ -166,28 +169,7 @@ def runIntegrate(request, integrate, cID, log2, corrected, usr, fr):
     temp["obs"] = temp.index.tolist()
     # temp.dropna(axis=1, inplace=True)
     usr.setIntegrationData(temp)
-    pca_temp = usr.getAnndata().obsm["X_pca"]
-    if fr == "TSNE":
-        tsne = TSNE(
-            n_components=2,
-            random_state=42,
-            n_jobs=2,
-            perplexity=min(30.0, pca_temp.shape[0] - 1),
-        )
-        X2D = tsne.fit_transform(pca_temp)
-    elif fr == "UMAP":
-        umap1 = umap.UMAP(
-            n_components=2,
-            random_state=42,
-            n_neighbors=min(30, pca_temp.shape[0] // 2),
-            n_jobs=2,
-        )
-        X2D = umap1.fit_transform(pca_temp)
-
-    else:
-        pca = PCA(n_components=2, random_state=42)
-        X2D = pca.fit_transform(pca_temp)
-
+    X2D = runFeRed.apply(args=[fr, usr]).result
     usr.setFRData(X2D)
     if usr.save() is False:
         raise Exception("Error for creating user records.")
@@ -239,7 +221,7 @@ def runDega(clusters, adata, targetLabel, n_genes):
                         )
                         plt.savefig(
                             figure1,
-                            format="png",
+                            format="svg",
                             bbox_inches="tight",
                         )
                         figure1 = base64.b64encode(figure1.getvalue()).decode("utf-8")
@@ -256,7 +238,7 @@ def runDega(clusters, adata, targetLabel, n_genes):
                         )
                         plt.savefig(
                             figure2,
-                            format="png",
+                            format="svg",
                             bbox_inches="tight",
                         )
                         figure2 = base64.b64encode(figure2.getvalue()).decode("utf-8")
@@ -382,4 +364,33 @@ def runGoEnrich(usr, colName, cluster_n):
         uniformtext_mode="hide",
         xaxis=dict(title="Gene Ratio"),
     )
-    return base64.b64encode(fig.to_image(format="png"))
+    return base64.b64encode(fig.to_image(format="svg")).decode("utf-8")
+
+
+@shared_task(time_limit=180, soft_time_limit=150)
+def runFeRed(fr, usr):
+    pca_temp = usr.getAnndata().obsm["X_pca"]
+    if fr == "TSNE":
+        tsne = TSNE(
+            n_components=2,
+            random_state=42,
+            n_jobs=2,
+            perplexity=min(30.0, pca_temp.shape[0] - 1),
+        )
+        X2D = tsne.fit_transform(pca_temp)
+        usr.redMethod = "TSNE"
+    elif fr == "UMAP":
+        umap1 = umap.UMAP(
+            n_components=2,
+            random_state=42,
+            n_neighbors=min(30, pca_temp.shape[0] // 2),
+            n_jobs=2,
+        )
+        X2D = umap1.fit_transform(pca_temp)
+        usr.redMethod = "UMAP"
+
+    else:
+        pca = PCA(n_components=2, random_state=42)
+        X2D = pca.fit_transform(pca_temp)
+        usr.redMethod = "PC"
+    return X2D

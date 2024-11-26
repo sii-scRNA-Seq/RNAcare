@@ -333,6 +333,7 @@ def clusteringPostProcess(X2D, adata, method, usr):
         "fileName1": base64.b64encode(figure2.getvalue()).decode("utf-8"),
         "bc1": barChart1,
         "bc2": barChart2,
+        "method": usr.redMethod,
     }
 
 
@@ -464,6 +465,9 @@ def normalize1(df, log2="No"):
             )
         df_numeric_normalized.index = df_numeric.index
         df_normalized = pd.concat([df_strings, df_numeric_normalized], axis=1)
+        df_normalized = df_normalized.loc[
+            :, ~df_normalized.isin([np.inf, -np.inf]).any()
+        ]
     else:
         df_normalized = df_strings
     df_normalized.dropna(axis=0, inplace=True)
@@ -526,6 +530,7 @@ def integrateExData(files, temp0, log2, corrected):
     dfs = []
     batch = []
     obs = []
+
     for file in files:
         temp01 = pd.read_csv(file).set_index("ID_REF")
         # filter records that have corresponding clinical data in meta files.
@@ -547,9 +552,9 @@ def integrateExData(files, temp0, log2, corrected):
             # obs.extend(temp.ID_REF.tolist())
             obs.extend(temp1.to_df().index.tolist())
     if log2 == "Yes":
-        dfs = [np.log2(i.to_df() + 1) for i in dfs]
+        dfs = [np.round(np.log2(i.to_df() + 1), 5) for i in dfs]
     else:
-        dfs = [i.to_df() for i in dfs]
+        dfs = [np.round(i.to_df(), 5) for i in dfs]
 
     dfs1 = None
     if len(dfs) > 1:
