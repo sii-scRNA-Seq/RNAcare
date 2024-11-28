@@ -1153,7 +1153,7 @@ function refreshMyDeleteLabel()
 					colName=response[i][0];
 					labeled=response[i][1];
 					numeric=response[i][2];
-					if(numeric=='0'&&labeled=='0'&&colName!='ID_REF'&&(colName.indexOf("__crted") == -1)){
+					if(numeric=='0'&&labeled=='0'&&colName!='ID_REF'&&(colName.indexOf("__crted") != -1)){
 						$('#my-select-label-delete').append('<option value="'+colName+'">'+colName+'</option>');
 					}
 
