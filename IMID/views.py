@@ -50,12 +50,13 @@ from IMID.tasks import (
     heatmapPlot,
     runLasso,
     runIntegrate,
-    runDega,
+    runDgea,
     runClustering,
     runGoEnrich,
     runFeRed,
 )
 
+ALLOW_UPLOAD = True
 # from pydeseq2.ds import DeseqStats
 
 
@@ -239,7 +240,7 @@ def eda(request):
 
 
 @auth_required
-def dega(request):
+def dgea(request):
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
         return HttpResponse(checkRes["message"], status=400)
@@ -252,7 +253,7 @@ def dega(request):
     n_genes = request.GET.get("topN", 4)
 
     try:
-        result = runDega.apply_async(
+        result = runDgea.apply_async(
             (clusters, adata, targetLabel, n_genes), serializer="pickle"
         ).get()
     except Exception as e:

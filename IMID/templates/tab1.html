@@ -9,6 +9,7 @@
   label_selected_value='';
   introFlag=1;
   tourCompleted=false;
+  $('#next2EDA').attr('disabled', true);
   function startTour(){
 	introFlag=1;
 	$('#tabs').tabs('option', 'active', 0);
@@ -196,10 +197,10 @@
 			}
 		}
   	});
-	$('#tabs-dega').tabs({
+	$('#tabs-dgea').tabs({
 		activate: function (event, ui) {
 			const tabId = ui.newPanel.attr("id");
-			if (tabId === "tabs-dega-2") {
+			if (tabId === "tabs-dgea-2") {
 				$('#graphDiv1-cluster-gene .img2').each(function () {
 					// Ensure the image is visible and rendered
 					if (!$(this).data('wheelzoom-applied')) {
@@ -324,7 +325,7 @@
 	url+='&cID='+clientUniqueID;
 		$.ajax({
 			url: url,
-			dataType:'json',
+			dataType:'text',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -344,6 +345,22 @@
 				$('#label-numeric-input').val('');
 				$('#label-numeric-input-texts').val('');
 				$('#eda-label-choose').val("<option value='batch2' selected='selected'>LABEL</option>");
+				$('#next2EDA').attr('disabled', false);
+
+				$('#tab3div').hide();
+				$('#tab4div').hide();
+				$('#targetGene').val('');
+				$('#candidateCluster').val('');
+				$('#candidateGeneList').val('');
+				$('#vlnPlot').html('');
+				$('#densityPlot').html('');
+				$('#heatmapPlot').html('');
+				$('#lassoPic').html('');
+				$('#goEnrichPic').html('');
+				$('#lasso_label_name').html("<option value='' selected='selected'>----SELECT----</option>");
+				$('#cluster_num1').html("<option value='' selected='selected'>----SELECT----</option>");
+				$('#go_label_name').html("<option value='' selected='selected'>----SELECT----</option>");
+				$('#cluster_num').html("<option value='' selected='selected'>----SELECT----</option>");
 				integrated=1;
 				if(flag_open==1){
 					metaAdvanced();
@@ -656,7 +673,7 @@ function clusterBtnClick(){
 				$('#graphDiv1-cluster-top-gene').html('<img class="img2" src="data:image/svg+xml;base64,'+response.fileName1+'" width="1000" height="auto"/>');
 				alert('Calculation Succeed!');
 
-				$('#tabs-dega').tabs('option', 'active', 0);
+				$('#tabs-dgea').tabs('option', 'active', 0);
 				$('#graphDiv1-cluster-top-gene .img2').each(function () {
                     wheelzoom(this);
                 });
@@ -837,7 +854,7 @@ function loadCandiGenes()
 	tempCluster=$('#candidateCluster').val();
 	if(tempValue==''||tempCluster=='')return;
 	if(tempValue!='pca')tempValue=tempCluster;
-	url='/dega/candiGenes/?method='+tempValue;
+	url='/dgea/candiGenes/?method='+tempValue;
 	url+='&cID='+clientUniqueID;
 	$('.btn').attr('disabled',true);
 	$.ajax({
@@ -874,7 +891,7 @@ function TGenePlotClick()
 	sep=getSep();
 	tempValue=tempValue.split(sep).join(',');
 	if(tempValue=='')return;
-	url='/dega/plot/?type=vln&geneList='+tempValue+'&groupby='+groupby;
+	url='/dgea/plot/?type=vln&geneList='+tempValue+'&groupby='+groupby;
 	url+='&cID='+clientUniqueID;
 	$('.btn').attr('disabled',true);
 	$('#vlnPlot').html('');
@@ -908,7 +925,7 @@ function TGenePlotClick()
 				return;
 			}
 	});
-	url='/dega/plot/?type=density&geneList='+tempValue;
+	url='/dgea/plot/?type=density&geneList='+tempValue;
 	url+='&cID='+clientUniqueID;
 	$('.btn').attr('disabled',true);
 	$.ajax({
@@ -937,7 +954,7 @@ function TGenePlotClick()
 				return;
 			}
 	});
-	url='/dega/plot/?type=heatmap&geneList='+tempValue+'&groupby='+groupby;
+	url='/dgea/plot/?type=heatmap&geneList='+tempValue+'&groupby='+groupby;
 	url+='&cID='+clientUniqueID;
 	$('.btn').attr('disabled',true);
 	$.ajax({
@@ -1391,8 +1408,8 @@ function label_name_change(targetLabel,targetClusterNum)
     <li><a href="#tabs-1" class="first">Data Collection</a></li>
     <li><a href="#tabs-2" class="second">Data Processing</a></li>
     <li><a href="#tabs-3" class="third">EDA</a></li>
-    <li><a href="#tabs-4" class="fourth">DEGA-Clustering</a></li>
-	<li><a href='#tabs-7' class="fifth">DEGA-Target Gene</a></li>
+    <li><a href="#tabs-4" class="fourth">DGEA-Clustering</a></li>
+	<li><a href='#tabs-7' class="fifth">DGEA-Target Gene</a></li>
     <li><a href="#tabs-5" class="sixth">LASSO FeastureSelect</a></li>
     <li><a href="#tabs-6" class="seventh">Go Enrichment</a></li>
   </ul>
@@ -1504,7 +1521,7 @@ function label_name_change(targetLabel,targetClusterNum)
 	</td>
   	<td style="text-align:right;" colspan='2'>
 		<button id="next2" class="btn btn-danger">&nbsp;&nbsp;Processing&nbsp;&nbsp;</button>
-		<button id="next2EDA" class="btn btn-primary">&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
+		<button id="next2EDA" class="btn btn-primary" disabled>&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
 	</td>
   </tr>
   </table>
@@ -1659,7 +1676,7 @@ function label_name_change(targetLabel,targetClusterNum)
 					<div id='HPara'>
 						<label for='slider1'>Input Param: minSize  <img class='question' style="max-width:3%;" title="The minimum number of samples in a group for that group to be considered a cluster; groupings smaller than this size will be left as noise."/> = &nbsp;</label>
 						<br>
-						<input id='hdbP'  value='20' />
+						<input id='hdbP'  value='5' />
 					</div>
 					<div id='KPara'>
 						<label for='slider1'>Input Param: K  <img class='question' style="max-width:3%;" title="The number of clusters to form as well as the number of centroids to generate."/> =  &nbsp; &nbsp;</label>
@@ -1674,15 +1691,15 @@ function label_name_change(targetLabel,targetClusterNum)
 			</tr>
 	</table>
 	<div id='tab4div'>
-		<div id="tabs-dega" style='width:1250px;'>
+		<div id="tabs-dgea" style='width:1250px;'>
 			<ul>
-			  <li><a href="#tabs-dega-1" id="VbC">Data colored by clusters</a></li>
-			  <li><a href="#tabs-dega-2" id="DE4C">Dotplot of top 4 genes for each cluster</a></li>
+			  <li><a href="#tabs-dgea-1" id="VbC">Data colored by clusters</a></li>
+			  <li><a href="#tabs-dgea-2" id="DE4C">Dotplot of top 4 genes for each cluster</a></li>
 			</ul>
-			<div id="tabs-dega-1">
+			<div id="tabs-dgea-1">
 				<div id='graphDiv1-cluster' class='no-break' style="width:850px; height:850px; overflow-x:scroll; overflow-y:scroll;"></div>
 			</div>
-			<div id="tabs-dega-2">
+			<div id="tabs-dgea-2">
 				<br><br><br>
 					<a id="graphDiv1-cluster-gene-A" href="..."  target="_blank" download="image.svg" style="display: block;">Download Image</a><br><br>
               		<div id="graphDiv1-cluster-gene" class='rotated no-break' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>

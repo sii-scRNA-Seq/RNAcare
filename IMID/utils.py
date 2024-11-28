@@ -261,11 +261,11 @@ def clusteringPostProcess(X2D, adata, method, usr):
     li = adata.obs[method].tolist()
     count_dict = Counter(li)
     for member, count in count_dict.items():
-        if count < 10:
+        if count < 5:
             raise Exception(
                 "The number of data in the cluster "
                 + str(member)
-                + " is less than 10, which will not be able for further analysis."
+                + " is less than 5, which will not be able for further analysis."
             )
 
     traces = zip_for_vis(X2D, list(adata.obs[method]), adata.obs_names.tolist())
