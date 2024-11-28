@@ -204,7 +204,7 @@ def runIntegrate(request, integrate, cID, log2, corrected, usr, fr):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runDega(clusters, adata, targetLabel, n_genes):
+def runDgea(clusters, adata, targetLabel, n_genes):
     try:
         if clusters == "default":
             with plt.rc_context():
@@ -252,7 +252,7 @@ def runDega(clusters, adata, targetLabel, n_genes):
         elif clusters in ("LEIDEN", "HDBSCAN", "KMeans"):
             return getTopGeneCSV(adata, "cluster", n_genes)
     except:
-        raise Exception("Error for running Dega.")
+        raise Exception("Error for running Dgea.")
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
