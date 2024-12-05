@@ -261,11 +261,11 @@ def clusteringPostProcess(X2D, adata, method, usr):
     li = adata.obs[method].tolist()
     count_dict = Counter(li)
     for member, count in count_dict.items():
-        if count < 5:
+        if count < 2:
             raise Exception(
                 "The number of data in the cluster "
                 + str(member)
-                + " is less than 5, which will not be able for further analysis."
+                + " is less than 2, which will not be able for further analysis."
             )
 
     traces = zip_for_vis(X2D, list(adata.obs[method]), adata.obs_names.tolist())
@@ -278,16 +278,16 @@ def clusteringPostProcess(X2D, adata, method, usr):
 
     with plt.rc_context():
         figure1 = io.BytesIO()
+        figure2 = io.BytesIO()
         with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
             sc.tl.rank_genes_groups(adata, groupby=method, method="t-test")
             sc.tl.dendrogram(adata, groupby=method)
             sc.pl.rank_genes_groups_dotplot(
                 adata, n_genes=4, show=False, color_map="bwr"
             )
-            plt.savefig(figure1, format="png", bbox_inches="tight")
-            figure2 = io.BytesIO()
+            plt.savefig(figure1, format="svg", bbox_inches="tight")
             sc.pl.rank_genes_groups(adata, n_genes=20, sharey=False)
-            plt.savefig(figure2, format="png", bbox_inches="tight")
+            plt.savefig(figure2, format="svg", bbox_inches="tight")
     markers = sc.get.rank_genes_groups_df(adata, None)
     usr.setMarkers(markers)
     usr.save()
