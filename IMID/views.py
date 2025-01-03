@@ -724,10 +724,10 @@ def meta_columns(request):
             )
         colName1 = colName + "__crted" + str(count)
         df, adata = usr.getIntegrationData(), usr.getAnndata()
-        conditions = [df[colName] <= threshold[0]]
+        conditions = [df[colName] < threshold[0]]
         for i in range(len(threshold_labels) - 2):
             conditions.append(
-                (df[colName] > threshold[i]) & (df[colName] <= threshold[i + 1])
+                (df[colName] >= threshold[i]) & (df[colName] < threshold[i + 1])
             )
         conditions.append(df[colName] >= threshold[-1])
 
