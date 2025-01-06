@@ -341,14 +341,27 @@ def getTopGeneCSV(adata, groupby, n_genes):
     if len(set(adata.obs[groupby])) > 1:
         with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
             sc.tl.rank_genes_groups(adata, groupby=groupby, method="t-test")
+
         result = adata.uns["rank_genes_groups"]
-        groups = result["names"].dtype.names
-        result_df = pd.DataFrame()
+        groups = result["names"].dtype.names  # Get the cluster names
+        all_info = []
+
+        # Extract all relevant information
         for group in groups:
             top_genes = pd.DataFrame(
-                result["names"][group], columns=[f"TopGene_{group}"]
+                {
+                    "Gene": result["names"][group],
+                    "LogFoldChange": result["logfoldchanges"][group],
+                    "PValue": result["pvals"][group],
+                    "AdjPValue": result["pvals_adj"][group],
+                }
             )
-            result_df = pd.concat([result_df, top_genes], axis=1).loc[: int(n_genes),]
+            top_genes["Cluster"] = group  # Add the cluster name for reference
+            top_genes = top_genes.iloc[: int(n_genes)]  # Select top n genes
+            all_info.append(top_genes)
+
+        # Combine all clusters' data into one DataFrame
+        result_df = pd.concat(all_info, axis=0, ignore_index=True)
         return result_df
     else:
         raise Exception("Only one cluster.")
@@ -360,7 +373,7 @@ def GeneID2SymID(geneList):
         if g.startswith("ENSG"):
             geneIDs.append(g)
     if len(geneIDs) == 0:
-        return geneList
+        return None
     ids_json = json.dumps(geneIDs)
     body = {"api": 1, "ids": ids_json}
     try:
