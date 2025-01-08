@@ -7,6 +7,7 @@ from sklearn.linear_model import LogisticRegressionCV
 import base64
 import io
 import numpy as np
+import scipy.stats as stats
 
 from celery import shared_task
 import pandas as pd
@@ -34,18 +35,24 @@ import plotly.graph_objects as go
 def vlnPlot(geneList, adata, groupby):
     sc.set_figure_params(dpi=100)
     sc.settings.verbosity = 0
+
+    # Check the number of clusters
+    unique_clusters = adata.obs[groupby].unique()
+    # num_clusters = len(unique_clusters)
+
+    # Prepare figure dimensions
     num_genes = len(geneList)
     max_cols = 3
     num_rows = math.ceil(num_genes / max_cols)
-    # Set the figure size based on number of subplots
     fig_width = 4.5 * max_cols
     fig_height = 3 * num_rows
+
     # Create subplots
     fig, axes = plt.subplots(
         num_rows, max_cols, figsize=(fig_width, fig_height), sharex=False, sharey=False
     )
-    # Flatten the axes array for easier indexing
     axes = axes.flatten()
+
     # Iterate over genes and plot
     with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
         with plt.rc_context():
@@ -53,17 +60,37 @@ def vlnPlot(geneList, adata, groupby):
             for i, gene in enumerate(geneList):
                 if i < num_genes:
                     ax = axes[i]
-                    sc.pl.violin(adata, [gene], groupby=groupby, ax=axes[i])
+                    sc.pl.violin(adata, [gene], groupby=groupby, ax=ax)
                     ax.set_title(gene)  # Add title to subplot
 
-            # Remove any unused subplots
+                    # Perform ANOVA (works for both 2 and >2 clusters)
+                    data = [
+                        adata[adata.obs[groupby] == cluster][:, gene]
+                        .X.toarray()
+                        .flatten()
+                        for cluster in unique_clusters
+                    ]
+                    f_stat, p_value = stats.f_oneway(*data)
+                    ax.text(
+                        0.5,
+                        0.95,
+                        f"PValue = {p_value:.2e}",
+                        ha="center",
+                        va="center",
+                        transform=ax.transAxes,
+                        fontsize=10,
+                        color="red",
+                    )
+
+            # Remove unused subplots
             for ax in axes[num_genes:]:
                 fig.delaxes(ax)
 
-            # Adjust layout
+            # Adjust layout and save figure
             plt.tight_layout()
             plt.savefig(figure1, format="svg", bbox_inches="tight")
 
+    # Encode the image to return as base64
     image_data = base64.b64encode(figure1.getvalue()).decode("utf-8")
     return image_data
 

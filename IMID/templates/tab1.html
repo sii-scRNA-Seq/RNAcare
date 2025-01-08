@@ -782,13 +782,13 @@ function golasso(){
 function getTopGenes(t){
 	url='';
 	if(t==1){
-		url='/dgea/?clusters=fileName&topN='+$('#topForFiles').val();
+		url='/dgea/?clusters=fileName&topN=0';
 	}
 	else if(t==2){
-		url='/dgea/?clusters=label&topN='+$('#topForLabels').val();
+		url='/dgea/?clusters=label&topN=0';
 	}
 	else if(t==3){
-		url='/dgea/?clusters='+$('input[type=radio][name=clustering]:checked').val()+'&topN='+$('#topForLabels').val();//LEIDEN,HDBSCAN,Kmeans
+		url='/dgea/?clusters='+$('input[type=radio][name=clustering]:checked').val()+'&topN=0';//LEIDEN,HDBSCAN,Kmeans
 	}
 	else if(t==4){
 		url='/processedFile/corrected/?usr={{ user.get_username }}';
@@ -1618,13 +1618,7 @@ function label_name_change(targetLabel,targetClusterNum)
 				<a id='graphDiv21A' href="..." target="_blank" download="image.svg" style="display: block;">Download Image</a><br><br><br><br><br><br><br><br><br>
   				<div id="graphDiv21" class="rotated no-break" style="width:800px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 				<br><br><br><br><br><br><br><br><br>
-				<p>Customised Top Number of Genes for Download:</p>
-				<select id='topForLabels'>
-					<option value='50' selected='selected'>50</option>
-					<option value='100'>100</option>
-					<option value='500'>500</option>
-  				</select>
-  				<button id='topForLabelsDownloadBtn' class='btn btn-primary' onclick='getTopGenes(2);'>Download Top Genes</button>		
+  				<button id='topForLabelsDownloadBtn' class='btn btn-primary' onclick='getTopGenes(2);'>Download DEGs</button>		
 			</div>
 			<div id="tabs-eda-2">
 				<div id="graphDiv1" class='no-break' style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
@@ -1633,13 +1627,7 @@ function label_name_change(targetLabel,targetClusterNum)
 				<a id='graphDiv11A' href="..." target="_blank" download="image.svg" style="display: block;">Download Image</a><br><br><br><br><br><br><br><br><br>
 				<div id="graphDiv11" class="rotated no-break" style="width:800px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 				<br><br><br><br><br><br><br><br><br>
-				<p>Customised Top Number for Download:</p>
-				<select id='topForFiles'>
-						<option value='50' selected='selected'>50</option>
-						<option value='100'>100</option>
-						<option value='500'>500</option>
-				</select>
-				<button id='topForFilesDownloadBtn' class='btn btn-primary' onclick='getTopGenes(1);'>Download Top Genes</button>
+				<button id='topForFilesDownloadBtn' class='btn btn-primary' onclick='getTopGenes(1);'>Download DEGs</button>
 			</div>
 		</div>
   	</div>
@@ -1704,13 +1692,7 @@ function label_name_change(targetLabel,targetClusterNum)
 					<a id="graphDiv1-cluster-gene-A" href="..."  target="_blank" download="image.svg" style="display: block;">Download Image</a><br><br>
               		<div id="graphDiv1-cluster-gene" class='rotated no-break' style="width:600px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 					<br><br><br>
-					<p>Customised Top Number of Genes for Download:</p>
-						<select id='topForLabels'>
-							<option value='50' selected='selected'>50</option>
-							<option value='100'>100</option>
-							<option value='500'>500</option>
-						</select>
-					<button id='topForLabelsDownloadBtn' class='btn btn-primary' onclick='getTopGenes(3);'>Download Top Genes</button>
+					<button id='topForLabelsDownloadBtn' class='btn btn-primary' onclick='getTopGenes(3);'>Download DEGs</button>
 			</div>
 		</div>
 	<table>

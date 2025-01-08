@@ -346,22 +346,34 @@ def getTopGeneCSV(adata, groupby, n_genes):
         groups = result["names"].dtype.names  # Get the cluster names
         all_info = []
 
-        # Extract all relevant information
+        # Extract all relevant information for each group
         for group in groups:
-            top_genes = pd.DataFrame(
+            filtered_genes = pd.DataFrame(
                 {
-                    "Gene": result["names"][group],
-                    "LogFoldChange": result["logfoldchanges"][group],
-                    "PValue": result["pvals"][group],
-                    "AdjPValue": result["pvals_adj"][group],
+                    f"Gene_{group}": result["names"][group],
+                    f"LogFoldChange_{group}": result["logfoldchanges"][group],
+                    f"PValue_{group}": result["pvals"][group],
+                    f"AdjPValue_{group}": result["pvals_adj"][group],
                 }
             )
-            top_genes["Cluster"] = group  # Add the cluster name for reference
-            top_genes = top_genes.iloc[: int(n_genes)]  # Select top n genes
-            all_info.append(top_genes)
+            filtered_genes[f"Cluster_{group}"] = (
+                group  # Add the cluster name for reference
+            )
 
-        # Combine all clusters' data into one DataFrame
-        result_df = pd.concat(all_info, axis=0, ignore_index=True)
+            # Sort by AdjPValue first (ascending order)
+            filtered_genes = filtered_genes.sort_values(
+                by=f"AdjPValue_{group}", ascending=True
+            ).reset_index(drop=True)
+
+            # Add the sorted DataFrame to the list
+            all_info.append(filtered_genes)
+
+        # Combine all clusters' data into one DataFrame horizontally
+        result_df = pd.concat(all_info, axis=1)
+
+        # Reset the index to ensure sequential indexing
+        result_df = result_df.reset_index(drop=True)
+
         return result_df
     else:
         raise Exception("Only one cluster.")

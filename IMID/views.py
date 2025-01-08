@@ -522,9 +522,10 @@ def candiGenes(request):
                 "There is no different values for the label you chose.", status=400
             )
         number = math.ceil(maxGene / len(clusters))
+        markers = markers.query("scores > 0")
         result = (
             markers.groupby("group")
-            .apply(lambda x: x.nlargest(number, "scores"))
+            .apply(lambda x: x.nsmallest(number, "pvals_adj"))
             .names.tolist()
         )
         return JsonResponse(result, safe=False)
