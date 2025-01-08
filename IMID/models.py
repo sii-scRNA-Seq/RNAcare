@@ -200,6 +200,9 @@ class userData:
             with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
                 sc.tl.rank_genes_groups(adata, groupby=colName, method="t-test")
                 markers = sc.get.rank_genes_groups_df(adata, None)
+            markers = markers.sort_values(by="pvals_adj", ascending=True).reset_index(
+                drop=True
+            )
             return markers
         return None
 
