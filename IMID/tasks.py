@@ -411,11 +411,16 @@ def runFeRed(fr, usr):
             n_components=2,
             random_state=42,
             n_neighbors=min(30, pca_temp.shape[0] // 2),
+            metric="euclidean",
+            init="spectral",
+            n_epochs=None,
+            learning_rate=1.0,
             n_jobs=2,
+            spread=1.0,
+            min_dist=0.1,
         )
         X2D = umap1.fit_transform(pca_temp)
         usr.redMethod = "UMAP"
-
     else:
         pca = PCA(n_components=2, random_state=42)
         X2D = pca.fit_transform(pca_temp)
