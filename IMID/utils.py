@@ -34,7 +34,6 @@ import json
 import io
 import base64
 from threadpoolctl import threadpool_limits
-import anndata as ad
 from sklearn.preprocessing import MinMaxScaler
 from django.shortcuts import render
 from functools import wraps
@@ -439,7 +438,9 @@ def normalize(df, count_threshold=2000):
         df_filtered = df.loc[:, df.sum(axis=0) >= count_threshold]
     else:
         df_filtered = df.copy()
-    adata = ad.AnnData(df_filtered)
+
+    df_filtered = df_filtered.astype(np.float64)
+    adata = sc.AnnData(df_filtered, dtype=np.float64)
     adata.obs.index = [i for i in df_filtered.index]
 
     if is_rnaseq:
@@ -451,6 +452,7 @@ def normalize(df, count_threshold=2000):
         # sc.pp.normalize_total(adata, target_sum=1e6)
         # adata.X = calculate_deseq2_normalization(adata.to_df()) # the result is the same with running CPM()
         adata.X = CPM().fit_transform(adata.to_df())
+
     # counts = adata.to_df()
     # metadata = pd.DataFrame(
     #    {"condition": ["sc1"] * counts.shape[0]}, index=counts.index
@@ -506,7 +508,7 @@ def loadSharedData(request, integrate, cID):
         files = [i.file.path for i in files]
     else:
         files = []
-    files_meta = set()
+    files_meta = []
     in_ta, in_ta1 = {}, {}
     if request.user.groups.exists():
         for i in SharedFile.objects.filter(
@@ -526,7 +528,7 @@ def loadSharedData(request, integrate, cID):
     for i in integrate:
         if i in in_ta:
             files.append(in_ta[i])
-            files_meta.add(in_ta1[i])
+            files_meta.append(in_ta1[i])
     return files, files_meta
 
 
