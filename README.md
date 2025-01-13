@@ -3,12 +3,19 @@ Gene expression analysis is a powerful tool to gain insight into the mechanisms 
 
 # System Implementation and Package dependence
 Project name: RNAcare project 
+
 Project home page: https://github.com/sii-scRNA-Seq/RNA-CARE/https://github.com/sii-scRNA-Seq/RNAcare/ 
+
 Operating system(s): Platform independent 
+
 Compatible bBrowsers: Firefox/Chrome 
+
 Programming language: Python, JavaScript 
+
 Other requirements: Python >= 3.8, Django >= 4.2, Nginx 
+
 Any restrictions to use by non-academics: licence needed 
+
 #### 1. Complete code for migration:
 To copy RNAcare from GitHub and make it runnable on your local machine, you can follow these steps:
 ##### Step 1: Clone the Repository
