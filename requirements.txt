@@ -18,3 +18,4 @@ django_cleanup
 kaleido
 threadpoolctl
 rnanorm
+django-simple-captcha
