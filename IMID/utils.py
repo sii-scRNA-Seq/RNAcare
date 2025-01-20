@@ -11,7 +11,15 @@ from genes_ncbi_proteincoding import GENEID2NT
 import random
 import string
 from .constants import GeneID_URL, NUMBER_CPU_LIMITS
-from .models import Gene, GOTerm, userData, MetaFileColumn, SharedFile, UploadedFile
+from .models import (
+    CustomUser,
+    Gene,
+    GOTerm,
+    userData,
+    MetaFileColumn,
+    SharedFile,
+    UploadedFile,
+)
 from harmony import harmonize
 import pandas as pd
 import numpy as np
@@ -26,9 +34,59 @@ import json
 import io
 import base64
 from threadpoolctl import threadpool_limits
-import anndata as ad
 from sklearn.preprocessing import MinMaxScaler
 from django.shortcuts import render
+from functools import wraps
+import jwt
+import datetime
+from django.conf import settings
+from django.shortcuts import redirect
+
+# from pydeseq2.dds import DeseqDataSet
+# from pydeseq2.default_inference import DefaultInference
+# inference = DefaultInference(n_cpus=NUMBER_CPU_LIMITS)
+
+
+def auth_required(f):
+    @wraps(f)
+    def wrap(request, *args, **kwargs):
+        is_browser = "Mozilla" in request.META.get("HTTP_USER_AGENT", "")
+        if is_browser:
+            if not request.user.is_authenticated:
+                return redirect("login")
+        else:
+            token = request.headers.get("Authorization")
+            if not token or not token.startswith("Bearer "):
+                return JsonResponse(
+                    {"error": "Token is missing or invalid"}, status=401
+                )
+            token = token.split()[1]
+            try:
+                decoded_token = jwt.decode(
+                    token, settings.SECRET_KEY, algorithms=["HS256"]
+                )
+                request.user = CustomUser.objects.get(
+                    username=decoded_token["username"]
+                )
+            except (
+                jwt.ExpiredSignatureError,
+                jwt.InvalidTokenError,
+                CustomUser.DoesNotExist,
+            ):
+                return JsonResponse({"error": "Invalid Token"}, status=401)
+        return f(request, *args, **kwargs)
+
+    return wrap
+
+
+def generate_jwt_token(user):
+    expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=2)
+    token = jwt.encode(
+        {"username": user.username, "exp": expiration},
+        settings.SECRET_KEY,
+        algorithm="HS256",
+    )
+    return token
 
 
 @lru_cache(maxsize=None)
@@ -197,17 +255,16 @@ def bbknn(dfs):
 def clusteringPostProcess(X2D, adata, method, usr):
     if method != "kmeans" and len(set(adata.obs[method])) == 1:
         # throw error for just 1 cluster
-        return HttpResponse("Only 1 Cluster after clustering", status=400)
+        raise Exception("Only 1 Cluster after clustering")
 
     li = adata.obs[method].tolist()
     count_dict = Counter(li)
     for member, count in count_dict.items():
-        if count < 10:
-            return HttpResponse(
+        if count < 2:
+            raise Exception(
                 "The number of data in the cluster "
                 + str(member)
-                + " is less than 10, which will not be able for further analysis.",
-                status=405,
+                + " is less than 2, which will not be able for further analysis."
             )
 
     traces = zip_for_vis(X2D, list(adata.obs[method]), adata.obs_names.tolist())
@@ -220,16 +277,16 @@ def clusteringPostProcess(X2D, adata, method, usr):
 
     with plt.rc_context():
         figure1 = io.BytesIO()
+        figure2 = io.BytesIO()
         with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
             sc.tl.rank_genes_groups(adata, groupby=method, method="t-test")
             sc.tl.dendrogram(adata, groupby=method)
             sc.pl.rank_genes_groups_dotplot(
                 adata, n_genes=4, show=False, color_map="bwr"
             )
-            plt.savefig(figure1, format="png", bbox_inches="tight")
-            figure2 = io.BytesIO()
+            plt.savefig(figure1, format="svg", bbox_inches="tight")
             sc.pl.rank_genes_groups(adata, n_genes=20, sharey=False)
-            plt.savefig(figure2, format="png", bbox_inches="tight")
+            plt.savefig(figure2, format="svg", bbox_inches="tight")
     markers = sc.get.rank_genes_groups_df(adata, None)
     usr.setMarkers(markers)
     usr.save()
@@ -269,37 +326,56 @@ def clusteringPostProcess(X2D, adata, method, usr):
         }
         for i in set(b["batch"].tolist())
     ]
-
-    return JsonResponse(
-        {
-            "traces": traces,
-            "fileName": base64.b64encode(figure1.getvalue()).decode("utf-8"),
-            "fileName1": base64.b64encode(figure2.getvalue()).decode("utf-8"),
-            "bc1": barChart1,
-            "bc2": barChart2,
-        }
-    )
+    return {
+        "traces": traces,
+        "fileName": base64.b64encode(figure1.getvalue()).decode("utf-8"),
+        "fileName1": base64.b64encode(figure2.getvalue()).decode("utf-8"),
+        "bc1": barChart1,
+        "bc2": barChart2,
+        "method": usr.redMethod,
+    }
 
 
 def getTopGeneCSV(adata, groupby, n_genes):
     if len(set(adata.obs[groupby])) > 1:
         with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
             sc.tl.rank_genes_groups(adata, groupby=groupby, method="t-test")
-        result = adata.uns["rank_genes_groups"]
-        groups = result["names"].dtype.names
-        result_df = pd.DataFrame()
-        for group in groups:
-            top_genes = pd.DataFrame(
-                result["names"][group], columns=[f"TopGene_{group}"]
-            )
-            result_df = pd.concat([result_df, top_genes], axis=1).loc[: int(n_genes),]
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = "attachment; filename=topGenes.csv"
-        result_df.to_csv(path_or_buf=response)
-        return response
 
+        result = adata.uns["rank_genes_groups"]
+        groups = result["names"].dtype.names  # Get the cluster names
+        all_info = []
+
+        # Extract all relevant information for each group
+        for group in groups:
+            filtered_genes = pd.DataFrame(
+                {
+                    f"Gene_{group}": result["names"][group],
+                    f"LogFoldChange_{group}": result["logfoldchanges"][group],
+                    f"PValue_{group}": result["pvals"][group],
+                    f"AdjPValue_{group}": result["pvals_adj"][group],
+                }
+            )
+            filtered_genes[f"Cluster_{group}"] = (
+                group  # Add the cluster name for reference
+            )
+
+            # Sort by AdjPValue first (ascending order)
+            filtered_genes = filtered_genes.sort_values(
+                by=f"AdjPValue_{group}", ascending=True
+            ).reset_index(drop=True)
+
+            # Add the sorted DataFrame to the list
+            all_info.append(filtered_genes)
+
+        # Combine all clusters' data into one DataFrame horizontally
+        result_df = pd.concat(all_info, axis=1)
+
+        # Reset the index to ensure sequential indexing
+        result_df = result_df.reset_index(drop=True)
+
+        return result_df
     else:
-        return HttpResponse("Only one cluster", status=500)
+        raise Exception("Only one cluster.")
 
 
 def GeneID2SymID(geneList):
@@ -308,7 +384,7 @@ def GeneID2SymID(geneList):
         if g.startswith("ENSG"):
             geneIDs.append(g)
     if len(geneIDs) == 0:
-        return geneList
+        return None
     ids_json = json.dumps(geneIDs)
     body = {"api": 1, "ids": ids_json}
     try:
@@ -351,17 +427,50 @@ def usrCheck(request, flag=1):
     return {"status": 1, "usrData": usr}
 
 
+from rnanorm import CPM
+
+
 # normalize transcriptomic data
 def normalize(df, count_threshold=2000):
-    df_filtered = df.loc[:, df.sum(axis=0) >= count_threshold]
-    adata = ad.AnnData(df_filtered)
+    df = df[[col for col in df.columns if not (col.startswith("LOC") and len(col) > 8)]]
+    is_rnaseq = df.applymap(lambda x: float(x).is_integer()).mean().mean() > 0.9
+    if is_rnaseq:
+        df_filtered = df.loc[:, df.sum(axis=0) >= count_threshold]
+    else:
+        df_filtered = df.copy()
 
-    sc.pp.normalize_total(adata, target_sum=1e4)
-    return adata.to_df()
+    df_filtered = df_filtered.astype(np.float64)
+    adata = sc.AnnData(df_filtered, dtype=np.float64)
+    adata.obs.index = [i for i in df_filtered.index]
+
+    if is_rnaseq:
+        adata.var["mt"] = adata.var_names.str.startswith("MT-")
+        sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
+        # Filter cells with >5% mitochondrial genes
+        adata = adata[adata.obs.pct_counts_mt < 5, :]
+
+        # sc.pp.normalize_total(adata, target_sum=1e6)
+        # adata.X = calculate_deseq2_normalization(adata.to_df()) # the result is the same with running CPM()
+        adata.X = CPM().fit_transform(adata.to_df())
+
+    # counts = adata.to_df()
+    # metadata = pd.DataFrame(
+    #    {"condition": ["sc1"] * counts.shape[0]}, index=counts.index
+    # )
+    # metadata["condition"][0] = "sc2"
+    # dds = DeseqDataSet(
+    #    counts=counts,
+    #    metadata=metadata,
+    #    design_factors="condition",
+    #    inference=inference,
+    # )
+    # dds.deseq2()
+    # rdf = dds.to_df()
+    return adata
 
 
 # normalize clinic data
-def normalize1(df):
+def normalize1(df, log2="No"):
     # Identify numeric columns
     numeric_columns = df.select_dtypes(include=np.number).columns
     string_columns = df.select_dtypes(exclude=np.number).columns
@@ -370,14 +479,24 @@ def normalize1(df):
     df_numeric = df[numeric_columns]
     df_strings = df[string_columns]
 
-    scaler = MinMaxScaler()
+    # scaler = MinMaxScaler()
 
     # Fit and transform the numeric data
-    df_numeric_normalized = pd.DataFrame(
-        scaler.fit_transform(df_numeric), columns=numeric_columns
-    )
-    df_numeric_normalized.index = df_numeric.index
-    df_normalized = pd.concat([df_strings, df_numeric_normalized], axis=1)
+    if df_numeric.shape[1] > 0:
+        if log2 == "Yes":
+            df_numeric_normalized = np.log1p(df_numeric)
+        else:
+            scaler = MinMaxScaler()
+            df_numeric_normalized = pd.DataFrame(
+                scaler.fit_transform(df_numeric), columns=numeric_columns
+            )
+        df_numeric_normalized.index = df_numeric.index
+        df_normalized = pd.concat([df_strings, df_numeric_normalized], axis=1)
+        df_normalized = df_normalized.loc[
+            :, ~df_normalized.isin([np.inf, -np.inf]).any()
+        ]
+    else:
+        df_normalized = df_strings
     df_normalized.dropna(axis=0, inplace=True)
 
     return df_normalized
@@ -389,7 +508,7 @@ def loadSharedData(request, integrate, cID):
         files = [i.file.path for i in files]
     else:
         files = []
-    files_meta = set()
+    files_meta = []
     in_ta, in_ta1 = {}, {}
     if request.user.groups.exists():
         for i in SharedFile.objects.filter(
@@ -409,7 +528,7 @@ def loadSharedData(request, integrate, cID):
     for i in integrate:
         if i in in_ta:
             files.append(in_ta[i])
-            files_meta.add(in_ta1[i])
+            files_meta.append(in_ta1[i])
     return files, files_meta
 
 
@@ -438,6 +557,7 @@ def integrateExData(files, temp0, log2, corrected):
     dfs = []
     batch = []
     obs = []
+
     for file in files:
         temp01 = pd.read_csv(file).set_index("ID_REF")
         # filter records that have corresponding clinical data in meta files.
@@ -445,21 +565,23 @@ def integrateExData(files, temp0, log2, corrected):
         temp1 = temp.reset_index().drop(
             ["ID_REF", "LABEL"], axis=1, inplace=False
         )  # exclude ID_REF & LABEL
-
+        temp1.index = temp.index
         # exclude NA
         temp1.dropna(axis=1, inplace=True)
         if temp1.shape[0] != 0:
             temp1 = normalize(temp1)
-
             dfs.append(temp1)
             # color2.extend(list(temp.LABEL))
             batch.extend(
-                ["_".join(file.split("_")[1:]).split(".csv")[0]] * temp1.shape[0]
+                ["_".join(file.split("_")[1:]).split(".csv")[0]]
+                * temp1.to_df().shape[0]
             )
             # obs.extend(temp.ID_REF.tolist())
-            obs.extend(temp.index.tolist())
+            obs.extend(temp1.to_df().index.tolist())
     if log2 == "Yes":
-        dfs = [np.log2(i + 1) for i in dfs]
+        dfs = [np.round(np.log2(i.to_df() + 1), 5) for i in dfs]
+    else:
+        dfs = [np.round(i.to_df(), 5) for i in dfs]
 
     dfs1 = None
     if len(dfs) > 1:
@@ -470,7 +592,7 @@ def integrateExData(files, temp0, log2, corrected):
         elif corrected == "BBKNN":
             dfs1 = bbknn(dfs)
     elif len(dfs) == 0:
-        return HttpResponse("No matched data for meta and omics", status=400)
+        return None
     else:
         dfs1 = dfs[0]
 

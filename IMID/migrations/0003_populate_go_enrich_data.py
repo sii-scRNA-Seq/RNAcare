@@ -39,7 +39,7 @@ def delete_go_terms(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('IMID', '0001_initial'),
+        ('IMID', '0002_sharedfileinstance_label'),
     ]
 
     operations = [

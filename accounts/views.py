@@ -5,8 +5,15 @@ from IMID.models import CustomUser
 from django.core.exceptions import ValidationError
 from django.urls import reverse_lazy
 from django.views.generic import CreateView
+from django.contrib.auth.views import LoginView
+from .forms import CustomLoginForm
+from captcha.fields import CaptchaField
+
 
 # Create your views here.
+class CustomLoginView(LoginView):
+    form_class = CustomLoginForm
+    template_name = "registration/login.html"
 
 
 def validate_username(value):
@@ -23,6 +30,7 @@ class SignUpForm(UserCreationForm):
     email = forms.EmailField(
         max_length=100, help_text="Required. Enter a valid email address."
     )
+    captcha = CaptchaField()
 
     class Meta:
         model = CustomUser
