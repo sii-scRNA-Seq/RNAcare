@@ -198,7 +198,7 @@ Note: It is recommended that when naming the fields in meata file, all clinic fe
 
 
 # System Introduction
-![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/0b490eb5-67b2-41b2-8e0a-429618f04aab)
+![image](https://github.com/sii-scRNA-Seq/RNAcare/assets/109546311/0b490eb5-67b2-41b2-8e0a-429618f04aab)
 Gene expression analysis can be instrumental in comparing gene expression levels in diseased patients versus unaffected counterparts, potentially leading to new treatment strategies. Advances in high-throughput gene expression techniques have significantly increased the number of gene expression studies. Our platform facilitates research on data from IMID (Immune-Mediated Inflammatory Diseases) patients, supported by IMID-Bio-UK and funded by the Medical Research Council. IMID-Bio-UK aims to leverage a rich reserve of biosamples, deeply phenotyped clinical cohorts, and high-quality multi-omic data from various national stratified medicine programs.
 
 We developed a user-friendly webserver for on-the-fly analysis of gene expression data, enabling users without programming skills to process and browse RNA-seq and microarray expression datasets, perform comprehensive gene expression analysis, and generate publication-ready figures and reports. The platform supports combining and harmonizing multiple bulk datasets for integrated analysis.
@@ -227,7 +227,7 @@ Our platform is developed in Python, utilizing several widely used packages. The
     8. Gene Plotting: Plot specific genes or candidate genes using violin plots, density plots, or heatmaps.
     9. LASSO Feature Selection: Demonstrate feature importance for specific clusters.
     10. GO Enrichment Analysis: Perform gene ontology analysis for user-selected clusters.
-![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/0d0d5aa7-3c79-46a9-acef-e34574a8b2e4)
+![image](https://github.com/sii-scRNA-Seq/RNAcare/assets/109546311/0d0d5aa7-3c79-46a9-acef-e34574a8b2e4)
 
 # Result and demonstrations
 ## Data collection
@@ -237,16 +237,16 @@ Integration of Omics and Clinical Data
 The main webpage entrance is(assuming you start it at local): http://127.0.0.1:8000/
 
 Our platform supports the integration of multi-omics data with clinical data, facilitating a comprehensive analysis that combines genetic, transcriptomic, proteomic, and metabolomic data with patient-specific clinical information. This integrated approach allows users to uncover more complex and clinically relevant insights. After clicking the ‘Upload’ button in the sidebar, uploaded information about the study and experiment is displayed in the panel. It shows the first 5 rows for dataset with column names. User will have option to select log2 to transform the dataset later. For later calculation.
-![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/574b2abe-420d-4053-9e4d-0059576d7ee6)
+![image](https://github.com/sii-scRNA-Seq/RNAcare/assets/109546311/574b2abe-420d-4053-9e4d-0059576d7ee6)
 
 ## Data harmonisation, and transformation
-![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/c4d28b6f-f3c1-45c3-9239-6d2686ec3be3)
+![image](https://github.com/sii-scRNA-Seq/RNAcare/assets/109546311/c4d28b6f-f3c1-45c3-9239-6d2686ec3be3)
 
 In this tab, user has option to choose shared cohort(s) to intergrate with, and data processing technique to process the data including removing batch effect, log2 transformation and feature reduction methods.  
 
 ## User-Defined and Created Labels
-![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/78efc0a9-da7a-4de2-a94e-28bd47f73f82)
-![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/bbf5dbd2-4fb5-444a-be6c-610809f6b5d6)
+![image](https://github.com/sii-scRNA-Seq/RNAcare/assets/109546311/78efc0a9-da7a-4de2-a94e-28bd47f73f82)
+![image](https://github.com/sii-scRNA-Seq/RNAcare/assets/109546311/bbf5dbd2-4fb5-444a-be6c-610809f6b5d6)
 
 In this section, user can create self-defined fields based on uploaded fields for later analysis as the targeted dependendant variable.
 
@@ -257,26 +257,26 @@ In this section, user can create self-defined fields based on uploaded fields fo
 
 ## Exploratory Data Analysis
 EDA produces several plots, including interactive 2D plots for dimension reduction techniques like t-SNE and UMAP. Users can download corrected data for further analysis.
-![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/4ef55508-69c5-4e19-a8fe-e26f982cdb24)
+![image](https://github.com/sii-scRNA-Seq/RNAcare/assets/109546311/4ef55508-69c5-4e19-a8fe-e26f982cdb24)
 
 ## Differential Gene Expression Analysis(DGEA)
 Apart from visualizing the data by batches, users then have option to cluster the dataset by Kmeans, Leiden and HDBSCAN with some parameter tuning. Then top N genes for the clustering method will be generated. Then, LASSO method will be adopted demonstrating the feature importance for the batches and clusters separately.  At the same time, user can select top N(default=20) differential genes in each group. All figures generated and displayed in the user interface, many of which can be explored interactively on the webserver, are publication-ready quality and can be downloaded with a mouse click in PNG format.
-![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/54a144d1-a6e3-4dc5-8eb5-7d502bfee64c)
+![image](https://github.com/sii-scRNA-Seq/RNAcare/assets/109546311/54a144d1-a6e3-4dc5-8eb5-7d502bfee64c)
 
 Besides, we offer a function by which user can easily trace back the procedure of clustering. User just needs to input the min and max value of the range and the expected number of levels. The algorithm will generate clusters based on the number of intervals between the range.
-![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/05f7592b-579d-4bed-8bf1-2f22dbce5f85)
+![image](https://github.com/sii-scRNA-Seq/RNAcare/assets/109546311/05f7592b-579d-4bed-8bf1-2f22dbce5f85)
 
 ## Specifical gene Plots
-RNA-care equips users to draw their genes of interest based on the clusters set in the preivous steps, either uploaded or defined through the platform. The system can also give some candidate genes by defined algorims. It provides 3 different gene plots: violin plot, density plot and heatmap plot.
-![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/8591e63b-08a4-4ae9-9d44-729e67e3101c)
+RNAcare equips users to draw their genes of interest based on the clusters set in the preivous steps, either uploaded or defined through the platform. The system can also give some candidate genes by defined algorims. It provides 3 different gene plots: violin plot, density plot and heatmap plot.
+![image](https://github.com/sii-scRNA-Seq/RNAcare/assets/109546311/8591e63b-08a4-4ae9-9d44-729e67e3101c)
 
 ## Lasso Feature Selection
 Specifically, users can also select one group in pre-defined clusters to find the differences v.s other groups
-![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/2dbd3c06-34ab-42b5-ae2e-ba8d5faa9522)
+![image](https://github.com/sii-scRNA-Seq/RNAcare/assets/109546311/2dbd3c06-34ab-42b5-ae2e-ba8d5faa9522)
 
 ## Go enrichment Analysis
 Users can perform GO enrichment analysis for specific clusters, enhancing the understanding of biological processes involved.
-![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/6ddb9d06-0179-48d5-8959-942b319a2fbc)
+![image](https://github.com/sii-scRNA-Seq/RNAcare/assets/109546311/6ddb9d06-0179-48d5-8959-942b319a2fbc)
 
 
 
