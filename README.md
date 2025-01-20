@@ -1,29 +1,38 @@
-# RNA-care: RNA-based Clinical Analysis and Research Engine
+# RNAcare: RNA based Clinical Analysis and Research Engine
 Gene expression analysis is a powerful tool to gain insight into the mechanisms and processes underlying the biological and phenotypic differences between sample groups and requires highly professional skills for scientists to access, integrate and analyse gene expression. Previously related research focus on establishing tools and platform form single cell RNA-seq analysis, which provide user-friendly graphic interfaces to perform interactive and reproducible gene expression analysis of microarray and RNA-seq datasets and generate a range of publication ready figures. However, those harmonised datasets are not bulked RNA datasets and not patient specific. For some experiments, patient specific samples are collected and cannot be directly applied by this platform. Our platform, provides a solution for performing interactive and reproducible analysis of microarray and RNA-seq bulked gene expression data, enable medical researchers to perform exploratory data analysis and find different/common pattern among patients with similar diseases without informatics proficiency. 
 
 # System Implementation and Package dependence
+Operating system(s): Platform independent 
+
+Compatible bBrowsers: Firefox/Chrome 
+
+Programming language: Python, JavaScript 
+
+Other requirements: Python >= 3.8, Django >= 4.2, Nginx 
+
+Any restrictions to use by non-academics: licence needed 
+
 #### 1. Complete code for migration:
-To copy a Django project from GitHub, including the SQLite database, and make it runnable on your local machine, you can follow these steps:
+To copy RNAcare from GitHub and make it runnable on your local machine, you can follow these steps:
 ##### Step 1: Clone the Repository
 
 First, clone the repository from GitHub to your local machine.
 
-bash
-```
-git clone https://github.com/username/repo_name.git
-cd repo_name
+```bash
+git clone https://github.com/sii-scRNA-Seq/RNAcare.git
+cd RNAcare/
 ```
 ##### Step 2: Set Up a Virtual Environment(for development, we use python 3.8.19)
 
 It's a good practice to use a virtual environment to manage your project's dependencies.
 
-bash
-```
+
+```bash
 # Install virtualenv if you haven't already
 pip install virtualenv
 
 # Create a virtual environment
-virtualenv venv
+python3 -m virtualenv venv
 
 # Activate the virtual environment
 # On Windows
@@ -35,103 +44,158 @@ source venv/bin/activate
 
 Install the dependencies listed in the requirements.txt file.
 
-bash
-```
+```bash
 pip install -r requirements.txt
 ```
 ##### Step 4: Configure the Django Settings
 
 Ensure the Django settings file is configured correctly. The default settings for SQLite should be fine if you're running it locally.
 
-Open the settings.py file in your Django project directory and check the database settings:
+Open the settings.py file in your Django project directory and check the database settings and modify the uploaded folder:
 
-python
-```
+```python
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / "db.sqlite3",
     }
 }
-```
-##### Step 5: Run Migrations (if needed)
 
-If there have been changes to the models and you need to update the database schema, you can run the migrations. This step might not be necessary if the database file already exists and is up to date.
+# change to your own folder for storing user specific uploaded expression and clinic files and storing the shared cohorts data
+MEDIA_URL = "/data/mingcanIMID/"
+MEDIA_ROOT = os.path.join("/data/mingcanIMID/", "uploaded")
 
-bash
+# change to your local server if it is not 127.0.0.1
+ALLOWED_HOSTS = ["127.0.0.1","https://rna-care.mvls.gla.ac.uk"]
 ```
+You might also want to change the directory for user uploaded files from the default value to some other directory that you have write access to:
+
+```python
+MEDIA_ROOT = os.path.join(BASE_DIR, "uploaded")
+``` 
+##### Step 5: Run Migrations to configure database
+
+In order to create the database `db.sqlite3` and configure the schema, run the following:
+
+```bash
 python manage.py migrate
 ```
+Note: It might take a while to run the step `Applying IMID.0003_populate_go_enrich_data`, depending on your internet connection.
 ##### Step 6: Create a Superuser (if needed)
 
 If you need to create a superuser for accessing the Django admin interface, you can do so with:
 
-bash
-```
+```bash
 python manage.py createsuperuser
 ```
 ##### Step 7: Run the Django Development Server
 
 Finally, run the Django development server to verify that everything is set up correctly.
 
-bash
-```
+```bash
 python manage.py runserver
 ```
 Open your web browser and go to http://127.0.0.1:8000/ to see your Django project running.
 
-#### 5. For the initialization of the database, admin has an option to go to admin interface to upload shared dataset to the tabel:
+###### Step 7.1 (optional): Upload shared data files in admin interface
+
+For the initialization of the database, superusers have an option to go to the admin interface http://127.0.0.1:8000/admin/ to upload shared datasets to the table:
+
 ![image](https://github.com/user-attachments/assets/4390b0bd-3da5-4db6-bc5f-22002611cabc)
 
-
-###### Each dataset should include two files, one is Expression Data and the other is Meta Data. They share the same chort names. SharedFileInstance is used for uploaded shared files management. Then it can be shared among different roles by changing the following info through table SharedFiles:
+Each dataset should include two files, one is Expression Data and the other is Meta Data. They share the same cohort names. SharedFileInstance is used for uploaded shared files management. Then it can be shared among different roles by changing the following info through table SharedFiles:
 
 ![image](https://github.com/user-attachments/assets/66367db5-4b61-464e-94de-f40197885f80)
 
 ![image](https://github.com/user-attachments/assets/e95f177c-e53e-4b8d-a009-045c8e3f9630)
 
+At the same time, superuser needs to assign group(s) to the specific users, as you see in the following picture, this user was assigned to the ORBIT group. By default, users can see data from all cohorts.
 
-###### At the same time, admin needs to assign group(s) to the specific users, as you see in the following picture, this user was assigned to the ORBIT group. By default, users can see data from all cohorts.
 ![image](https://github.com/user-attachments/assets/ab348807-7b96-4abb-a7d2-0fc829d0c985)
 
+##### Step 8: Configure Celery and Redis
 
-#### 6. The sys is built based on django+Celery+Redis to avoid some issue of fig.save for matplot.
-#### 7. In order to use the Celery and Redis, please have a reference about how to set up it. https://realpython.com/asynchronous-tasks-with-django-and-celery/
+The project is built based on Django + Celery + Redis to avoid some issues of fig.save for matplotlib. In order to use Celery and Redis, please have a reference about how to set up it: https://realpython.com/asynchronous-tasks-with-django-and-celery/
 
-To start the Redis server:
-Open another console:
+Install Redis server:
+```bash
+# On Linux/WSL2(Windows)
+sudo apt install redis
+# On macOS
+brew install redis
 ```
+
+To start the Redis server, open another console:
+```bash
 redis-server --port 8001
 ```
-Then open another terminal for test:
-```
+Then open another console for test:
+```bash
 redis-cli -p 8001
 ```
+If successfully connected, you should see a cursor with `127.0.0.1:8001>`.
 
-Note: the reids settings is set up in djangoproject/settings.py with the corresponding port number and serialization method.
-Then open another console to start the cerlery:
-```
+Note: Celery settings are defined in `djangoproject/settings.py`, with the corresponding port number and serialization method for redis.
+
+Open another console to start Celery:
+```bash
 python3 -m celery -A djangoproject worker -l info
 ```
-#### 8. import the user info from old sys to the new(if needed)
-From the old sys folder:
-```
+
+##### Step 9 (optional): Import the user info from old sys to the new (if needed)
+From the old sys folder, run the following to initialise a Django shell:
+```bash
 python manage.py shell
+```
+and then:
+```python
 import pickle
 from django.contrib.auth.models import User
 usrs=User.objects.all()
-with open('user.pkl','wb')as f:
+with open('/old/sys/user.pkl','wb')as f:
     pickle.dump(usrs,f)
+```
 
-Open new sys folder:
+Now run the same `python manage.py shell` command from the new sys folder:
+```python
 from IMID.models import CustomUser
 import pickle
-with open('user.pkl','rb')as f:
+with open('/old/sys/user.pkl','rb')as f:
     users=pickle.load(f)
-for i in users[1:]:
-    CustomUser.objects.create(username=i.username,email=i.email,password=i.password)
-
+for u in users[1:]:
+    CustomUser.objects.create(
+        username=u.username,
+        email=u.email,
+        password=u.password
+    )
 ```
+##### Step 10 (optional): Initialize shared cohorts (if needed)
+In the demonstraion, we provide 3 shared cohorts for optional intergration with user uploaded dataset. They can be downloaded from:
+Admin can also initialize his own shared cohorts by the same way through uploading the expression and meta data at backend.
+
+###### Step 10.1 upload expression and meta data to Shared File Instance
+![image](https://github.com/user-attachments/assets/0d356840-a7fb-4818-a1df-7ab58c3e3dce)
+
+![image](https://github.com/user-attachments/assets/9665fd0a-12e7-4e4c-aeb9-48154a9157e5)
+
+###### Step 10.2 Assign expression and meta files separately to the cohorts which will be filtered by users with matched groups at front end.
+![image](https://github.com/user-attachments/assets/afb70f9b-bc6c-43ff-a5fd-98d2da53cdd4)
+
+Note: Label is used for displaying the help info at the front end
+
+![image](https://github.com/user-attachments/assets/299da697-e3b1-4a3e-acc3-5324b80e7001)
+
+Then you will see the your setup at the front end.
+
+![image](https://github.com/user-attachments/assets/89b65a2f-57b7-4cb4-8a35-e8e72f5b9691)
+
+Note: It is recommended that when naming the fields in meata file, all clinic features should be better start with "c_" for distinguishing from the gene symbol id. And when intergrating different cohorts, their names of clinic features should be identically matched one another in each file. Otherwise, sys will not recognize the common field.
+
+
+
+
+
+
 
 # System Introduction
 ![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/0b490eb5-67b2-41b2-8e0a-429618f04aab)
@@ -185,6 +249,11 @@ In this tab, user has option to choose shared cohort(s) to intergrate with, and 
 ![image](https://github.com/sii-scRNA-Seq/RNA-CARE/assets/109546311/bbf5dbd2-4fb5-444a-be6c-610809f6b5d6)
 
 In this section, user can create self-defined fields based on uploaded fields for later analysis as the targeted dependendant variable.
+
+###### (1) Users can creat new labels based on continuous numerical variables through "Label Generation";
+###### (2) Users then need to activate the created labels (labelled as "*__crtedN") or existing categorical labels through "Label Assignment";
+###### (3) If users don't need the activated labels anymore, they need disactivate those labels, after disactivation, the original labels (numerical one or the categorical one) will be back as independant variables.
+###### (4) Users also have options to delete the newly created "*__crtedN" labels through "Label Delete", but they need to disactive those labels first. Original categorical variables can not be deleted because they are from clinic files.
 
 ## Exploratory Data Analysis
 EDA produces several plots, including interactive 2D plots for dimension reduction techniques like t-SNE and UMAP. Users can download corrected data for further analysis.

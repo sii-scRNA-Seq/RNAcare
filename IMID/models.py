@@ -149,6 +149,7 @@ class userData:
         self.uID = uID
         self.integrationData = pd.DataFrame()  # expression+clinic+label
         self.anndata = None  # expression+clinic for X
+        self.redMethod = ""
 
     def setIntegrationData(self, df):
         df = df.copy().round(15)
@@ -170,13 +171,15 @@ class userData:
         ]
         adata.obs["obs"] = df.LABEL.tolist()
         n_comps = 100
-
-        with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
-            sc.tl.pca(
-                adata,
-                svd_solver="arpack",
-                n_comps=min(t.shape[0] - 1, t.shape[1] - 1, n_comps),
-            )
+        try:
+            with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
+                sc.tl.pca(
+                    adata,
+                    svd_solver="arpack",
+                    n_comps=min(t.shape[0] - 1, t.shape[1] - 1, n_comps),
+                )
+        except Exception as e:
+            raise Exception(f"{e}")
         self.anndata = adata
 
     def setAnndata(self, adata):
@@ -197,6 +200,9 @@ class userData:
             with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
                 sc.tl.rank_genes_groups(adata, groupby=colName, method="t-test")
                 markers = sc.get.rank_genes_groups_df(adata, None)
+            markers = markers.sort_values(
+                by=["pvals_adj", "pvals"], ascending=True
+            ).reset_index(drop=True)
             return markers
         return None
 
@@ -211,13 +217,19 @@ class userData:
         t["FileName"] = self.anndata.obs["batch1"]
         t["obs"] = self.anndata.obs["obs"]
         t["LABEL"] = t["obs"]
+        for i in self.anndata.obs.columns:
+            if "__crted" in i:
+                t[i] = self.anndata.obs[i]
         return t
 
     def getCorrectedClusterCSV(self) -> "pd.DataFrame":
-        t = self.anndata.to_df()
+        t = self.anndata.to_df().round(12)
         t["FileName"] = self.anndata.obs["batch1"]
         t["obs"] = self.anndata.obs["obs"]
         t["LABEL"] = t["obs"]
+        for i in self.anndata.obs.columns:
+            if "__crted" in i:
+                t[i] = self.anndata.obs[i]
         if "cluster" in self.anndata.obs.columns:
             t["cluster"] = self.anndata.obs["cluster"]
             return t
@@ -250,9 +262,9 @@ class userData:
         user_instance = CustomUser.objects.filter(username=user).first()
         if not user_instance:
             return None
-        custom_user = ProcessFile.objects.filter(user=user_instance, cID=cID).first()
-        if not custom_user:
+        custom_upload = ProcessFile.objects.filter(user=user_instance, cID=cID).first()
+        if not custom_upload:
             return None
         else:
-            with open(custom_user.pickle_file.path, "rb") as f:
+            with open(custom_upload.pickle_file.path, "rb") as f:
                 return pickle.loads(f.read())

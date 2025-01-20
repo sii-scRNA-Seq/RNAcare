@@ -3,13 +3,14 @@ from . import views
 
 urlpatterns = [
     # path("", views.index, name="index"),
+    path(r"accounts/rest/login/", views.restLogin, name="restLogin"),
     path(r"GeneLookup/", views.GeneLookup, name="GeneLookup"),
     path(r"geneExpression/", views.opExpression, name="op_expression"),
     path(r"meta/", views.opMeta, name="op_meta"),
     path(r"eda/integrate/", views.edaIntegrate, name="edaIntegrate"),
     path(r"eda/", views.eda, name="eda"),
-    path(r"dega/candiGenes/", views.candiGenes, name="candiGenes"),
-    path(r"dega/plot/", views.genePlot, name="genePlot"),
+    path(r"dgea/candiGenes/", views.candiGenes, name="candiGenes"),
+    path(r"dgea/plot/", views.genePlot, name="genePlot"),
     path(r"dgea/", views.dgea, name="dgea"),
     path(r"cluster/", views.clustering, name="clustering"),
     path(r"cluster/advanced/", views.clusteringAdvanced, name="clusteringAdvanced"),
