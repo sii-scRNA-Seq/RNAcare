@@ -594,7 +594,7 @@ def GeneLookup(request):
         return HttpResponse("geneList is illigal", status=400)
     result = GeneID2SymID(geneList)
     if result is None:
-        return HttpResponse("geneList is illigal", status=400)
+        return HttpResponse("Gene List contains no Ensembl gene IDs (prefix \"ENSG\") to convert", status=400)
     return JsonResponse(result, safe=False)
 
 
