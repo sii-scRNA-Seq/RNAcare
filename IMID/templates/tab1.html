@@ -873,7 +873,7 @@ function loadCandiGenes()
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				$('#targetGene').val(response.join(sep));
+				$('#targetGene').val(JSON.parse(response).join(sep));
 			},
 			error:function(response){
 				alert(response.responseText);
@@ -1010,7 +1010,7 @@ function LookUpGeneID()
 			},
 			success:function(response){
 				$('.btn').attr('disabled',false);
-				$('#targetGene').val(response.join(sep));
+				$('#targetGene').val(JSON.parse(response).join(sep));
 			},
 			error:function(response){
 				alert(response.responseText);
