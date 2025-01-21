@@ -54,6 +54,8 @@ from IMID.tasks import (
     runClustering,
     runGoEnrich,
     runFeRed,
+    runICA,
+    runTopFun,
 )
 
 ALLOW_UPLOAD = True
@@ -403,24 +405,31 @@ def advancedSearch(request):
 
 @auth_required
 def goenrich(request):
-    cluster_n = request.GET.get("cluster_n", None)
     checkRes = usrCheck(request)
     if checkRes["status"] == 0:
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
-
+    cluster_n = request.GET.get("cluster_n", None)
     colName = request.GET.get("colName", None)
+    metagene = request.GET.get("metagene", None)
     if cluster_n is None or colName is None:
-        return HttpResponse("Illegal colName/value for the Label.", status=400)
-
+        if metagene is None:
+            return HttpResponse("Illegal colName/value for the Label.", status=400)
     try:
-        result = runGoEnrich.apply_async(
-            (usr, colName, cluster_n), serializer="pickle"
-        ).get()
+        if metagene is None:
+            result = runGoEnrich.apply_async(
+                (usr, colName, cluster_n), serializer="pickle"
+            ).get()
+        else:
+            if usr.metagenes.empty:
+                return HttpResponse("Please run ICA first.", status=400)
+            result = runTopFun.apply_async(
+                (usr.metageneCompose, metagene), serializer="pickle"
+            ).get()
     except Exception as e:
         return HttpResponse(str(e), status=400)
-    return HttpResponse(result, content_type="image/svg+xml")
+    return JsonResponse(result, safe=False)
 
 
 @auth_required
@@ -433,6 +442,7 @@ def lasso(request):
 
     cluster = request.GET.get("cluster_n", None)  # +1 for R
     colName = request.GET.get("colName", None)
+    useICA = request.GET.get("useICA", "no")
     if cluster is None or colName is None:
         return HttpResponse("Illegal colName/value for the Label.", status=400)
     adata = usr.getAnndata()
@@ -441,9 +451,17 @@ def lasso(request):
     df = adata.to_df().round(12)
     df[colName] = adata.obs[colName].astype(str)
     x = df.drop([colName], axis=1, inplace=False)
-
-    scaler = StandardScaler().fit(x)
-    x = scaler.transform(x)
+    if useICA == "no":
+        scaler = StandardScaler().fit(x)
+        x = scaler.transform(x)
+    else:
+        if usr.metagenes.empty:
+            return HttpResponse("Please run ICA first.", status=400)
+        df2 = x.loc[:, x.columns.str.startswith("c_")]
+        df3 = pd.concat([usr.metagenes, df2], axis=1)
+        scaler = StandardScaler().fit(df3)
+        scaled_df3 = pd.DataFrame(scaler.transform(df3), columns=df3.columns)
+        scaled_df3.index = df3.index.copy()
 
     index = df[colName] == cluster
     index1 = df[colName] != cluster
@@ -452,12 +470,72 @@ def lasso(request):
     y = pd.Categorical(df[colName])
 
     try:
-        image = runLasso.apply_async((x, y, df, colName), serializer="pickle").get()
+        if useICA == "no":
+            image = runLasso.apply_async(
+                (x, y, df.drop([colName], axis=1, inplace=False).columns, 1),
+                serializer="pickle",
+            ).get()
+        else:
+            image = runLasso.apply_async(
+                (scaled_df3, y, df3.columns, 2), serializer="pickle"
+            ).get()
         if image == b"":
             return HttpResponse("No features after filtering.", status=400)
     except Exception as e:
         return HttpResponse("Lasso Failed:" + str(e), status=500)
     return HttpResponse(image, content_type="image/svg+xml")
+
+
+@auth_required
+def ICA(request):
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
+
+    num = request.GET.get("number", None)
+    if num is None:
+        return HttpResponse("Illegal number for the Param.", status=400)
+    try:
+        # Attempt to convert num to an integer
+        num = int(num)
+    except ValueError:
+        # Return an error if num cannot be converted to an integer
+        return HttpResponse("The number parameter must be an integer.", status=400)
+
+    # Check if the integer is within the valid range
+    if not 5 <= num <= 10:
+        return HttpResponse("The number must be between 5 and 10.", status=400)
+
+    result_df = usr.getCorrectedCSV()
+    if result_df.empty:
+        return HttpResponse("You haven't processed the data", status=400)
+    try:
+        metagenes, metageneCompose = runICA.apply_async(
+            (result_df, num), serializer="pickle"
+        ).get()
+    except Exception as e:
+        return HttpResponse("ICA Failed:" + str(e), status=500)
+    usr.metagenes = metagenes
+    usr.metageneCompose = metageneCompose
+    if usr.save() is False:
+        return HttpResponse("Can't save user record", status=500)
+    return HttpResponse("Succeed.", status=200)
+
+
+@auth_required
+def downloadICA(request):
+    checkRes = usrCheck(request)
+    if checkRes["status"] == 0:
+        return HttpResponse(checkRes["message"], status=400)
+    else:
+        usr = checkRes["usrData"]
+    result_df = usr.metagenes
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = "attachment; filename=ica.csv"
+    result_df.to_csv(path_or_buf=response)
+    return response
 
 
 @auth_required
@@ -699,7 +777,8 @@ def meta_columns(request):
         except Exception as e:
             return HttpResponse("Labels creating Problem. " + str(e), status=400)
         finally:
-            usr.save()
+            if usr.save() is False:
+                return HttpResponse("Can't save user record", status=500)
         return HttpResponse("Labels updated successfully.", status=200)
     elif request.method == "POST":
         post_data = json.loads(request.body)
@@ -742,7 +821,8 @@ def meta_columns(request):
         except Exception as e:
             return HttpResponse("Labels creating Problem. " + str(e), status=400)
         finally:
-            usr.save()
+            if usr.save() is False:
+                return HttpResponse("Can't save user record", status=500)
         return HttpResponse("Label created Successfully. ", status=200)
 
 

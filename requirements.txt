@@ -19,3 +19,5 @@ kaleido
 threadpoolctl
 rnanorm
 django-simple-captcha
+sica.base
+sicaomics.annotate

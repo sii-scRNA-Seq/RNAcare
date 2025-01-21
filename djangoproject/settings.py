@@ -43,7 +43,7 @@ SECRET_KEY = "django-insecure-zu!d5pgidhhay!mwgx-515%%0lf%5qs-5w6zaln1crn-^5@xbn
 DEBUG = True
 
 ALLOWED_HOSTS = ["127.0.0.1", "130.209.125.25"]
-
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Application definition
 
@@ -69,6 +69,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "IMID.middleware.restrict_admin.RestrictAdminMiddleware",
 ]
 
 ROOT_URLCONF = "djangoproject.urls"
