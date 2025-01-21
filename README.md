@@ -19,8 +19,8 @@ To copy RNAcare from GitHub and make it runnable on your local machine, you can 
 First, clone the repository from GitHub to your local machine.
 
 ```bash
-git clone https://github.com/sii-scRNA-Seq/RNA-CARE.git
-cd RNA-CARE/
+git clone https://github.com/sii-scRNA-Seq/RNAcare.git
+cd RNAcare/
 ```
 ##### Step 2: Set Up a Virtual Environment(for development, we use python 3.8.19)
 
@@ -66,7 +66,7 @@ MEDIA_URL = "/data/mingcanIMID/"
 MEDIA_ROOT = os.path.join("/data/mingcanIMID/", "uploaded")
 
 # change to your local server if it is not 127.0.0.1
-ALLOWED_HOSTS = ["127.0.0.1","http://rna-care.mvls.gla.ac.uk"]
+ALLOWED_HOSTS = ["127.0.0.1","https://rna-care.mvls.gla.ac.uk"]
 ```
 You might also want to change the directory for user uploaded files from the default value to some other directory that you have write access to:
 
