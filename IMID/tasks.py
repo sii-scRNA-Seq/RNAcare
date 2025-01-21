@@ -20,6 +20,8 @@ from .utils import (
     getTopGeneCSV,
     clusteringPostProcess,
     go_it,
+    delete_inactive_accounts,
+    ICA,
 )
 from django.db import transaction
 from sklearn.manifold import TSNE
@@ -29,6 +31,12 @@ from .models import MetaFileColumn
 import hdbscan
 from sklearn.cluster import KMeans
 import plotly.graph_objects as go
+from sicaomics.annotate import toppfun
+
+
+@shared_task
+def cleanup_inactive_users():
+    delete_inactive_accounts()
 
 
 @shared_task
@@ -143,26 +151,38 @@ def heatmapPlot(geneList, adata, groupby):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runLasso(x, y, df, colName):
+def runLasso(x, y, colNames, num):
     try:
         y = np.array(y)
-        model = LogisticRegressionCV(
-            cv=5,
-            penalty="l1",
-            solver="saga",
-            class_weight="balanced",
-            scoring="roc_auc",
-            random_state=40,
-            n_jobs=-1,
-            max_iter=10000,
-            tol=0.001,
-        )
+        if num == 1:
+            model = LogisticRegressionCV(
+                cv=5,
+                penalty="l1",
+                solver="saga",
+                class_weight="balanced",
+                scoring="roc_auc",
+                random_state=40,
+                n_jobs=-1,
+                max_iter=10000,
+                tol=0.001,
+            )
+        else:
+            model = LogisticRegressionCV(
+                cv=5,
+                penalty="l2",
+                solver="saga",
+                class_weight="balanced",
+                scoring="roc_auc",
+                random_state=40,
+                n_jobs=-1,
+                max_iter=10000,
+                tol=0.001,
+                Cs=np.logspace(-4, 4, 1000),
+            )
         model.fit(x, y)
     except Exception as e:
         raise e
-    coef = pd.Series(
-        model.coef_[0], df.drop([colName], axis=1, inplace=False).columns
-    ).sort_values(key=abs, ascending=False)
+    coef = pd.Series(model.coef_[0], colNames).sort_values(key=abs, ascending=False)
     if len(coef[coef != 0]) == 0:
         return b""
     coef[coef != 0][:50].plot.bar(
@@ -170,7 +190,10 @@ def runLasso(x, y, df, colName):
     )
     plt.xlabel("Features", fontsize=8)
     plt.ylabel("Coefficient Magnitude", fontsize=8)
-    plt.title("Top Features Identified by Lasso Regression", fontsize=10)
+    if num == 1:
+        plt.title("Top Features Identified by Lasso Regression", fontsize=10)
+    else:
+        plt.title("Top Features Identified by Ridge Regression", fontsize=10)
     with io.BytesIO() as buffer:
         plt.savefig(buffer, format="svg", bbox_inches="tight")
         buffer.seek(0)
@@ -198,6 +221,8 @@ def runIntegrate(request, integrate, cID, log2, corrected, usr, fr):
     usr.setIntegrationData(temp)
     X2D = runFeRed.apply(args=[fr, usr]).result
     usr.setFRData(X2D)
+    usr.metagenes = pd.DataFrame()
+    usr.metageneCompose = pd.DataFrame()
     if usr.save() is False:
         raise Exception("Error for creating user records.")
     try:
@@ -358,40 +383,59 @@ def runGoEnrich(usr, colName, cluster_n):
         raise Exception("No marker genes")
     with threadpool_limits(limits=2, user_api="blas"):
         df = go_it(markers.names.values)
-    df1 = df.groupby("class").head(10).reset_index(drop=True)
-
-    fig = go.Figure()
-
-    def fig_add_trace_ontology(fig, df, ontology):
-        fig.add_trace(
-            go.Bar(
-                y=df[df["class"] == ontology.name].term[::-1],
-                x=df[df["class"] == ontology.name].per[::-1],
-                name=ontology.name,
-                customdata=[
-                    "P_corr=" + str(round(i, 5))
-                    for i in df[df["class"] == ontology.name].p_corr[::-1]
-                ],
-                hovertemplate="Ratio: %{x:.5f}<br> %{customdata}",
-                orientation="h",
-                marker={
-                    "color": df[df["class"] == ontology.name].p_corr[::-1],
-                    "colorscale": ontology.color,
-                },
-            )
-        )
-
-    for o in ONTOLOGY.values():
-        fig_add_trace_ontology(fig, df1, o)
-
-    fig.update_layout(
-        barmode="stack",
-        height=1200,
-        uniformtext_minsize=50,
-        uniformtext_mode="hide",
-        xaxis=dict(title="Gene Ratio"),
+    df1 = (
+        df.sort_values(by=["class", "p_corr"])  # Sort by 'class' and then by 'p_corr'
+        .groupby("class")  # Group by 'class'
+        .head(10)  # Take the top 10 rows from each group
+        .reset_index(drop=True)  # Reset the index
     )
-    return base64.b64encode(fig.to_image(format="svg")).decode("utf-8")
+    js = {
+        "data": [
+            {
+                "term": row["term"],
+                "class": row["class"],
+                "p_corr": f"{row['p_corr']:.2e}",
+                "n_genes": row["n_genes"],
+                "n_genes/n_go": f"{row['n_genes/n_go']:.2e}",
+                "genes": ",".join(row["genes"]),
+            }
+            for _, row in df1.iterrows()
+        ]
+    }
+    return js
+
+    # fig = go.Figure()
+
+    # def fig_add_trace_ontology(fig, df, ontology):
+    #     fig.add_trace(
+    #         go.Bar(
+    #             y=df[df["class"] == ontology.name].term[::-1],
+    #             x=df[df["class"] == ontology.name].per[::-1],
+    #             name=ontology.name,
+    #             customdata=[
+    #                 "P_corr=" + str(round(i, 5))
+    #                 for i in df[df["class"] == ontology.name].p_corr[::-1]
+    #             ],
+    #             hovertemplate="Ratio: %{x:.5f}<br> %{customdata}",
+    #             orientation="h",
+    #             marker={
+    #                 "color": df[df["class"] == ontology.name].p_corr[::-1],
+    #                 "colorscale": ontology.color,
+    #             },
+    #         )
+    #     )
+
+    # for o in ONTOLOGY.values():
+    #     fig_add_trace_ontology(fig, df1, o)
+
+    # fig.update_layout(
+    #     barmode="stack",
+    #     height=1200,
+    #     uniformtext_minsize=50,
+    #     uniformtext_mode="hide",
+    #     xaxis=dict(title="Gene Ratio"),
+    # )
+    # return base64.b64encode(fig.to_image(format="svg")).decode("utf-8")
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
@@ -426,3 +470,47 @@ def runFeRed(fr, usr):
         X2D = pca.fit_transform(pca_temp)
         usr.redMethod = "PC"
     return X2D
+
+
+@shared_task(time_limit=180, soft_time_limit=150)
+def runICA(df, num):
+    df = df.copy()
+    df.index.name = "ID_REF"
+    # Drop the columns 'FileName', 'obs', and 'LABEL'
+    df.drop(columns=["FileName", "obs", "LABEL"], inplace=True)
+
+    # Separate the columns
+    # Columns not starting with 'c_'
+    df1 = df.loc[:, ~df.columns.str.startswith("c_")]
+
+    try:
+        metagenes, metageneCompose = ICA(df1, num)
+    except Exception as e:
+        raise e
+    return metagenes, metageneCompose
+
+
+@shared_task(time_limit=180, soft_time_limit=150)
+def runTopFun(metageneCompose, num):
+    Tannot = toppfun.ToppFunAnalysis(
+        data=metageneCompose,
+        threshold=3,
+        method="std",
+        tail="heaviest",
+        convert_ids=True,
+    )
+    df = Tannot.get_analysis(metagene=("metagene_" + str(num)))
+    filtered_df = df[df["Category"] == "Pathway"]
+    jd = {
+        "data": [
+            {
+                "Category": row["Category"],
+                "ID": row["ID"],
+                "Name": row["Name"],
+                "PValue": f"{row['PValue']:.2e}",
+                "Gene_Symbol": row["Gene_Symbol"],
+            }
+            for _, row in filtered_df.iterrows()
+        ]
+    }
+    return jd

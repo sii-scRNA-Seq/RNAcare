@@ -197,6 +197,7 @@
 			}
 		}
   	});
+	$('#tabs-enrich').tabs();
 	$('#tabs-dgea').tabs({
 		activate: function (event, ui) {
 			const tabId = ui.newPanel.attr("id");
@@ -361,6 +362,11 @@
 				$('#cluster_num1').html("<option value='' selected='selected'>----SELECT----</option>");
 				$('#go_label_name').html("<option value='' selected='selected'>----SELECT----</option>");
 				$('#cluster_num').html("<option value='' selected='selected'>----SELECT----</option>");
+
+				if ($.fn.DataTable.isDataTable('#metagenes_table')) {
+					$('#metagenes_table').DataTable().destroy();
+				}
+				$('#metagenes_table').html('');
 				integrated=1;
 				if(flag_open==1){
 					metaAdvanced();
@@ -716,9 +722,13 @@ function goEnrich(){
 	$('.btn').attr('disabled',true);
 	url='/goenrich/?colName='+$('#go_label_name').val()+'&cluster_n='+$('#cluster_num').val();
 	url+='&cID='+clientUniqueID;
+	if ($.fn.DataTable.isDataTable('#goEnrich_table')) {
+		$('#goEnrich_table').DataTable().destroy();
+	}
+	$('#goEnrich_table').html('');
 	$.ajax({
 			url:url,
-			dataType:'text',
+			dataType:'json',
 			cache:false,
 			contentType:false,
 			processData:false,
@@ -731,14 +741,48 @@ function goEnrich(){
 			$('#loader').hide();
 			},
 			success:function(response){
-				$('#goEnrichPic').html('<img class="imgGo" src="data:image/svg+xml;base64,'+response+'" width="500" height="auto"/><br><a href="data:image/svg+xml;base64,'+response+'" download="image.svg" target="_blank">Download Image</a>');
+				table = new DataTable('#goEnrich_table', {
+					data: response.data,
+					columns: [
+						{ data: 'term', title:'term'},
+						{ data: 'class', title:'class' },
+						{ data: 'p_corr', title:'p_corr'},
+						{ data: 'n_genes', title:'n_genes' },
+						{ data: 'n_genes/n_go', title:'n_genes/n_go' },
+						{ data: 'genes', title:'Gene_Symbol' }
+					],
+					columnDefs: [ {
+						targets: 5,
+						render: function ( data, type, row ) {
+							if (type === 'display') {
+								return data.substr(0, 30) + '...';
+							}
+							return data;
+						}
+					} ],
+					order: [],
+					layout: {
+						topStart: {
+							buttons: [
+								{
+									extend:'csv',
+									text:'Download as CSV',
+									filename:'GoEnrichment',
+									exportOptions: {
+										orthogonal: 'export'
+									}
+								}
+							]
+						}
+					}
+				});
+
 				alert('Calculation Succeed!');
-				wheelzoom(document.querySelectorAll('img.imgGo'));
 				$('.btn').attr('disabled',false);
 			},
 			error:function(response){
 				alert(response.responseText);
-				$('#goEnrichPic').html('');
+				$('#goEnrich_table').html('');
 				$('.btn').attr('disabled',false);
 				return;
 			}
@@ -749,6 +793,7 @@ function golasso(){
 	if($('#lasso_label_name').val()==''||$('#cluster_num1').val()==''){alert('Please Select a value.');return;}
 	$('.btn').attr('disabled',true);
 	url='/lasso/?colName='+$('#lasso_label_name').val()+'&cluster_n='+$('#cluster_num1').val();
+	if($('#useICA').is(':checked'))url+='&useICA=yes';
 	url+='&cID='+clientUniqueID;
 	$.ajax({
 			url:url,
@@ -773,6 +818,78 @@ function golasso(){
 			error:function(response){
 				alert(response.responseText);
 				$('#lassoPic').html('');
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+}
+function goICA(){
+	icaValue = parseInt($('#ICAP').val(), 10); // Convert the value to an integer
+	if (isNaN(icaValue) || icaValue < 5 || icaValue > 10) {
+		alert('Please input a value between 5 and 10.');
+		return;
+	}
+	url='/ica/?number='+icaValue;
+	url+='&cID='+clientUniqueID;
+	$.ajax({
+			url:url,
+			dataType:'text',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				alert('Calculation Succeed!');
+				refreshMetagenes();
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				return;
+			}
+	});
+}
+function getMetagenes(){
+	url='/ica/metagenes/';
+	url+='?cID='+clientUniqueID;
+	$('.btn').attr('disabled',true);
+	$.ajax({
+			url:url,
+			dataType:'text',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				const blob = new Blob([response], { type: 'text/csv' });
+   				 // Create a link element to trigger the download
+				const link = document.createElement('a');
+				link.href = window.URL.createObjectURL(blob);
+				link.download = 'export.csv';
+				// Append the link to the document and trigger a click event
+				document.body.appendChild(link);
+				link.click();
+
+				// Remove the link from the document
+				document.body.removeChild(link);
+			},
+			error:function(response){
+				alert(response.responseText);
 				$('.btn').attr('disabled',false);
 				return;
 			}
@@ -820,7 +937,6 @@ function getTopGenes(t){
 				const link = document.createElement('a');
 				link.href = window.URL.createObjectURL(blob);
 				link.download = 'export.csv';
-
 				// Append the link to the document and trigger a click event
 				document.body.appendChild(link);
 				link.click();
@@ -1383,6 +1499,101 @@ function label_name_change(targetLabel,targetClusterNum)
 	});
 }
 
+function refreshMetagenes() {
+    num = $('#ICAP').val();
+    $('#select_metagenes').html('');
+    for (i = 0; i < num; i++) {
+		if(i==0)
+        {
+			$('#select_metagenes').append('<option value=' + i + "  selected='selected'>Metagene_" + i + "</option>");
+		}
+		else{
+			$('#select_metagenes').append('<option value=' + i + '>Metagene_' + i + '</option>');
+		}
+    }
+}
+/*
+$(document).ready(function() {alert('123');
+goMetagenes();
+        });
+*/
+
+function goMetagenes()
+{
+	selectedValue = $('#select_metagenes').val();
+	if(selectedValue==null)return;
+	url='/goenrich/?metagene='+selectedValue;
+	url+='&cID='+clientUniqueID;
+	// If table already exists, destroy it first
+	if ($.fn.DataTable.isDataTable('#metagenes_table')) {
+    $('#metagenes_table').DataTable().destroy();
+  	}
+	$('#metagenes_table').html('');
+	$.ajax({
+			url:url,
+			dataType:'json',
+			cache:false,
+			contentType:false,
+			processData:false,
+			type:'get',
+			async:true,
+			beforeSend:function(){
+			$('#loader').show();
+			},
+			complete:function(){
+			$('#loader').hide();
+			},
+			success:function(response){
+				$('.btn').attr('disabled',false);
+				if(response.data.length==0){
+					alert('No Pathway found!');
+					$('#metagenes_table').html('');
+					return;
+				}
+				table = new DataTable('#metagenes_table', {
+					data: response.data,
+					columns: [
+						{ data: 'Category', title:'Category'},
+						{ data: 'ID', title:'ID' },
+						{ data: 'Name', title:'Name' },
+						{ data: 'PValue', title:'PValue' },
+						{ data: 'Gene_Symbol', title:'Gene_Symbol' }
+					],
+					columnDefs: [ {
+						targets: 4,
+						render: function ( data, type, row ) {
+							if (type === 'display') {
+								return data.substr(0, 30) + '...';
+							}
+							return data;
+						}
+					} ],
+					order: [],
+					layout: {
+						topStart: {
+							buttons: [
+								{
+									extend:'csv',
+									text:'Download as CSV',
+									filename:'topFunEnrichment',
+									exportOptions: {
+										orthogonal: 'export'
+									}
+								}
+							]
+						}
+					}
+				});
+			},
+			error:function(response){
+				alert(response.responseText);
+				$('.btn').attr('disabled',false);
+				$('#metagenes_table').html('');
+				return;
+			}
+	});
+}
+
   </script>
   
   <style>
@@ -1410,8 +1621,9 @@ function label_name_change(targetLabel,targetClusterNum)
     <li><a href="#tabs-3" class="third">EDA</a></li>
     <li><a href="#tabs-4" class="fourth">DGEA-Clustering</a></li>
 	<li><a href='#tabs-7' class="fifth">DGEA-Target Gene</a></li>
-    <li><a href="#tabs-5" class="sixth">LASSO FeastureSelect</a></li>
-    <li><a href="#tabs-6" class="seventh">Go Enrichment</a></li>
+	<li><a href='#tabs-8' class="fifth">ICA</a></li>
+    <li><a href="#tabs-5" class="sixth">Regularisation</a></li>
+    <li><a href="#tabs-6" class="seventh">Enrichment</a></li>
   </ul>
   <div id="tabs-1">
     <fieldset name="Multiple Files Upload">
@@ -1765,9 +1977,33 @@ function label_name_change(targetLabel,targetClusterNum)
 	<div id="heatmapPlot" class='no-break'></div>
 
   </div>
-  
+  <div id="tabs-8">
+	<h2>ICA: Clinical Fields uploaded previously must be named as strings starting with 'c_' (for example 'c_das').</h2>
+	<p>Independent component analysis attempts to decompose a multivariate signal into independent non-Gaussian signals.
+	<br>We introduced ICA into transcriptomics to decompose the gene expression matrix into a number of independent components. Each independent component was characterized by a co-expression pattern and was associated with certain meaningful biological pathway. 
+	</p>
+	<table>
+		<tr>
+		  <td style="text-align:left;width:50%">
+			  <label>Input number of components: <img class='question' style="max-width:2%;" title="choose the number for decomposition. Advice: 5-10."/></label>
+			  <br><input id='ICAP'  value='7' />	
+			  <br><br>
+			  <br>
+		  </td>
+		  <td style="text-align:left;width:50%">
+			  <button id="cluster_btn" class="btn btn-primary" onclick="goICA();">Run ICA</button>
+		  </td>
+	  </tr>
+	  <tr>
+	  <td colspan='2'>
+		<button id='metagenesDownloadBtn' class='btn btn-primary' onclick='getMetagenes();'>Download Metagenes</button>
+	  </td>
+	  </tr>
+	</table>
+
+  </div>
   <div id='tabs-5'>
-  	<p>Select one Label/Cluster of interest for Feature Selection by Lasso:&nbsp;<img class='question' style="max-width:0.8%;" title="<p>LASSO regression, also known as L1 regularization, is a popular technique used in statistical modeling and machine learning to estimate the relationships between variables and make predictions. LASSO stands for Least Absolute Shrinkage and Selection Operator.</p><p>The primary goal of LASSO regression is to find a balance between model simplicity and accuracy. It achieves this by adding a penalty term to the traditional linear regression model, which encourages sparse solutions where some coefficients are forced to be exactly zero. This feature makes LASSO particularly useful for feature selection, as it can automatically identify and discard irrelevant or redundant variables.</p>"/></p>
+  	<p>Select one Label/Cluster of interest for Regularisation by Lasso&nbsp;<img class='question' style="max-width:0.8%;" title="<p>Lasso regression, also known as L1 regularization, is a popular technique used in statistical modeling and machine learning to estimate the relationships between variables and make predictions. LASSO stands for Least Absolute Shrinkage and Selection Operator.</p><p>The primary goal of LASSO regression is to find a balance between model simplicity and accuracy. It achieves this by adding a penalty term to the traditional linear regression model, which encourages sparse solutions where some coefficients are forced to be exactly zero. This feature makes LASSO particularly useful for feature selection, as it can automatically identify and discard irrelevant or redundant variables.</p>"/>/Ridge:&nbsp;<img class='question' style="max-width:0.8%;" title="<p>Ridge regression is a method of estimating the coefficients of multiple-regression models in scenarios where the independent variables are highly correlated.</p><p>It is particularly useful to mitigate the problem of multicollinearity in linear regression, which commonly occurs in models with large numbers of parameters. In general, the method provides improved efficiency in parameter estimation problems in exchange for a tolerable amount of bias (see bias–variance tradeoff).</p>"/></p>
 	<table>
   		<tr>
 			<td style="text-align:left;width:50%">
@@ -1782,9 +2018,11 @@ function label_name_change(targetLabel,targetClusterNum)
 				<select id='cluster_num1'>
 					<option value='' selected='selected'>----SELECT----</option>
 				</select>
+				<br><br>
+				<input type="checkbox" id="useICA" value="yes"><label>&nbsp;Use ICA features? &nbsp;&nbsp;&nbsp;<b>No-Lasso; Yes-Ridge</b></label>
 			</td>
 			<td style="text-align:left;width:50%">
-				<button id="cluster_btn" class="btn btn-primary" onclick="golasso();">Lasso</button>
+				<button id="cluster_btn" class="btn btn-primary" onclick="golasso();">Run regularisation</button>
 			</td>
 		</tr>
 		<tr>
@@ -1796,32 +2034,51 @@ function label_name_change(targetLabel,targetClusterNum)
   </div>
   
   <div id='tabs-6'>
-  	<p>Select one Label/Cluster of interest for Go Enrichment Analysis:&nbsp;<img class='question' style="max-width:0.8%;" title="<p>GO (Gene Ontology) enrichment analysis is a computational method used in bioinformatics to identify overrepresented gene ontology terms associated with a set of genes. Gene Ontology provides a standardized vocabulary for annotating the molecular functions, biological processes, and cellular components of genes and gene products.</p>"/></p>
-  	<table>
-  		<tr>
-			<td style="text-align:left;width:50%">
-				<label>Select Label/Cluster:</label>
-				<br>
-				<select id='go_label_name' onchange="label_name_change('go_label_name','cluster_num');">
-					<option value='' selected='selected'>----SELECT----</option>
-				</select>
-				<br><br>
-				<label>Select Class of interest of Cluster:</label>
-				<br>
-				<select id='cluster_num'>
-					<option value='' selected='selected'>----SELECT----</option>
-				</select>
-			</td>
-			<td style="text-align:left;width:50%;">
-			<button id="cluster_btn" class="btn btn-primary" onclick="goEnrich();">Go Enrichment</button>
-			</td>
-		</tr>
-		<tr>
-		<td colspan='2'>
-		<div id='goEnrichPic' class='no-break' style="width:1200px; overflow-x:scroll; overflow-y:scroll; text-align:center;"></div>
-		</td>
-		</tr>
-  	</table>
+	<div id="tabs-enrich" style='width:1250px;'>
+		<ul>
+		  <li><a href="#tabs-enrich-1" id="en1">Go enrich by genes</a></li>
+		  <li><a href="#tabs-enrich-2" id="en2">enrich by Metagenes</a></li>
+		</ul>
+		<div id="tabs-enrich-1">
+			<p>Select one Label/Cluster of interest for Go Enrichment Analysis:&nbsp;<img class='question' style="max-width:0.8%;" title="<p>GO (Gene Ontology) enrichment analysis is a computational method used in bioinformatics to identify overrepresented gene ontology terms associated with a set of genes. Gene Ontology provides a standardized vocabulary for annotating the molecular functions, biological processes, and cellular components of genes and gene products.</p>"/></p>
+			<table>
+				<tr>
+				  <td style="text-align:left;width:50%">
+					  <label>Select Label/Cluster:</label>
+					  <br>
+					  <select id='go_label_name' onchange="label_name_change('go_label_name','cluster_num');">
+						  <option value='' selected='selected'>----SELECT----</option>
+					  </select>
+					  <br><br>
+					  <label>Select Class of interest of Cluster:</label>
+					  <br>
+					  <select id='cluster_num'>
+						  <option value='' selected='selected'>----SELECT----</option>
+					  </select>
+				  </td>
+				  <td style="text-align:left;width:50%;">
+				  <button id="cluster_btn" class="btn btn-primary" onclick="goEnrich();">Go Enrichment</button>
+				  </td>
+			  </tr>
+			  <tr>
+			  <td colspan='2'>
+			  <table id="goEnrich_table" class="display" style="width:100%"></table>
+			  </td>
+			  </tr>
+			</table>
+		</div>
+		<div id="tabs-enrich-2">
+			<p>Select the metagenes of interest during the regularization step.</p>
+			<select id='select_metagenes'>
+			</select>
+			<button id="metagenes_btn" class="btn btn-primary" style="margin-left:100px;" onclick="goMetagenes();">Enrichment Analysis</button>
+			<br><br>
+			<table id="metagenes_table"  class="display" style="width:100%"></table>
+		</div>
+	</div>
+
+
+  	
   </div>
 
 {% endblock %}
