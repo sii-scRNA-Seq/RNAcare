@@ -19,5 +19,5 @@ kaleido
 threadpoolctl
 rnanorm
 django-simple-captcha
-sica.base
-sicaomics.annotate
+stabilized-ica
+git+https://github.com/ncaptier/sica-omics.git
