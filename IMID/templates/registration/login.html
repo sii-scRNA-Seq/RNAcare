@@ -14,17 +14,69 @@
       <h1 class="welcome-message">Accounts will be deleted<br><br>if not active for 90 days.</h1>
   </div>
     <!-- Login Section -->
-    <div class="login-form">
-        <h2>Log In</h2>
-        <form method="post">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit" class="btn btn-primary">Log In</button>
-            <input type="button" class="btn btn-primary" style="width:100px;" onclick="location.href='/accounts/signup/'" value="Sign Up" />
-            <br>
-            <a href="/accounts/password_reset/">Forgot Password?</a>
-        </form>
-    </div>
+    <div class="login-form" style="width: 300px; margin: 20px auto; padding: 20px;">
+      <h2 style="text-align: center; margin-bottom: 20px;">Log In</h2>
+      <form method="post" class="needs-validation" novalidate>
+          {% csrf_token %}
+          <div style="margin-bottom: 15px;">
+              <label for="id_username" style="display: block; margin-bottom: 5px;">Username:</label>
+              <input type="text" name="{{ form.username.name }}" id="{{ form.username.id_for_label }}" 
+                     style="width: 100%; padding: 8px; box-sizing: border-box;" 
+                     {% if form.username.value %}value="{{ form.username.value }}"{% endif %}>
+              {% if form.username.errors %}
+              <ul style="color: red; margin: 5px 0; padding-left: 20px;">
+                  {% for error in form.username.errors %}
+                  <li>{{ error }}</li>
+                  {% endfor %}
+              </ul>
+              {% endif %}
+          </div>
+          <div style="margin-bottom: 15px;">
+              <label for="id_password" style="display: block; margin-bottom: 5px;">Password:</label>
+              <input type="password" name="{{ form.password.name }}" id="{{ form.password.id_for_label }}"
+                     style="width: 100%; padding: 8px; box-sizing: border-box;">
+              {% if form.password.errors %}
+              <ul style="color: red; margin: 5px 0; padding-left: 20px;">
+                  {% for error in form.password.errors %}
+                  <li>{{ error }}</li>
+                  {% endfor %}
+              </ul>
+              {% endif %}
+          </div>
+          <div style="margin-bottom: 15px;">
+              <label style="display: block; margin-bottom: 5px;">Captcha:</label>
+              <div style="width: 100%;">
+                  {{ form.captcha }}
+              </div>
+              <style>
+                  #id_captcha_1 {
+                      width: 100% !important;
+                      padding: 8px !important;
+                      box-sizing: border-box !important;
+                      margin-top: 5px !important;
+                  }
+                  .captcha > img {
+                      width: 100%;
+                      height: auto;
+                      margin-bottom: 5px;
+                  }
+              </style>
+              {% if form.captcha.errors %}
+              <ul style="color: red; margin: 5px 0; padding-left: 20px;">
+                  {% for error in form.captcha.errors %}
+                  <li>{{ error }}</li>
+                  {% endfor %}
+              </ul>
+              {% endif %}
+          </div>
+          <button type="submit" style="width: 100%; padding: 8px; margin-bottom: 10px; background-color: #007bff; color: white; border: none;">Log In</button>
+          <input type="button" onclick="location.href='/accounts/signup/'" value="Sign Up" style="width: 100%; padding: 8px; margin-bottom: 10px; background-color: #6c757d; color: white; border: none;">
+          <a href="/accounts/password_reset/" style="display: block; text-align: center; text-decoration: none; color: #007bff;">Forgot Password?</a>
+      </form>
+  </div>
+      
+  </div>
+</div>
 </div>
 
     <!-- Footer -->

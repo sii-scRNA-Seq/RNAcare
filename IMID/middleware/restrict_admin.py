@@ -1,4 +1,4 @@
-from django.http import HttpResponseForbidden
+from django.shortcuts import redirect
 
 ALLOWED_ADMIN_IPS = ['127.0.0.1','130.209.125.25']  # Replace with allowed IPs
 
@@ -8,7 +8,12 @@ class RestrictAdminMiddleware:
 
     def __call__(self, request):
         # Check if the request is for the admin panel
-        if request.path.startswith('/admin/') and request.META.get('REMOTE_ADDR') not in ALLOWED_ADMIN_IPS:
-            return HttpResponseForbidden("You are not allowed to access this page.")
+        ip = request.META.get('HTTP_X_FORWARDED_FOR')
+        if ip:
+            ip = ip.split(',')[0].strip()
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        if request.path.startswith('/admin/') and ip not in ALLOWED_ADMIN_IPS:
+            return redirect('/accounts/login/')
         return self.get_response(request)
 
