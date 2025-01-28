@@ -191,7 +191,12 @@ Then you will see the your setup at the front end.
 
 Note: It is recommended that when naming the fields in meata file, all clinic features should be better start with "c_" for distinguishing from the gene symbol id. And when intergrating different cohorts, their names of clinic features should be identically matched one another in each file. Otherwise, sys will not recognize the common field.
 
-
+##### Step 11 (optional): Nginx setting
+Edit your Nginx configuration file (e.g., /etc/nginx/sites-available/your_site.conf) and ensure it includes the following directive inside the appropriate location or server block:
+```
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Real-IP $remote_addr;
+```
 
 
 
