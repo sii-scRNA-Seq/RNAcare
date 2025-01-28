@@ -151,3 +151,5 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "IMID.CustomUser"
 MEDIA_URL = "/data/mingcanIMID/"
 MEDIA_ROOT = os.path.join("/data/mingcanIMID/", "uploaded")
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
