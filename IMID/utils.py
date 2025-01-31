@@ -41,6 +41,20 @@ import jwt
 import datetime
 from django.conf import settings
 from django.shortcuts import redirect
+from datetime import timedelta
+from django.utils.timezone import now
+from django.contrib.auth import get_user_model
+from sica.base import StabilizedICA
+from rnanorm import CPM
+
+
+def delete_inactive_accounts():
+    User = get_user_model()
+    threshold_date = now() - timedelta(days=90)
+    inactive_users = User.objects.filter(last_login__lt=threshold_date)
+    count = inactive_users.count()
+    inactive_users.delete()
+
 
 # from pydeseq2.dds import DeseqDataSet
 # from pydeseq2.default_inference import DefaultInference
@@ -197,19 +211,14 @@ def go_it(test_genes):
                 x.p_fdr_bh,
                 x.ratio_in_study[0],
                 GOTerm.objects.get(name=x.GO).gene.count(),
+                list(GOTerm.objects.get(name=x.GO).gene.values_list("name", flat=True)),
             ],
             goea_result_sig,
         ),
-        columns=[
-            "term",
-            "class",
-            "p_corr",
-            "n_genes",
-            "n_go",
-        ],
+        columns=["term", "class", "p_corr", "n_genes", "n_go", "genes"],
         index=map(lambda x: x.GO, goea_result_sig),
     )
-    go_df["per"] = go_df.n_genes / go_df.n_go
+    go_df["n_genes/n_go"] = go_df.n_genes / go_df.n_go
     return go_df
 
 
@@ -289,7 +298,8 @@ def clusteringPostProcess(X2D, adata, method, usr):
             plt.savefig(figure2, format="svg", bbox_inches="tight")
     markers = sc.get.rank_genes_groups_df(adata, None)
     usr.setMarkers(markers)
-    usr.save()
+    if usr.save() is False:
+        raise Exception("Error for creating user records.")
     b = (
         adata.obs.sort_values(["batch1", method])
         .groupby(["batch1", method])
@@ -427,9 +437,6 @@ def usrCheck(request, flag=1):
     return {"status": 1, "usrData": usr}
 
 
-from rnanorm import CPM
-
-
 # normalize transcriptomic data
 def normalize(df, count_threshold=2000):
     df = df[[col for col in df.columns if not (col.startswith("LOC") and len(col) > 8)]]
@@ -543,7 +550,6 @@ def integrateCliData(request, integrate, cID, files_meta):
         for i in files_meta:
             if temp0.shape == (0, 0):
                 temp0 = pd.read_csv(i).dropna(axis=1, inplace=False)
-
             else:
                 temp0 = pd.concat(
                     [temp0, pd.read_csv(i).dropna(axis=1, inplace=False)],
@@ -645,3 +651,23 @@ def getMeta(request, cID, flag=1):
     context["metaFile"]["d"] = data
     context["metaFile"]["names"] = ["index"] + df.columns.to_list()
     return render(request, "table.html", {"root": context})
+
+
+from sklearn.preprocessing import StandardScaler
+
+
+def ICA(df11, num):
+    ta11 = df11.copy()
+    sICA = StabilizedICA(n_components=num, n_runs=30, plot=False, n_jobs=-1)
+    # ta11 = ta11.apply(func=lambda x: x - x.mean(), axis=0)
+    sICA.fit(ta11)
+    metageneCompose = pd.DataFrame(
+        sICA.S_,
+        columns=ta11.columns.values,
+        index=["metagene_" + str(i) for i in range(sICA.S_.shape[0])],
+    )
+    metagenes = sICA.transform(ta11)
+    metagenes = pd.DataFrame(
+        metagenes, columns=[i for i in metageneCompose.index], index=ta11.index
+    )
+    return metagenes, metageneCompose

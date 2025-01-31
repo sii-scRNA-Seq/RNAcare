@@ -33,4 +33,6 @@ urlpatterns = [
         views.downloadCorrectedCluster,
         name="downloadCorrectedCluster",
     ),
+    path(r"ica/metagenes/", views.downloadICA, name="downloadICA"),
+    path(r"ica/", views.ICA, name="ica"),
 ]

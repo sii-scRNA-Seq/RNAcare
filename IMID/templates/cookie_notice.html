@@ -1,0 +1,17 @@
+{% if not request.COOKIES.accepted_cookies %}
+<div id="cookie-notice" style="display: block;">
+        <p>
+            We use cookies to enhance your experience. By continuing to visit this site you agree to our use of cookies.
+            <button id="accept-cookies" style="margin-left: 10px; padding: 5px 10px; background-color: #4CAF50; color: white;">Got it!</button>
+        </p>
+</div>
+<script>
+    document.getElementById('accept-cookies').addEventListener('click', function() {
+        // Set a cookie that expires in 1 year
+        document.cookie = "accepted_cookies=true; max-age=" + 60 * 60 * 24 * 365 + "; path=/";
+        // Hide the cookie notice
+        document.getElementById('cookie-notice').style.display = 'none';
+    });
+</script>
+{% endif %}
+
