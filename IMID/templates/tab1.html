@@ -1373,20 +1373,20 @@ function labelNumericConfirm()
 	pattern = /^(\d+(\.\d+)?)(,\d+(\.\d+)?)*$/;
 	if(!pattern.test(inp))
 	{
-		alert('Illegal input for thredhold(s). Correct format case: 3.5,4.75');
+		alert('Illegal input for threshold(s). Correct format case: 3.5,4.75');
 		return;
 	}
 	pattern =/^[^,]+(?:,[^,]+)*$/;
 	if(!pattern.test(text))
 	{
-		alert('Illegal input for values for thredhold(s). Correct format case: A,B,C');
+		alert('Illegal input for values for threshold(s). Correct format case: A,B,C');
 		return;
 	}
 	inp=inp.split(',');
 	text=text.split(',');
 	if(text.length!=inp.length+1)
 	{
-		alert('Two inputs don\'t match.');
+		alert('Mismatched number of labels. Expected: ' + (inp.length+1));
 		return;
 	}
 	url='/meta/columns/?';
