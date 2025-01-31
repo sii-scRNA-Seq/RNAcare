@@ -42,7 +42,7 @@ SECRET_KEY = "django-insecure-zu!d5pgidhhay!mwgx-515%%0lf%5qs-5w6zaln1crn-^5@xbn
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["127.0.0.1", "130.209.125.25"]
+ALLOWED_HOSTS = ["127.0.0.1"]
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Application definition
@@ -149,7 +149,8 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "IMID.CustomUser"
-MEDIA_URL = "/data/mingcanIMID/"
-MEDIA_ROOT = os.path.join("/data/mingcanIMID/", "uploaded")
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "uploaded")
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
