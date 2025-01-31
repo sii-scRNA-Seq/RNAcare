@@ -620,12 +620,12 @@ def genePlot(request):
     geneList = request.GET.get("geneList", None)
     groupby = request.GET.get("groupby", "cluster")
     if geneList is None:
-        return HttpResponse("geneList is Required", status=400)
+        return HttpResponse("Gene List is required", status=400)
     try:
         geneList = geneList.split(",")
         geneList = [i for i in geneList if i != "None"]
     except:
-        return HttpResponse("geneList is illigal", status=400)
+        return HttpResponse("Gene List is illegal", status=400)
 
     adata = usr.getAnndata()
     if adata is None:
@@ -664,15 +664,15 @@ def genePlot(request):
 def GeneLookup(request):
     geneList = request.GET.get("geneList", None)
     if geneList is None:
-        return HttpResponse("geneList is Required", status=400)
+        return HttpResponse("Gene List is required", status=400)
     try:
         geneList = geneList.split(",")
         geneList = [i for i in geneList if i != "None"]
     except:
-        return HttpResponse("geneList is illigal", status=400)
+        return HttpResponse("Gene List is illegal", status=400)
     result = GeneID2SymID(geneList)
     if result is None:
-        return HttpResponse("geneList is illigal", status=400)
+        return HttpResponse("Gene List contains no Ensembl gene IDs (prefix \"ENSG\") to convert", status=400)
     return JsonResponse(result, safe=False)
 
 
