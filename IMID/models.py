@@ -150,6 +150,8 @@ class userData:
         self.integrationData = pd.DataFrame()  # expression+clinic+label
         self.anndata = None  # expression+clinic for X
         self.redMethod = ""
+        self.metagenes = pd.DataFrame()
+        self.metageneCompose = pd.DataFrame()
 
     def setIntegrationData(self, df):
         df = df.copy().round(15)

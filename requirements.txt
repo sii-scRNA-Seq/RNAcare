@@ -8,7 +8,7 @@ leidenalg
 pandas
 plotly
 scanpy
-scikit-learn
+scikit-learn==1.3.2
 matplotlib
 umap-learn
 bs4
@@ -19,3 +19,5 @@ kaleido
 threadpoolctl
 rnanorm
 django-simple-captcha
+stabilized-ica
+git+https://github.com/ncaptier/sica-omics.git
