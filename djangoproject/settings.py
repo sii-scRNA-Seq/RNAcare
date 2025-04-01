@@ -21,12 +21,12 @@ import os
 
 # Celery settings
 
-CELERY_BROKER_URL = "redis://localhost:8001"
+CELERY_BROKER_URL = "redis://localhost:6379"
 
 #: Only add pickle to this list if your broker is secured
 #: from unwanted access (see userguide/security.html)
 CELERY_ACCEPT_CONTENT = ["pickle", "json"]
-CELERY_RESULT_BACKEND = "redis://localhost:8001"
+CELERY_RESULT_BACKEND = "redis://localhost:6379"
 CELERY_TASK_SERIALIZER = "pickle"
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -42,7 +42,7 @@ SECRET_KEY = "django-insecure-zu!d5pgidhhay!mwgx-515%%0lf%5qs-5w6zaln1crn-^5@xbn
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["127.0.0.1"]
+ALLOWED_HOSTS = ["127.0.0.1", "130.209.125.25"]
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Application definition
@@ -151,6 +151,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "IMID.CustomUser"
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "uploaded")
+# MEDIA_ROOT = os.path.join(BASE_DIR, "uploaded")
+MEDIA_ROOT = os.path.join("/data/mingcanIMID/", "uploaded")
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

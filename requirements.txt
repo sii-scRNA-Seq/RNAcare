@@ -21,3 +21,5 @@ rnanorm
 django-simple-captcha
 stabilized-ica
 git+https://github.com/ncaptier/sica-omics.git
+PyJWT
+

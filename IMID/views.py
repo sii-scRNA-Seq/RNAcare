@@ -884,7 +884,15 @@ def meta_column_values(request, colName):
             return HttpResponse("No such colName called:" + colName, status=400)
         elif col.label == "1":
             return HttpResponse("Please make {colName} inactive first.", status=400)
-        MetaFileColumn.objects.filter(
-            user=request.user, cID=usr.cID, colName=colName, label="0"
-        ).delete()
+        try:
+            with transaction.atomic():
+                MetaFileColumn.objects.filter(
+                    user=request.user, cID=usr.cID, colName=colName, label="0"
+                ).delete()
+                usr.integrationData = usr.integrationData.drop(columns=[colName,])
+        except Exception as e:
+            return HttpResponse("Labels creating Problem. " + str(e), status=400)
+        finally:
+            if usr.save() is False:
+                return HttpResponse("Can't save user record", status=500)
         return HttpResponse("Delete {colName} Successfully.", status=200)
