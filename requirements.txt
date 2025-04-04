@@ -8,7 +8,7 @@ leidenalg
 pandas
 plotly
 scanpy
-scikit-learn==1.3.2
+scikit-learn==1.5.1
 matplotlib
 umap-learn
 bs4
