@@ -13,7 +13,7 @@ class RestrictAdminMiddleware:
             ip = ip.split(',')[0].strip()
         else:
             ip = request.META.get('REMOTE_ADDR')
-#        if request.path.startswith('/admin/') and ip not in ALLOWED_ADMIN_IPS:
-#            return redirect('/accounts/login/')
+        if request.path.startswith('/admin/') and ip not in ALLOWED_ADMIN_IPS:
+            return redirect('/accounts/login/')
         return self.get_response(request)
 
