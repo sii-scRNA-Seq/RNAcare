@@ -7,8 +7,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "djangoproject.settings")
 
 app = Celery(
     "djangoproject",
-    broker="redis://127.0.0.1:8001",
-    backend="redis://localhost:8001",
+    broker="redis://127.0.0.1:6379",
+    backend="redis://localhost:6379",
     include=["IMID.tasks"],
 )
 
@@ -21,7 +21,7 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
 app.conf.update(
-    result_expires=3600,
+    result_expires=5,
     task_serializer="pickle",
     result_serializer="pickle",
     accept_content=["pickle", "json"],

@@ -21,12 +21,12 @@ import os
 
 # Celery settings
 
-CELERY_BROKER_URL = "redis://localhost:8001"
+CELERY_BROKER_URL = "redis://localhost:6379"
 
 #: Only add pickle to this list if your broker is secured
 #: from unwanted access (see userguide/security.html)
 CELERY_ACCEPT_CONTENT = ["pickle", "json"]
-CELERY_RESULT_BACKEND = "redis://localhost:8001"
+CELERY_RESULT_BACKEND = "redis://localhost:6379"
 CELERY_TASK_SERIALIZER = "pickle"
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.

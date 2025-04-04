@@ -237,9 +237,9 @@ def eda(request):
         "dfs2": traces1,
         "labels": labels,
         "method": usr.redMethod,
+        "vol_values":[i for i in set(adata.obs['batch2'].tolist())]
     }
     return JsonResponse(context)
-
 
 @auth_required
 def dgea(request):
@@ -253,14 +253,20 @@ def dgea(request):
 
     clusters = request.GET.get("clusters", "default")
     n_genes = request.GET.get("topN", 4)
+    treat = request.GET.get("treat","")
 
     try:
         result = runDgea.apply_async(
-            (clusters, adata, targetLabel, n_genes), serializer="pickle"
+            (clusters, adata, targetLabel, n_genes, treat), serializer="pickle"
         ).get()
     except Exception as e:
         return HttpResponse(str(e), status=500)
     if type(result) is list:
+        if treat=="":
+            usr.anndata = result[1]
+            result = result[0]
+            if usr.save() is False:
+                return HttpResponse("Can't save user record", status=500)
         return JsonResponse(result, safe=False)
     else:
         response = HttpResponse(content_type="text/csv")
@@ -884,7 +890,15 @@ def meta_column_values(request, colName):
             return HttpResponse("No such colName called:" + colName, status=400)
         elif col.label == "1":
             return HttpResponse("Please make {colName} inactive first.", status=400)
-        MetaFileColumn.objects.filter(
-            user=request.user, cID=usr.cID, colName=colName, label="0"
-        ).delete()
+        try:
+            with transaction.atomic():
+                MetaFileColumn.objects.filter(
+                    user=request.user, cID=usr.cID, colName=colName, label="0"
+                ).delete()
+                usr.integrationData = usr.integrationData.drop(columns=[colName,])
+        except Exception as e:
+            return HttpResponse("Labels creating Problem. " + str(e), status=400)
+        finally:
+            if usr.save() is False:
+                return HttpResponse("Can't save user record", status=500)
         return HttpResponse("Delete {colName} Successfully.", status=200)
