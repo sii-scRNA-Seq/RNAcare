@@ -420,7 +420,12 @@
 						$('#eda-label-choose').append("<option value='"+temp_r+"'>"+response.labels[i]+"</option>");
 						$('#candidateCluster').append("<option value='"+temp_r+"'>"+response.labels[i]+"</option>");
 					}
-				}	
+				}
+				$('#tabs-eda-3-vol-select').html("<option value='' selected='selected'>----SELECT----</option>");
+                                for(i=0;i<response.vol_values.length;i++)
+				{
+					$('#tabs-eda-3-vol-select').append('<option value="'+response.vol_values[i]+'">'+response.vol_values[i]+'</option>');
+				}
 				$.ajax({
 					url: '/dgea/?cID='+clientUniqueID+'&label='+$('#eda-label-choose').val(),
 					dataType:'json',
@@ -528,7 +533,31 @@
     });
 
   });
-
+function volChange(){
+	val1 =$('#tabs-eda-3-vol-select').val();
+	if(val1=='')return;
+	url1 ='dgea/?label=batch2&clusters=volcano&treat='+val1+'&cID='+clientUniqueID;
+	$.ajax({
+                        url: url1,
+                        dataType:'json',
+                        cache:false,
+                        contentType:'application/json',
+                        processData:false,
+                        type:'get',
+                        beforeSend:function(){
+                        $('#loader').show();
+                        },
+                        complete:function(){
+                        $('#loader').hide();
+                        },
+                        success:function(response){
+                                $('#vol-plot').attr('src','data:image/svg+xml;base64,'+response[0]);
+                        },
+                        error:function(response){
+                                alert(response.responseText);
+                        }
+        });
+}
 function initDf(){
 	$('#preview1').html('');
 	$('#preview2').html('');
@@ -1728,8 +1757,9 @@ function goMetagenes()
 	</td>
   </tr>
   <tr>
-	<td>
-		<div id="metaAdvancedSettingClick" onclick="metaAdvanced();" title="Click to create new labels based on Meta File Data.">&gt;&gt;Enable Meta File Advanced Settings</div>
+	  <td>
+		<div id="metaAdvancedSettingClick" onclick="metaAdvanced();" title="Click to create new labels based on Meta File Data.">&gt;&gt;Enable Meta File Advanced Setitings
+		</div>
 	</td>
   	<td style="text-align:right;" colspan='2'>
 		<button id="next2" class="btn btn-danger">&nbsp;&nbsp;Processing&nbsp;&nbsp;</button>
@@ -1737,8 +1767,13 @@ function goMetagenes()
 	</td>
   </tr>
   </table>
-  <div id="metaAdvancedSetting">
-	
+<div id="metaAdvancedSetting">
+	<div class='legend-info'>
+	<strong>Operation Order: </strong>
+	<br><b>1. After clicking 'Processing' for integration, create label based on continuous variables via 'Label Generation';</b><br>
+	<b>2. Select it via Label Assignment and confim the operation.</b>
+	</div>
+	<br>
 	<div id="tabs-label" style='width:1250px;'>
 		<ul>
 		  <li><a href="#tabs-label-1">Label Generation</a></li>
@@ -1823,6 +1858,7 @@ function goMetagenes()
 			<ul>
 			  <li><a href="#tabs-eda-1" id="VbL">Data processed by Labels</a></li>
 			  <li><a href="#tabs-eda-2" id="VbF">Data processed by FileNames</a></li>
+			  <li><a href="#tabs-eda-3" id="Vbv">Volcano plot of LABEL</a></li>
 			</ul>
 			<div id="tabs-eda-1">
 				<div id="graphDiv2" class='no-break' style="width:850px;height:850px;overflow-x:scroll; overflow-y:scroll;"></div>
@@ -1840,6 +1876,13 @@ function goMetagenes()
 				<div id="graphDiv11" class="rotated no-break" style="width:800px;height:500px; overflow-x:scroll; overflow-y:scroll;"></div>
 				<br><br><br><br><br><br><br><br><br>
 				<button id='topForFilesDownloadBtn' class='btn btn-primary' onclick='getTopGenes(1);'>Download DEGs</button>
+			</div>
+			<div id="tabs-eda-3">
+				<p>Choose the Value for Volcano plot</p>
+				<select id="tabs-eda-3-vol-select" onchange="volChange();">
+				</select>
+				<br><br>
+				<img id='vol-plot' style='width:800px;'>
 			</div>
 		</div>
   	</div>

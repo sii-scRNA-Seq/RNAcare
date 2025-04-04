@@ -32,7 +32,7 @@ import hdbscan
 from sklearn.cluster import KMeans
 import plotly.graph_objects as go
 from sicaomics.annotate import toppfun
-
+from sanbomics.plots import volcano
 
 @shared_task
 def cleanup_inactive_users():
@@ -256,7 +256,7 @@ def runIntegrate(request, integrate, cID, log2, corrected, usr, fr):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runDgea(clusters, adata, targetLabel, n_genes):
+def runDgea(clusters, adata, targetLabel, n_genes, treat=''):
     try:
         if clusters == "default":
             with plt.rc_context():
@@ -296,7 +296,24 @@ def runDgea(clusters, adata, targetLabel, n_genes):
                         figure2 = base64.b64encode(figure2.getvalue()).decode("utf-8")
                     else:
                         figure2 = ""
-                return [figure1, figure2]
+                return [[figure1, figure2],adata]
+        elif clusters == "volcano":
+            gene_names = adata.uns["rank_genes_groups"]["names"][treat]
+            df = pd.DataFrame({
+                "log2FoldChange": adata.uns["rank_genes_groups"]["logfoldchanges"][treat],
+                "padj": adata.uns["rank_genes_groups"]["pvals"][treat],
+                "symbol":gene_names
+            }, index=gene_names)
+            with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
+                fig, ax = plt.subplots()
+                volcano(df)
+                figure1 = io.BytesIO()
+                plt.savefig(figure1, format="svg", bbox_inches="tight")
+                plt.close(fig)
+                # Encode as base64
+                figure1.seek(0)
+                image_data = base64.b64encode(figure1.getvalue()).decode("utf-8")
+            return [image_data,]
         elif clusters == "fileName":
             return getTopGeneCSV(adata, "batch1", n_genes)
         elif clusters == "label":
