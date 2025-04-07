@@ -10,6 +10,7 @@ urlpatterns = [
     path(r"eda/integrate/", views.edaIntegrate, name="edaIntegrate"),
     path(r"eda/", views.eda, name="eda"),
     path(r"dgea/candiGenes/", views.candiGenes, name="candiGenes"),
+    path(r"dgea/plot/", views.genePlot, name="genePlot"),
     path(r"dgea/", views.dgea, name="dgea"),
     path(r"cluster/", views.clustering, name="clustering"),
     path(r"cluster/advanced/", views.clusteringAdvanced, name="clusteringAdvanced"),
