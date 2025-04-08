@@ -422,6 +422,7 @@
 					}
 				}
 				$('#tabs-eda-3-vol-select').html("<option value='' selected='selected'>----SELECT----</option>");
+				$('#vol-plot').attr('src','');
                                 for(i=0;i<response.vol_values.length;i++)
 				{
 					$('#tabs-eda-3-vol-select').append('<option value="'+response.vol_values[i]+'">'+response.vol_values[i]+'</option>');
@@ -1763,7 +1764,7 @@ function goMetagenes()
   	<td style="text-align:right;" colspan='2'>
 		<button id="next2" class="btn btn-danger">&nbsp;&nbsp;Processing&nbsp;&nbsp;</button>
 		<button id="next2EDA" class="btn btn-primary" disabled>&nbsp;&nbsp;Next&nbsp;&nbsp;</button>
-	</td>
+	</td>x
   </tr>
   </table>
 <div id="metaAdvancedSetting">
@@ -1879,7 +1880,7 @@ function goMetagenes()
 			<div id="tabs-eda-3">
 				<p>Choose the Value for Volcano plot</p>
 				<select id="tabs-eda-3-vol-select" onchange="volChange();">
-				</select>
+				</select> vs rest
 				<br><br>
 				<img id='vol-plot' style='width:800px;'>
 			</div>
