@@ -1,6 +1,6 @@
 from django.shortcuts import redirect
 
-ALLOWED_ADMIN_IPS = ['127.0.0.1','130.209.125.25']  # Replace with allowed IPs
+ALLOWED_ADMIN_IPS = ['127.0.0.1','130.209.52.199','130.209.151.193', '130.209.127.243']  # Replace with allowed IPs
 
 class RestrictAdminMiddleware:
     def __init__(self, get_response):

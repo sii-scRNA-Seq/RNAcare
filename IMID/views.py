@@ -61,7 +61,6 @@ from IMID.tasks import (
 ALLOW_UPLOAD = True
 # from pydeseq2.ds import DeseqStats
 
-
 def restLogin(request):
     if request.method != "POST":
         return HttpResponse("Method not allowed.", status=405)
@@ -207,7 +206,6 @@ def edaIntegrate(request):
         return HttpResponse(str(e), status=500)
     return HttpResponse("Operation successful.", status=200)
 
-
 @auth_required
 def eda(request):
     checkRes = usrCheck(request)
@@ -274,7 +272,6 @@ def dgea(request):
         result.to_csv(path_or_buf=response)
         return response
 
-
 @auth_required
 def clustering(request):
     checkRes = usrCheck(request)
@@ -299,7 +296,6 @@ def clustering(request):
     except Exception as e:
         return HttpResponse(str(e), status=400)
     return JsonResponse(result)
-
 
 @auth_required
 def clusteringAdvanced(request):
@@ -844,9 +840,7 @@ def meta_column_values(request, colName):
     if colName.lower() == "Cluster".lower():
         colName = "cluster"
     if request.method == "GET":
-        if colName in adata.obs_keys() and not np.issubdtype(
-            adata.obs[colName].dtype, np.number
-        ):
+        if colName in adata.obs_keys() and not pd.api.types.is_numeric_dtype(adata.obs[colName]):
             temp = list(set(adata.obs[colName]))
             if len(temp) == 1:
                 return HttpResponse(
