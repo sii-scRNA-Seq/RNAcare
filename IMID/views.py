@@ -235,7 +235,7 @@ def eda(request):
         "dfs2": traces1,
         "labels": labels,
         "method": usr.redMethod,
-        "vol_values":[i for i in set(adata.obs['batch2'].tolist())]
+        "vol_values":[i for i in set(adata.obs[targetLabel].tolist())]
     }
     return JsonResponse(context)
 

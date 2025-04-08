@@ -296,14 +296,14 @@ def runDgea(clusters, adata, targetLabel, n_genes, treat=''):
                         figure2 = base64.b64encode(figure2.getvalue()).decode("utf-8")
                     else:
                         figure2 = ""
-                    if targetLabel=="batch2":
-                        adata.uns["rank_genes_groups_batch2"] = adata.uns["rank_genes_groups"].copy()
+                    #if targetLabel=="batch2":
+                    #    adata.uns["rank_genes_groups_batch2"] = adata.uns["rank_genes_groups"].copy()
                 return [[figure1, figure2],adata]
         elif clusters == "volcano":
-            if "rank_genes_groups_batch2" not in adata.uns.keys():
-                temp1 = adata.uns["rank_genes_groups"]
-            else:
-                temp1 = adata.uns["rank_genes_groups_batch2"]
+            #if "rank_genes_groups_batch2" not in adata.uns.keys():
+            #    temp1 = adata.uns["rank_genes_groups"]
+            #else:
+            temp1 = adata.uns["rank_genes_groups"].copy()
             gene_names = temp1["names"][treat]
             df = pd.DataFrame({
                 "log2FoldChange": temp1["logfoldchanges"][treat],
