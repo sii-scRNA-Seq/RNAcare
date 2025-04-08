@@ -150,7 +150,7 @@ def heatmapPlot(geneList, adata, groupby):
     return image_data
 
 
-@shared_task(time_limit=180, soft_time_limit=150)
+@shared_task(time_limit=300, soft_time_limit=280)
 def runLasso(x, y, colNames, num):
     try:
         y = np.array(y)
@@ -296,12 +296,18 @@ def runDgea(clusters, adata, targetLabel, n_genes, treat=''):
                         figure2 = base64.b64encode(figure2.getvalue()).decode("utf-8")
                     else:
                         figure2 = ""
+                    if targetLabel=="batch2":
+                        adata.uns["rank_genes_groups_batch2"] = adata.uns["rank_genes_groups"].copy()
                 return [[figure1, figure2],adata]
         elif clusters == "volcano":
-            gene_names = adata.uns["rank_genes_groups"]["names"][treat]
+            if "rank_genes_groups_batch2" not in adata.uns.keys():
+                temp1 = adata.uns["rank_genes_groups"]
+            else:
+                temp1 = adata.uns["rank_genes_groups_batch2"]
+            gene_names = temp1["names"][treat]
             df = pd.DataFrame({
-                "log2FoldChange": adata.uns["rank_genes_groups"]["logfoldchanges"][treat],
-                "padj": adata.uns["rank_genes_groups"]["pvals"][treat],
+                "log2FoldChange": temp1["logfoldchanges"][treat],
+                "padj": temp1["pvals"][treat],
                 "symbol":gene_names
             }, index=gene_names)
             with threadpool_limits(limits=NUMBER_CPU_LIMITS, user_api="blas"):
@@ -320,8 +326,8 @@ def runDgea(clusters, adata, targetLabel, n_genes, treat=''):
             return getTopGeneCSV(adata, targetLabel, n_genes)
         elif clusters in ("LEIDEN", "HDBSCAN", "KMeans"):
             return getTopGeneCSV(adata, "cluster", n_genes)
-    except:
-        raise Exception("Error for running Dgea.")
+    except Exception as e:
+        raise Exception(str(e)+"Error for running Dgea.")
 
 
 @shared_task(time_limit=180, soft_time_limit=150)

@@ -455,11 +455,9 @@ def normalize(df, count_threshold=2000):
         sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
         # Filter cells with >5% mitochondrial genes
         adata = adata[adata.obs.pct_counts_mt < 5, :]
-
         # sc.pp.normalize_total(adata, target_sum=1e6)
         # adata.X = calculate_deseq2_normalization(adata.to_df()) # the result is the same with running CPM()
         adata.X = CPM().fit_transform(adata.to_df())
-
     # counts = adata.to_df()
     # metadata = pd.DataFrame(
     #    {"condition": ["sc1"] * counts.shape[0]}, index=counts.index
