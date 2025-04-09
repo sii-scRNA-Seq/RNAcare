@@ -27,7 +27,7 @@ from django.db import transaction
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 import umap.umap_ as umap
-from .models import MetaFileColumn
+from .models import MetaFileColumn, CustomUser, userData
 import hdbscan
 from sklearn.cluster import KMeans
 import plotly.graph_objects as go
@@ -202,9 +202,11 @@ def runLasso(x, y, colNames, num):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runIntegrate(request, integrate, cID, log2, corrected, usr, fr):
-    files, files_meta = loadSharedData(request, integrate, cID)
-    temp0 = integrateCliData(request, integrate, cID, files_meta)
+def runIntegrate(username, integrate, cID, log2, corrected, fr):
+    user = CustomUser.objects.get(username=username)
+    usr = userData.read(username, cID)
+    files, files_meta = loadSharedData(user, integrate, cID)
+    temp0 = integrateCliData(user, integrate, cID, files_meta)
     if temp0.shape == (0, 0):
         raise Exception("Can't find meta file")
     if len(files) == 0:
@@ -228,7 +230,7 @@ def runIntegrate(request, integrate, cID, log2, corrected, usr, fr):
     try:
         with transaction.atomic():
             new_file_columns = []
-            MetaFileColumn.objects.filter(user=request.user, cID=cID).delete()
+            MetaFileColumn.objects.filter(user=user, cID=cID).delete()
             for cn in temp0.columns:
                 if cn == "LABEL":
                     label = "1"
@@ -239,7 +241,7 @@ def runIntegrate(request, integrate, cID, log2, corrected, usr, fr):
                 else:
                     num_flag = "0"
                 temp_meta = MetaFileColumn(
-                    user=request.user,
+                    user=user,
                     cID=cID,
                     colName=cn,
                     label=label,

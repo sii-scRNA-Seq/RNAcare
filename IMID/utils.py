@@ -507,21 +507,21 @@ def normalize1(df, log2="No"):
     return df_normalized
 
 
-def loadSharedData(request, integrate, cID):
-    files = UploadedFile.objects.filter(user=request.user, type1="exp", cID=cID).all()
+def loadSharedData(user, integrate, cID):
+    files = UploadedFile.objects.filter(user=user, type1="exp", cID=cID).all()
     if files:
         files = [i.file.path for i in files]
     else:
         files = []
     files_meta = []
     in_ta, in_ta1 = {}, {}
-    if request.user.groups.exists():
+    if user.groups.exists():
         for i in SharedFile.objects.filter(
-            type1="expression", groups__in=request.user.groups.all()
+            type1="expression", groups__in=user.groups.all()
         ).all():
             in_ta[i.cohort] = i.file.path
         for i in SharedFile.objects.filter(
-            type1="meta", groups__in=request.user.groups.all()
+            type1="meta", groups__in=user.groups.all()
         ).all():
             in_ta1[i.cohort] = i.file.path
     else:
@@ -537,8 +537,8 @@ def loadSharedData(request, integrate, cID):
     return files, files_meta
 
 
-def integrateCliData(request, integrate, cID, files_meta):
-    f = UploadedFile.objects.filter(user=request.user, type1="cli", cID=cID).first()
+def integrateCliData(user, integrate, cID, files_meta):
+    f = UploadedFile.objects.filter(user=user, type1="cli", cID=cID).first()
     if f is not None:
         temp0 = pd.read_csv(f.file.path)
         temp0 = temp0.dropna(axis=1)

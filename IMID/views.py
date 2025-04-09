@@ -200,7 +200,7 @@ def edaIntegrate(request):
 
     try:
         result = runIntegrate.apply_async(
-            (request, integrate, cID, log2, corrected, usr, fr), serializer="pickle"
+            (request.user.username, integrate, cID, log2, corrected, fr), serializer="json"
         ).get()
     except Exception as e:
         return HttpResponse(str(e), status=500)
