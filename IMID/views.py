@@ -246,8 +246,8 @@ def dgea(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
+    cID = request.GET.get("cID", None)
     targetLabel = request.GET.get("label", "batch2")
-    adata = usr.getAnndata()
 
     clusters = request.GET.get("clusters", "default")
     n_genes = request.GET.get("topN", 4)
@@ -255,7 +255,7 @@ def dgea(request):
 
     try:
         result = runDgea.apply_async(
-            (clusters, adata, targetLabel, n_genes, treat), serializer="pickle"
+            (request.user.username, cID, clusters, targetLabel, n_genes, treat), serializer="json"
         ).get()
     except Exception as e:
         return HttpResponse(str(e), status=500)

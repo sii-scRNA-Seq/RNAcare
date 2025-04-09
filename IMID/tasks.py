@@ -258,7 +258,9 @@ def runIntegrate(username, integrate, cID, log2, corrected, fr):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runDgea(clusters, adata, targetLabel, n_genes, treat=''):
+def runDgea(username, cID, clusters, targetLabel, n_genes, treat=''):
+    usr = userData.read(username, cID)
+    adata = usr.getAnndata()
     try:
         if clusters == "default":
             with plt.rc_context():
