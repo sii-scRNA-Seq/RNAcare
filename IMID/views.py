@@ -411,6 +411,7 @@ def goenrich(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
+    cID = request.GET.get("cID", None)
     cluster_n = request.GET.get("cluster_n", None)
     colName = request.GET.get("colName", None)
     metagene = request.GET.get("metagene", None)
@@ -420,7 +421,7 @@ def goenrich(request):
     try:
         if metagene is None:
             result = runGoEnrich.apply_async(
-                (usr, colName, cluster_n), serializer="pickle"
+                (request.user.username, cID, colName, cluster_n), serializer="json"
             ).get()
         else:
             if usr.metagenes.empty:

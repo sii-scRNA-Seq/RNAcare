@@ -393,7 +393,8 @@ def runClustering(username, cID, cluster, X2D, param):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runGoEnrich(usr, colName, cluster_n):
+def runGoEnrich(username, cID, colName, cluster_n):
+    usr = userData.read(username, cID)
     df = usr.getCorrectedCSV()
     if (
         any(df.columns.str.startswith("c_")) is True
