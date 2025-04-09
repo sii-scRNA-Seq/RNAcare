@@ -427,7 +427,7 @@ def goenrich(request):
             if usr.metagenes.empty:
                 return HttpResponse("Please run ICA first.", status=400)
             result = runTopFun.apply_async(
-                (usr.metageneCompose, metagene), serializer="pickle"
+                (request.user.username, cID, metagene), serializer="json"
             ).get()
     except Exception as e:
         return HttpResponse(str(e), status=400)
@@ -495,7 +495,7 @@ def ICA(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
-
+    cID = request.GET.get("cID", None)
     num = request.GET.get("number", None)
     if num is None:
         return HttpResponse("Illegal number for the Param.", status=400)
@@ -515,7 +515,7 @@ def ICA(request):
         return HttpResponse("You haven't processed the data", status=400)
     try:
         metagenes, metageneCompose = runICA.apply_async(
-            (result_df, num), serializer="pickle"
+            (request.user.username, cID, num), serializer="json"
         ).get()
     except Exception as e:
         return HttpResponse("ICA Failed:" + str(e), status=500)

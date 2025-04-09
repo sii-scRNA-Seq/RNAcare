@@ -503,7 +503,9 @@ def runFeRed(fr, usr):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runICA(df, num):
+def runICA(username, cID, num):
+    usr = userData.read(username, cID)
+    df = usr.getCorrectedCSV()
     df = df.copy()
     df.index.name = "ID_REF"
     # Drop the columns 'FileName', 'obs', and 'LABEL'
@@ -521,7 +523,9 @@ def runICA(df, num):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runTopFun(metageneCompose, num):
+def runTopFun(username, cID, num):
+    usr = userData.read(username, cID)
+    metageneCompose = usr.metageneCompose
     Tannot = toppfun.ToppFunAnalysis(
         data=metageneCompose,
         threshold=3,
