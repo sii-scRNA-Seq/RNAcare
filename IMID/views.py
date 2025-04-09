@@ -279,7 +279,7 @@ def clustering(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
-
+    cID = request.GET.get("cID", None)
     cluster = request.GET.get("cluster", "LEIDEN")
     param = request.GET.get("param", None)
     if param is None:
@@ -288,14 +288,13 @@ def clustering(request):
     if X2D is None:
         return HttpResponse("Please run feature reduction first.", status=400)
     X2D = X2D.tolist()
-    adata = usr.getAnndata()
     try:
         result = runClustering.apply_async(
-            (cluster, adata, X2D, usr, param), serializer="pickle"
+            (request.user.username, cID, cluster, X2D, param), serializer="json", 
         ).get()
     except Exception as e:
         return HttpResponse(str(e), status=400)
-    return JsonResponse(result)
+    return JsonResponse(result, safe=False)
 
 @auth_required
 def clusteringAdvanced(request):

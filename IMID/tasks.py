@@ -335,7 +335,9 @@ def runDgea(username, cID, clusters, targetLabel, n_genes, treat=''):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runClustering(cluster, adata, X2D, usr, param):
+def runClustering(username, cID, cluster, X2D, param):
+    usr = userData.read(username, cID)
+    adata = usr.getAnndata()
     if cluster == "LEIDEN":
         if param is None:
             param = 1
