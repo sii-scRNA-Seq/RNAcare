@@ -198,12 +198,12 @@ def edaIntegrate(request):
     if "" in integrate:
         integrate.remove("")
 
-    try:
-        result = runIntegrate.apply_async(
-            (request, integrate, cID, log2, corrected, usr, fr), serializer="pickle"
-        ).get()
-    except Exception as e:
-        return HttpResponse(str(e), status=500)
+    # try:
+    result = runIntegrate.apply_async(
+        (request, integrate, cID, log2, corrected, usr, fr), serializer="pickle"
+    ).get()
+    # except Exception as e:
+    #     return HttpResponse(str(e), status=500)
     return HttpResponse("Operation successful.", status=200)
 
 @auth_required
