@@ -40,7 +40,9 @@ def cleanup_inactive_users():
 
 
 @shared_task
-def vlnPlot(geneList, adata, groupby):
+def vlnPlot(username, cID, geneList, groupby):
+    usr = userData.read(username, cID)
+    adata = usr.getAnndata()
     sc.set_figure_params(dpi=100)
     sc.settings.verbosity = 0
 
@@ -104,7 +106,9 @@ def vlnPlot(geneList, adata, groupby):
 
 
 @shared_task
-def densiPlot(geneList, adata):
+def densiPlot(username, cID, geneList):
+    usr = userData.read(username, cID)
+    adata = usr.getAnndata()
     sc.set_figure_params(dpi=100)
     sc.settings.verbosity = 0
     # Iterate over genes and plot
@@ -127,7 +131,9 @@ def densiPlot(geneList, adata):
 
 
 @shared_task
-def heatmapPlot(geneList, adata, groupby):
+def heatmapPlot(username, cID, geneList, groupby):
+    usr = userData.read(username, cID)
+    adata = usr.getAnndata()
     # scale and store results in layer
     figure1 = io.BytesIO()
     adata.layers["scaled"] = sc.pp.scale(adata, copy=True).X

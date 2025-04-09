@@ -618,6 +618,7 @@ def genePlot(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
+    cID = request.GET.get("cID", None)
     type = request.GET.get("type", "vln")
     geneList = request.GET.get("geneList", None)
     groupby = request.GET.get("groupby", "cluster")
@@ -651,13 +652,13 @@ def genePlot(request):
         geneList1 = geneList1[:12]
     if type == "vln":
         image_data = vlnPlot.apply_async(
-            (geneList1, adata, groupby), serializer="pickle"
+            (request.user.username, cID, geneList1, groupby), serializer="json"
         )
     elif type == "density":
-        image_data = densiPlot.apply_async((geneList1, adata), serializer="pickle")
+        image_data = densiPlot.apply_async((request.user.username, cID, geneList1), serializer="json")
     else:  # type=='heatmap'
         image_data = heatmapPlot.apply_async(
-            (geneList1, adata, groupby), serializer="pickle"
+            (request.user.username, cID, geneList1, groupby), serializer="json"
         )
     return JsonResponse({"fileName": image_data.get()})
 
