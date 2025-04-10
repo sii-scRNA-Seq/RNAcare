@@ -243,7 +243,7 @@ def runIntegrate(username, integrate, cID, log2, corrected, fr):
     temp["obs"] = temp.index.tolist()
     # temp.dropna(axis=1, inplace=True)
     usr.setIntegrationData(temp)
-    X2D = runFeRed.apply(args=[fr, usr]).result
+    X2D = runFeRed.apply(args=[username, cID, fr]).result
     usr.setFRData(X2D)
     usr.metagenes = pd.DataFrame()
     usr.metageneCompose = pd.DataFrame()
@@ -491,7 +491,8 @@ def runGoEnrich(username, cID, colName, cluster_n):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runFeRed(fr, usr):
+def runFeRed(username, cID, fr):
+    usr = userData.read(username, cID)
     pca_temp = usr.getAnndata().obsm["X_pca"]
     if fr == "TSNE":
         tsne = TSNE(

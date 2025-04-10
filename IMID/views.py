@@ -750,7 +750,9 @@ def meta_columns(request):
                     MetaFileColumn.objects.exclude(colName="LABEL").filter(
                         user=request.user, cID=cID
                     ).update(label="0")
-                X2D = runFeRed.apply_async((fr, usr), serializer="pickle").get()
+                X2D = runFeRed.apply_async(
+                    (request.user.username, cID, fr), serializer="json"
+                ).get()
                 usr.setFRData(X2D)
         except Exception as e:
             return HttpResponse("Labels creating Problem. " + str(e), status=400)
