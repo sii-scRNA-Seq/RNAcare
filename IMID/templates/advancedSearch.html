@@ -23,7 +23,7 @@
     <li><a href="#tabs-2">Info</a></li>
   </ul>
   <div id="tabs-1">
-  <p>GEO accession: &nbsp;&nbsp;<input id='access_id' title="Input the name of the public dataset.<p><img src='/static/advSearch.png' width='50%'></p>"></input>&nbsp;&nbsp;<button class="btn btn-primary" id='searchBtn' onclick='searchBtnClick();'>Search</button></p>
+  <p>GEO accession: &nbsp;&nbsp;<input id='access_id' title="Input the name of the public dataset.<p><img src='/static/advSearch.png' width='50%'></p>"></input>&nbsp;&nbsp;<button class="btn btn-primary" id='searchBtn' onclick='searchBtnClick({{ clientID }});'>Search</button></p>
   </div>
   <div id="tabs-2">
   <p><h2><div id='name'></div></h2></p>
@@ -59,14 +59,14 @@ $( function() {
     $('#import_btn').hide();
     tabs.tabs();
 });
-function searchBtnClick(){
+function searchBtnClick(cID){
 	$('.btn').attr('disabled',true);
 	$('#name').html('');
 	$('#summary').html('');
 	$('#overall').html('');
 	$('#download').html('');	
 	$.ajax({
-			url:'/advancedSearch/?name='+$('#access_id').val(),
+			url:'/advancedSearch/?name='+$('#access_id').val()+'&cID='+cID,
 			datType:'json',
 			cache:false,
 			contentType:false,
