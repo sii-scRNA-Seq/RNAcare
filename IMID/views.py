@@ -441,7 +441,7 @@ def lasso(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
-
+    cID = request.GET.get("cID", None)
     cluster = request.GET.get("cluster_n", None)  # +1 for R
     colName = request.GET.get("colName", None)
     useICA = request.GET.get("useICA", "no")
@@ -450,37 +450,12 @@ def lasso(request):
     adata = usr.getAnndata()
     if colName not in adata.obs.columns:
         return HttpResponse("Illegal colName for the Label.", status=400)
-    df = adata.to_df().round(12)
-    df[colName] = adata.obs[colName].astype(str)
-    x = df.drop([colName], axis=1, inplace=False)
-    if useICA == "no":
-        scaler = StandardScaler().fit(x)
-        x = scaler.transform(x)
-    else:
-        if usr.metagenes.empty:
-            return HttpResponse("Please run ICA first.", status=400)
-        df2 = x.loc[:, x.columns.str.startswith("c_")]
-        df3 = pd.concat([usr.metagenes, df2], axis=1)
-        scaler = StandardScaler().fit(df3)
-        scaled_df3 = pd.DataFrame(scaler.transform(df3), columns=df3.columns)
-        scaled_df3.index = df3.index.copy()
-
-    index = df[colName] == cluster
-    index1 = df[colName] != cluster
-    df.loc[index, colName] = "1"
-    df.loc[index1, colName] = "0"
-    y = pd.Categorical(df[colName])
-
+    if useICA != "no" and usr.metagenes.empty:
+        return HttpResponse("Please run ICA first.", status=400)
     try:
-        if useICA == "no":
-            image = runLasso.apply_async(
-                (x, y, df.drop([colName], axis=1, inplace=False).columns, 1),
-                serializer="pickle",
-            ).get()
-        else:
-            image = runLasso.apply_async(
-                (scaled_df3, y, df3.columns, 2), serializer="pickle"
-            ).get()
+        image = runLasso.apply_async(
+            (request.user.username, cID, useICA, colName, cluster), serializer="json"
+        ).get()
         if image == b"":
             return HttpResponse("No features after filtering.", status=400)
     except Exception as e:

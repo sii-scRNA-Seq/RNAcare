@@ -4,6 +4,7 @@ import math
 from matplotlib import pyplot as plt
 from threadpoolctl import threadpool_limits
 from sklearn.linear_model import LogisticRegressionCV
+from sklearn.preprocessing import StandardScaler
 import base64
 import io
 import numpy as np
@@ -157,11 +158,16 @@ def heatmapPlot(username, cID, geneList, groupby):
 
 
 @shared_task(time_limit=300, soft_time_limit=280)
-def runLasso(x, y, colNames, num):
-    try:
-        y = np.array(y)
-        if num == 1:
-            model = LogisticRegressionCV(
+def runLasso(username, cID, useICA, colName, cluster):
+    usr = userData.read(username, cID)
+    adata = usr.getAnndata()
+    df = adata.to_df().round(12)
+    df[colName] = adata.obs[colName].astype(str)
+    df1 = df.drop([colName], axis=1, inplace=False)
+    if useICA == "no":
+        scaler = StandardScaler().fit(df1)
+        x = scaler.transform(df1)
+        model = LogisticRegressionCV(
                 cv=5,
                 penalty="l1",
                 solver="saga",
@@ -172,8 +178,15 @@ def runLasso(x, y, colNames, num):
                 max_iter=10000,
                 tol=0.001,
             )
-        else:
-            model = LogisticRegressionCV(
+        colNames = df1.columns
+        plt.title("Top Features Identified by Lasso Regression", fontsize=10)
+    else:
+        df2 = df1.loc[:, df1.columns.str.startswith("c_")]
+        df3 = pd.concat([usr.metagenes, df2], axis=1)
+        scaler = StandardScaler().fit(df3)
+        x = pd.DataFrame(scaler.transform(df3), columns=df3.columns)
+        x.index = df3.index.copy()
+        model = LogisticRegressionCV(
                 cv=5,
                 penalty="l2",
                 solver="saga",
@@ -185,9 +198,16 @@ def runLasso(x, y, colNames, num):
                 tol=0.001,
                 Cs=np.logspace(-4, 4, 1000),
             )
-        model.fit(x, y)
-    except Exception as e:
-        raise e
+        colNames = df3.columns
+        plt.title("Top Features Identified by Ridge Regression", fontsize=10)
+
+    index = df[colName] == cluster
+    index1 = df[colName] != cluster
+    df.loc[index, colName] = "1"
+    df.loc[index1, colName] = "0"
+    y = np.array(pd.Categorical(df[colName]))
+
+    model.fit(x, y)
     coef = pd.Series(model.coef_[0], colNames).sort_values(key=abs, ascending=False)
     if len(coef[coef != 0]) == 0:
         return b""
@@ -196,10 +216,6 @@ def runLasso(x, y, colNames, num):
     )
     plt.xlabel("Features", fontsize=8)
     plt.ylabel("Coefficient Magnitude", fontsize=8)
-    if num == 1:
-        plt.title("Top Features Identified by Lasso Regression", fontsize=10)
-    else:
-        plt.title("Top Features Identified by Ridge Regression", fontsize=10)
     with io.BytesIO() as buffer:
         plt.savefig(buffer, format="svg", bbox_inches="tight")
         buffer.seek(0)
