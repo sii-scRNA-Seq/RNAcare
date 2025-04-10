@@ -20,12 +20,6 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
-app.conf.update(
-    result_expires=5,
-    task_serializer="pickle",
-    result_serializer="pickle",
-    accept_content=["pickle", "json"],
-)
 
 
 @app.task(bind=True, ignore_result=True)
