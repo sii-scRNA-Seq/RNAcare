@@ -243,12 +243,14 @@ def runIntegrate(username, integrate, cID, log2, corrected, fr):
     temp["obs"] = temp.index.tolist()
     # temp.dropna(axis=1, inplace=True)
     usr.setIntegrationData(temp)
+    if usr.save() is False:
+        raise Exception("Error creating user records.")
     X2D = runFeRed.apply(args=[username, cID, fr]).result
     usr.setFRData(X2D)
     usr.metagenes = pd.DataFrame()
     usr.metageneCompose = pd.DataFrame()
     if usr.save() is False:
-        raise Exception("Error for creating user records.")
+        raise Exception("Error creating user records.")
     try:
         with transaction.atomic():
             new_file_columns = []
