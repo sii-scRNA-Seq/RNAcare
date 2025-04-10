@@ -4,6 +4,7 @@ import math
 from matplotlib import pyplot as plt
 from threadpoolctl import threadpool_limits
 from sklearn.linear_model import LogisticRegressionCV
+from sklearn.preprocessing import StandardScaler
 import base64
 import io
 import numpy as np
@@ -27,7 +28,7 @@ from django.db import transaction
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 import umap.umap_ as umap
-from .models import MetaFileColumn
+from .models import MetaFileColumn, CustomUser, userData
 import hdbscan
 from sklearn.cluster import KMeans
 import plotly.graph_objects as go
@@ -40,7 +41,9 @@ def cleanup_inactive_users():
 
 
 @shared_task
-def vlnPlot(geneList, adata, groupby):
+def vlnPlot(username, cID, geneList, groupby):
+    usr = userData.read(username, cID)
+    adata = usr.getAnndata()
     sc.set_figure_params(dpi=100)
     sc.settings.verbosity = 0
 
@@ -104,7 +107,9 @@ def vlnPlot(geneList, adata, groupby):
 
 
 @shared_task
-def densiPlot(geneList, adata):
+def densiPlot(username, cID, geneList):
+    usr = userData.read(username, cID)
+    adata = usr.getAnndata()
     sc.set_figure_params(dpi=100)
     sc.settings.verbosity = 0
     # Iterate over genes and plot
@@ -127,7 +132,9 @@ def densiPlot(geneList, adata):
 
 
 @shared_task
-def heatmapPlot(geneList, adata, groupby):
+def heatmapPlot(username, cID, geneList, groupby):
+    usr = userData.read(username, cID)
+    adata = usr.getAnndata()
     # scale and store results in layer
     figure1 = io.BytesIO()
     adata.layers["scaled"] = sc.pp.scale(adata, copy=True).X
@@ -151,11 +158,16 @@ def heatmapPlot(geneList, adata, groupby):
 
 
 @shared_task(time_limit=300, soft_time_limit=280)
-def runLasso(x, y, colNames, num):
-    try:
-        y = np.array(y)
-        if num == 1:
-            model = LogisticRegressionCV(
+def runLasso(username, cID, useICA, colName, cluster):
+    usr = userData.read(username, cID)
+    adata = usr.getAnndata()
+    df = adata.to_df().round(12)
+    df[colName] = adata.obs[colName].astype(str)
+    df1 = df.drop([colName], axis=1, inplace=False)
+    if useICA == "no":
+        scaler = StandardScaler().fit(df1)
+        x = scaler.transform(df1)
+        model = LogisticRegressionCV(
                 cv=5,
                 penalty="l1",
                 solver="saga",
@@ -166,8 +178,15 @@ def runLasso(x, y, colNames, num):
                 max_iter=10000,
                 tol=0.001,
             )
-        else:
-            model = LogisticRegressionCV(
+        colNames = df1.columns
+        plt.title("Top Features Identified by Lasso Regression", fontsize=10)
+    else:
+        df2 = df1.loc[:, df1.columns.str.startswith("c_")]
+        df3 = pd.concat([usr.metagenes, df2], axis=1)
+        scaler = StandardScaler().fit(df3)
+        x = pd.DataFrame(scaler.transform(df3), columns=df3.columns)
+        x.index = df3.index.copy()
+        model = LogisticRegressionCV(
                 cv=5,
                 penalty="l2",
                 solver="saga",
@@ -179,9 +198,16 @@ def runLasso(x, y, colNames, num):
                 tol=0.001,
                 Cs=np.logspace(-4, 4, 1000),
             )
-        model.fit(x, y)
-    except Exception as e:
-        raise e
+        colNames = df3.columns
+        plt.title("Top Features Identified by Ridge Regression", fontsize=10)
+
+    index = df[colName] == cluster
+    index1 = df[colName] != cluster
+    df.loc[index, colName] = "1"
+    df.loc[index1, colName] = "0"
+    y = np.array(pd.Categorical(df[colName]))
+
+    model.fit(x, y)
     coef = pd.Series(model.coef_[0], colNames).sort_values(key=abs, ascending=False)
     if len(coef[coef != 0]) == 0:
         return b""
@@ -190,10 +216,6 @@ def runLasso(x, y, colNames, num):
     )
     plt.xlabel("Features", fontsize=8)
     plt.ylabel("Coefficient Magnitude", fontsize=8)
-    if num == 1:
-        plt.title("Top Features Identified by Lasso Regression", fontsize=10)
-    else:
-        plt.title("Top Features Identified by Ridge Regression", fontsize=10)
     with io.BytesIO() as buffer:
         plt.savefig(buffer, format="svg", bbox_inches="tight")
         buffer.seek(0)
@@ -202,9 +224,11 @@ def runLasso(x, y, colNames, num):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runIntegrate(request, integrate, cID, log2, corrected, usr, fr):
-    files, files_meta = loadSharedData(request, integrate, cID)
-    temp0 = integrateCliData(request, integrate, cID, files_meta)
+def runIntegrate(username, integrate, cID, log2, corrected, fr):
+    user = CustomUser.objects.get(username=username)
+    usr = userData.read(username, cID)
+    files, files_meta = loadSharedData(user, integrate, cID)
+    temp0 = integrateCliData(user, integrate, cID, files_meta)
     if temp0.shape == (0, 0):
         raise Exception("Can't find meta file")
     if len(files) == 0:
@@ -219,7 +243,7 @@ def runIntegrate(request, integrate, cID, log2, corrected, usr, fr):
     temp["obs"] = temp.index.tolist()
     # temp.dropna(axis=1, inplace=True)
     usr.setIntegrationData(temp)
-    X2D = runFeRed.apply(args=[fr, usr]).result
+    X2D = runFeRed.apply(args=[username, cID, fr]).result
     usr.setFRData(X2D)
     usr.metagenes = pd.DataFrame()
     usr.metageneCompose = pd.DataFrame()
@@ -228,7 +252,7 @@ def runIntegrate(request, integrate, cID, log2, corrected, usr, fr):
     try:
         with transaction.atomic():
             new_file_columns = []
-            MetaFileColumn.objects.filter(user=request.user, cID=cID).delete()
+            MetaFileColumn.objects.filter(user=user, cID=cID).delete()
             for cn in temp0.columns:
                 if cn == "LABEL":
                     label = "1"
@@ -239,7 +263,7 @@ def runIntegrate(request, integrate, cID, log2, corrected, usr, fr):
                 else:
                     num_flag = "0"
                 temp_meta = MetaFileColumn(
-                    user=request.user,
+                    user=user,
                     cID=cID,
                     colName=cn,
                     label=label,
@@ -256,7 +280,9 @@ def runIntegrate(request, integrate, cID, log2, corrected, usr, fr):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runDgea(clusters, adata, targetLabel, n_genes, treat=''):
+def runDgea(username, cID, clusters, targetLabel, n_genes, treat=''):
+    usr = userData.read(username, cID)
+    adata = usr.getAnndata()
     try:
         if clusters == "default":
             with plt.rc_context():
@@ -331,7 +357,9 @@ def runDgea(clusters, adata, targetLabel, n_genes, treat=''):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runClustering(cluster, adata, X2D, usr, param):
+def runClustering(username, cID, cluster, X2D, param):
+    usr = userData.read(username, cID)
+    adata = usr.getAnndata()
     if cluster == "LEIDEN":
         if param is None:
             param = 1
@@ -387,7 +415,8 @@ def runClustering(cluster, adata, X2D, usr, param):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runGoEnrich(usr, colName, cluster_n):
+def runGoEnrich(username, cID, colName, cluster_n):
+    usr = userData.read(username, cID)
     df = usr.getCorrectedCSV()
     if (
         any(df.columns.str.startswith("c_")) is True
@@ -462,7 +491,8 @@ def runGoEnrich(usr, colName, cluster_n):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runFeRed(fr, usr):
+def runFeRed(username, cID, fr):
+    usr = userData.read(username, cID)
     pca_temp = usr.getAnndata().obsm["X_pca"]
     if fr == "TSNE":
         tsne = TSNE(
@@ -496,7 +526,9 @@ def runFeRed(fr, usr):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runICA(df, num):
+def runICA(username, cID, num):
+    usr = userData.read(username, cID)
+    df = usr.getCorrectedCSV()
     df = df.copy()
     df.index.name = "ID_REF"
     # Drop the columns 'FileName', 'obs', and 'LABEL'
@@ -514,7 +546,9 @@ def runICA(df, num):
 
 
 @shared_task(time_limit=180, soft_time_limit=150)
-def runTopFun(metageneCompose, num):
+def runTopFun(username, cID, num):
+    usr = userData.read(username, cID)
+    metageneCompose = usr.metageneCompose
     Tannot = toppfun.ToppFunAnalysis(
         data=metageneCompose,
         threshold=3,

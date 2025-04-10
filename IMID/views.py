@@ -200,7 +200,7 @@ def edaIntegrate(request):
 
     try:
         result = runIntegrate.apply_async(
-            (request, integrate, cID, log2, corrected, usr, fr), serializer="pickle"
+            (request.user.username, integrate, cID, log2, corrected, fr), serializer="json"
         ).get()
     except Exception as e:
         return HttpResponse(str(e), status=500)
@@ -246,8 +246,8 @@ def dgea(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
+    cID = request.GET.get("cID", None)
     targetLabel = request.GET.get("label", "batch2")
-    adata = usr.getAnndata()
 
     clusters = request.GET.get("clusters", "default")
     n_genes = request.GET.get("topN", 4)
@@ -255,7 +255,7 @@ def dgea(request):
 
     try:
         result = runDgea.apply_async(
-            (clusters, adata, targetLabel, n_genes, treat), serializer="pickle"
+            (request.user.username, cID, clusters, targetLabel, n_genes, treat), serializer="json"
         ).get()
     except Exception as e:
         return HttpResponse(str(e), status=500)
@@ -279,7 +279,7 @@ def clustering(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
-
+    cID = request.GET.get("cID", None)
     cluster = request.GET.get("cluster", "LEIDEN")
     param = request.GET.get("param", None)
     if param is None:
@@ -288,14 +288,13 @@ def clustering(request):
     if X2D is None:
         return HttpResponse("Please run feature reduction first.", status=400)
     X2D = X2D.tolist()
-    adata = usr.getAnndata()
     try:
         result = runClustering.apply_async(
-            (cluster, adata, X2D, usr, param), serializer="pickle"
+            (request.user.username, cID, cluster, X2D, param), serializer="json", 
         ).get()
     except Exception as e:
         return HttpResponse(str(e), status=400)
-    return JsonResponse(result)
+    return JsonResponse(result, safe=False)
 
 @auth_required
 def clusteringAdvanced(request):
@@ -412,6 +411,7 @@ def goenrich(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
+    cID = request.GET.get("cID", None)
     cluster_n = request.GET.get("cluster_n", None)
     colName = request.GET.get("colName", None)
     metagene = request.GET.get("metagene", None)
@@ -421,13 +421,13 @@ def goenrich(request):
     try:
         if metagene is None:
             result = runGoEnrich.apply_async(
-                (usr, colName, cluster_n), serializer="pickle"
+                (request.user.username, cID, colName, cluster_n), serializer="json"
             ).get()
         else:
             if usr.metagenes.empty:
                 return HttpResponse("Please run ICA first.", status=400)
             result = runTopFun.apply_async(
-                (usr.metageneCompose, metagene), serializer="pickle"
+                (request.user.username, cID, metagene), serializer="json"
             ).get()
     except Exception as e:
         return HttpResponse(str(e), status=400)
@@ -441,7 +441,7 @@ def lasso(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
-
+    cID = request.GET.get("cID", None)
     cluster = request.GET.get("cluster_n", None)  # +1 for R
     colName = request.GET.get("colName", None)
     useICA = request.GET.get("useICA", "no")
@@ -450,37 +450,12 @@ def lasso(request):
     adata = usr.getAnndata()
     if colName not in adata.obs.columns:
         return HttpResponse("Illegal colName for the Label.", status=400)
-    df = adata.to_df().round(12)
-    df[colName] = adata.obs[colName].astype(str)
-    x = df.drop([colName], axis=1, inplace=False)
-    if useICA == "no":
-        scaler = StandardScaler().fit(x)
-        x = scaler.transform(x)
-    else:
-        if usr.metagenes.empty:
-            return HttpResponse("Please run ICA first.", status=400)
-        df2 = x.loc[:, x.columns.str.startswith("c_")]
-        df3 = pd.concat([usr.metagenes, df2], axis=1)
-        scaler = StandardScaler().fit(df3)
-        scaled_df3 = pd.DataFrame(scaler.transform(df3), columns=df3.columns)
-        scaled_df3.index = df3.index.copy()
-
-    index = df[colName] == cluster
-    index1 = df[colName] != cluster
-    df.loc[index, colName] = "1"
-    df.loc[index1, colName] = "0"
-    y = pd.Categorical(df[colName])
-
+    if useICA != "no" and usr.metagenes.empty:
+        return HttpResponse("Please run ICA first.", status=400)
     try:
-        if useICA == "no":
-            image = runLasso.apply_async(
-                (x, y, df.drop([colName], axis=1, inplace=False).columns, 1),
-                serializer="pickle",
-            ).get()
-        else:
-            image = runLasso.apply_async(
-                (scaled_df3, y, df3.columns, 2), serializer="pickle"
-            ).get()
+        image = runLasso.apply_async(
+            (request.user.username, cID, useICA, colName, cluster), serializer="json"
+        ).get()
         if image == b"":
             return HttpResponse("No features after filtering.", status=400)
     except Exception as e:
@@ -495,7 +470,7 @@ def ICA(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
-
+    cID = request.GET.get("cID", None)
     num = request.GET.get("number", None)
     if num is None:
         return HttpResponse("Illegal number for the Param.", status=400)
@@ -515,7 +490,7 @@ def ICA(request):
         return HttpResponse("You haven't processed the data", status=400)
     try:
         metagenes, metageneCompose = runICA.apply_async(
-            (result_df, num), serializer="pickle"
+            (request.user.username, cID, num), serializer="json"
         ).get()
     except Exception as e:
         return HttpResponse("ICA Failed:" + str(e), status=500)
@@ -618,6 +593,7 @@ def genePlot(request):
         return HttpResponse(checkRes["message"], status=400)
     else:
         usr = checkRes["usrData"]
+    cID = request.GET.get("cID", None)
     type = request.GET.get("type", "vln")
     geneList = request.GET.get("geneList", None)
     groupby = request.GET.get("groupby", "cluster")
@@ -651,13 +627,13 @@ def genePlot(request):
         geneList1 = geneList1[:12]
     if type == "vln":
         image_data = vlnPlot.apply_async(
-            (geneList1, adata, groupby), serializer="pickle"
+            (request.user.username, cID, geneList1, groupby), serializer="json"
         )
     elif type == "density":
-        image_data = densiPlot.apply_async((geneList1, adata), serializer="pickle")
+        image_data = densiPlot.apply_async((request.user.username, cID, geneList1), serializer="json")
     else:  # type=='heatmap'
         image_data = heatmapPlot.apply_async(
-            (geneList1, adata, groupby), serializer="pickle"
+            (request.user.username, cID, geneList1, groupby), serializer="json"
         )
     return JsonResponse({"fileName": image_data.get()})
 
@@ -774,7 +750,9 @@ def meta_columns(request):
                     MetaFileColumn.objects.exclude(colName="LABEL").filter(
                         user=request.user, cID=cID
                     ).update(label="0")
-                X2D = runFeRed.apply_async((fr, usr), serializer="pickle").get()
+                X2D = runFeRed.apply_async(
+                    (request.user.username, cID, fr), serializer="json"
+                ).get()
                 usr.setFRData(X2D)
         except Exception as e:
             return HttpResponse("Labels creating Problem. " + str(e), status=400)
