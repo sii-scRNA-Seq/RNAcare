@@ -1,5 +1,5 @@
 combat
-django==4.2.20
+django==4.2.24
 goatools
 harmony-pytorch
 harmonypy
